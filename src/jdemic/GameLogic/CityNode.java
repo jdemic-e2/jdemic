@@ -79,6 +79,10 @@ public class CityNode {
         diseaseCubes.put(color, Math.max(0, currentCubes - amount));
     }
 
+    public void clickEvent(){
+        System.out.println(name + ": pressed");
+    }
+
     // Getters and Setters
     
     public String getName() { return name; }

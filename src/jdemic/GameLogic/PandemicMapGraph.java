@@ -4,8 +4,10 @@ import java.util.List;
 
 public final class PandemicMapGraph
 {
-    private PandemicMapGraph()
+    private List<CityNode> cityList;
+    public PandemicMapGraph()
     {
+        this.cityList = createNodes();
     }
 
     public static List<CityNode> createNodes()
@@ -67,5 +69,9 @@ public final class PandemicMapGraph
             new CityNode("Jakarta", CityNode.DiseaseColor.RED, 0.78f, 0.65f),
             new CityNode("Sydney", CityNode.DiseaseColor.RED, 0.90f, 0.86f)
         );
+    }
+
+    public List<CityNode> getCityList(){
+        return this.cityList;
     }
 }

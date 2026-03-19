@@ -358,6 +358,7 @@ class jDemicEngine
         boolean framebufferResize;
         private boolean mapFocusMode;
         private boolean tabPressed;
+        private boolean leftClickPressed;
         private List<CityNode> pandemicCities;
         private List<AlignedCityNode> alignedCityNodes;
         private BufferedImage pandemicMapBaseImage;
@@ -448,6 +449,16 @@ class jDemicEngine
             }
             tabPressed = isTabDown;
 
+            boolean isLeftClickDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+            int hoveredCity = detectHoveredCityIndex();
+
+            if(isLeftClickDown && !leftClickPressed && hoveredCity != -1)
+            {
+                var City = alignedCityNodes.get(hoveredCity).city;
+                City.clickEvent();
+            }
+            leftClickPressed = isLeftClickDown;
+
             updateHoveredCityState();
         }
 
@@ -519,6 +530,8 @@ class jDemicEngine
                 return bestIndex;
             }
         }
+
+        
 
         private Vector2f projectNodeToScreen(AlignedCityNode alignedNode, Matrix4f mvp)
         {
@@ -1599,7 +1612,8 @@ class jDemicEngine
                 pandemicMapBaseImage = source;
                 mapTextureWidth = source.getWidth();
                 mapTextureHeight = source.getHeight();
-                pandemicCities = PandemicMapGraph.createNodes();
+                var tempCity = new PandemicMapGraph();
+                pandemicCities = tempCity.getCityList();
                 alignedCityNodes = alignNodesToMapBackground(source, pandemicCities);
 
                 BufferedImage annotated = createAnnotatedMapImage(hoveredCityIndex);
