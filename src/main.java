@@ -74,6 +74,7 @@ class jDemicEngine
         private static final float MAP_HOVER_RADIUS_PX = 18.0f;
         private static final int MAP_NODE_RADIUS_PX = 5*5;
         private static final int MAP_NODE_HOVER_RADIUS_PX = 8*5;
+        private static final float MAP_BORDER_FRACTION = 0.025f;
 
         private static final boolean ENABLE_VALIDATION_LAYERS = DEBUG.get(true);
 
@@ -159,11 +160,12 @@ class jDemicEngine
         private static class UniformBufferObject
         {
 
-            private static final int SIZEOF = 3 * 16 * Float.BYTES;
+            private static final int SIZEOF = (3 * 16 + 4) * Float.BYTES;
 
             private Matrix4f model;
             private Matrix4f view;
             private Matrix4f proj;
+            private float time;
 
             public UniformBufferObject()
             {
@@ -535,9 +537,12 @@ class jDemicEngine
 
         private Vector2f projectNodeToScreen(AlignedCityNode alignedNode, Matrix4f mvp)
         {
-            float worldX = -1.00f + (alignedNode.mapU * 2.00f);
+            // Adjust U/V to account for checkerboard border inset
+            float insetU = MAP_BORDER_FRACTION + alignedNode.mapU * (1.0f - 2.0f * MAP_BORDER_FRACTION);
+            float insetV = MAP_BORDER_FRACTION + alignedNode.mapV * (1.0f - 2.0f * MAP_BORDER_FRACTION);
+            float worldX = -1.00f + (insetU * 2.00f);
             float worldY = 0.145f;
-            float worldZ = -0.52f + (alignedNode.mapV * 1.04f);
+            float worldZ = -0.52f + (insetV * 1.04f);
 
             Vector4f clip = new Vector4f(worldX, worldY, worldZ, 1.0f);
             mvp.transform(clip);
@@ -1627,22 +1632,39 @@ class jDemicEngine
 
         private BufferedImage createAnnotatedMapImage(int hoveredIndex)
         {
-            BufferedImage annotated = new BufferedImage(pandemicMapBaseImage.getWidth(), pandemicMapBaseImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            int w = pandemicMapBaseImage.getWidth();
+            int h = pandemicMapBaseImage.getHeight();
+            BufferedImage annotated = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = annotated.createGraphics();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2d.drawImage(pandemicMapBaseImage, 0, 0, null);
 
-            int fontSize = Math.max(12, pandemicMapBaseImage.getWidth() / 150);
+            // Border region handled by the GPU shader (animated checkerboard)
+            int borderW = Math.max(6, (int)(w * MAP_BORDER_FRACTION));
+            int borderH = Math.max(6, (int)(h * MAP_BORDER_FRACTION));
+
+            // Clear to fully transparent so the shader checkerboard shows through
+            g2d.setComposite(java.awt.AlphaComposite.Clear);
+            g2d.fillRect(0, 0, w, h);
+            g2d.setComposite(java.awt.AlphaComposite.SrcOver);
+
+            // Draw the map image inset within the border
+            g2d.drawImage(pandemicMapBaseImage, borderW, borderH, w - 2 * borderW, h - 2 * borderH, null);
+
+            int fontSize = Math.max(12, w / 150);
             g2d.setFont(new Font("SansSerif", Font.BOLD, fontSize));
             FontMetrics metrics = g2d.getFontMetrics();
+
+            int mapW = w - 2 * borderW;
+            int mapH = h - 2 * borderH;
 
             for(int i = 0; i < alignedCityNodes.size(); i++)
             {
                 AlignedCityNode alignedNode = alignedCityNodes.get(i);
                 CityNode city = alignedNode.city;
-                int nodeX = alignedNode.pixelX;
-                int nodeY = alignedNode.pixelY;
+                // Remap city pixel positions into the inset map area
+                int nodeX = borderW + (int)((float) alignedNode.pixelX / w * mapW);
+                int nodeY = borderH + (int)((float) alignedNode.pixelY / h * mapH);
 
                 int nodeRadius = i == hoveredIndex ? MAP_NODE_HOVER_RADIUS_PX : MAP_NODE_RADIUS_PX;
                 Color nodeColor = colorForDisease(city.getNativeColor());
@@ -1653,14 +1675,14 @@ class jDemicEngine
 
                 String label = city.getName();
                 int textWidth = metrics.stringWidth(label);
-                int labelX = Math.max(0, Math.min(nodeX - (textWidth / 2), pandemicMapBaseImage.getWidth() - textWidth));
+                int labelX = Math.max(0, Math.min(nodeX - (textWidth / 2), w - textWidth));
                 int labelY = nodeY - 10;
                 if(labelY < metrics.getAscent())
                 {
                     labelY = nodeY + metrics.getAscent() + 8;
                 }
 
-                drawCityLabel(g2d, metrics, label, labelX, labelY, pandemicMapBaseImage.getWidth(), pandemicMapBaseImage.getHeight());
+                drawCityLabel(g2d, metrics, label, labelX, labelY, w, h);
                 g2d.drawString(label, labelX, labelY);
             }
 
@@ -2655,6 +2677,7 @@ class jDemicEngine
             ubo.model.get(0, buffer);
             ubo.view.get(alignas(mat4Size, alignof(ubo.view)), buffer);
             ubo.proj.get(alignas(mat4Size * 2, alignof(ubo.view)), buffer);
+            buffer.putFloat(mat4Size * 3, ubo.time);
         }
 
         private int findMemoryType(MemoryStack stack, int typeFilter, int properties)
@@ -2846,6 +2869,7 @@ class jDemicEngine
                 ubo.model.identity();
                 ubo.view.set(buildCurrentViewMatrix());
                 ubo.proj.set(buildCurrentProjectionMatrix());
+                ubo.time = (float) glfwGetTime();
 
                 PointerBuffer data = stack.mallocPointer(1);
                 vkMapMemory(device, uniformBuffersMemory.get(currentImage), 0, UniformBufferObject.SIZEOF, 0, data);
