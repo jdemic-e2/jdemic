@@ -72,8 +72,8 @@ class jDemicEngine
         private static final float MAP_NODE_ALIGNMENT_OFFSET_X = 0.006f;
         private static final float MAP_NODE_ALIGNMENT_OFFSET_Y = -0.004f;
         private static final float MAP_HOVER_RADIUS_PX = 18.0f;
-        private static final int MAP_NODE_RADIUS_PX = 5;
-        private static final int MAP_NODE_HOVER_RADIUS_PX = 8;
+        private static final int MAP_NODE_RADIUS_PX = 5*5;
+        private static final int MAP_NODE_HOVER_RADIUS_PX = 8*5;
 
         private static final boolean ENABLE_VALIDATION_LAYERS = DEBUG.get(true);
 
@@ -522,9 +522,9 @@ class jDemicEngine
 
         private Vector2f projectNodeToScreen(AlignedCityNode alignedNode, Matrix4f mvp)
         {
-            float worldX = -0.62f + (alignedNode.mapU * 1.24f);
+            float worldX = -1.00f + (alignedNode.mapU * 2.00f);
             float worldY = 0.145f;
-            float worldZ = 0.42f - (alignedNode.mapV * 0.84f);
+            float worldZ = -0.52f + (alignedNode.mapV * 1.04f);
 
             Vector4f clip = new Vector4f(worldX, worldY, worldZ, 1.0f);
             mvp.transform(clip);
@@ -538,7 +538,7 @@ class jDemicEngine
             float ndcY = clip.y / clip.w;
 
             float screenX = (ndcX * 0.5f + 0.5f) * swapChainExtent.width();
-            float screenY = (1.0f - (ndcY * 0.5f + 0.5f)) * swapChainExtent.height();
+            float screenY = (ndcY * 0.5f + 0.5f) * swapChainExtent.height();
 
             return new Vector2f(screenX, screenY);
         }
@@ -1619,7 +1619,7 @@ class jDemicEngine
             g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g2d.drawImage(pandemicMapBaseImage, 0, 0, null);
 
-            int fontSize = Math.max(12, pandemicMapBaseImage.getWidth() / 85);
+            int fontSize = Math.max(12, pandemicMapBaseImage.getWidth() / 150);
             g2d.setFont(new Font("SansSerif", Font.BOLD, fontSize));
             FontMetrics metrics = g2d.getFontMetrics();
 
@@ -1763,8 +1763,8 @@ class jDemicEngine
             int textHeight = metrics.getAscent() + metrics.getDescent();
             int boxX = Math.max(0, labelX - paddingX);
             int boxY = Math.max(0, labelY - metrics.getAscent() - paddingY);
-            int boxWidth = Math.min(imageWidth - boxX, textWidth + (paddingX * 2));
-            int boxHeight = Math.min(imageHeight - boxY, textHeight + (paddingY * 2));
+            int boxWidth = Math.min(imageWidth - boxX, textWidth + (paddingX));
+            int boxHeight = Math.min(imageHeight - boxY, textHeight + (paddingY));
 
             g2d.setColor(new Color(12, 24, 46, 145));
             g2d.fill(new RoundRectangle2D.Float(boxX, boxY, boxWidth, boxHeight, 6, 6));
@@ -2205,10 +2205,10 @@ class jDemicEngine
             // Centered map panel on top of the table
             mapPanelFirstIndex = generatedIndices.size();
             addQuad(generatedVertices, generatedIndices,
-                    new Vector3f(-0.62f, 0.145f, 0.42f),
-                    new Vector3f(0.62f, 0.145f, 0.42f),
-                    new Vector3f(0.62f, 0.145f, -0.42f),
-                    new Vector3f(-0.62f, 0.145f, -0.42f),
+                    new Vector3f(-1.00f, 0.145f, 0.52f),
+                    new Vector3f(1.00f, 0.145f, 0.52f),
+                    new Vector3f(1.00f, 0.145f, -0.52f),
+                    new Vector3f(-1.00f, 0.145f, -0.52f),
                     white);
             mapPanelIndexCount = generatedIndices.size() - mapPanelFirstIndex;
             woodIndexCount = mapPanelFirstIndex;
