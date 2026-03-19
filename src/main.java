@@ -1,19 +1,33 @@
 import jdemic.VulkanModules.Frame;
 import jdemic.VulkanModules.ShaderSPIRVUtils.SPIRV;
+import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.PandemicMapGraph;
 
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector2fc;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
+import org.joml.Vector4f;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.Pointer;
 import org.lwjgl.vulkan.*;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.awt.geom.RoundRectangle2D;
+import javax.imageio.ImageIO;
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.util.*;
@@ -34,6 +48,8 @@ import static org.lwjgl.system.Configuration.DEBUG;
 import static org.lwjgl.system.MemoryStack.stackGet;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.system.MemoryUtil.memAlloc;
+import static org.lwjgl.system.MemoryUtil.memFree;
 import static org.lwjgl.vulkan.EXTDebugUtils.*;
 import static org.lwjgl.vulkan.KHRSurface.*;
 import static org.lwjgl.vulkan.KHRSwapchain.*;
@@ -52,6 +68,12 @@ class jDemicEngine
         private static final int HEIGHT = 600;
 
         private static final int MAX_FRAMES_IN_FLIGHT = 2;
+        private static final String PANDEMIC_MAP_TEXTURE_PATH = "textures/pandemicmap.png";
+        private static final float MAP_NODE_ALIGNMENT_OFFSET_X = 0.006f;
+        private static final float MAP_NODE_ALIGNMENT_OFFSET_Y = -0.004f;
+        private static final float MAP_HOVER_RADIUS_PX = 18.0f;
+        private static final int MAP_NODE_RADIUS_PX = 5*5;
+        private static final int MAP_NODE_HOVER_RADIUS_PX = 8*5;
 
         private static final boolean ENABLE_VALIDATION_LAYERS = DEBUG.get(true);
 
@@ -162,6 +184,40 @@ class jDemicEngine
                 this.image = image;
                 this.memory = memory;
                 this.mipLevels = mipLevels;
+            }
+        }
+
+        private static class LoadedTextureData
+        {
+            private final ByteBuffer pixels;
+            private final int width;
+            private final int height;
+            private final boolean stbOwned;
+
+            private LoadedTextureData(ByteBuffer pixels, int width, int height, boolean stbOwned)
+            {
+                this.pixels = pixels;
+                this.width = width;
+                this.height = height;
+                this.stbOwned = stbOwned;
+            }
+        }
+
+        private static class AlignedCityNode
+        {
+            private final CityNode city;
+            private final int pixelX;
+            private final int pixelY;
+            private final float mapU;
+            private final float mapV;
+
+            private AlignedCityNode(CityNode city, int pixelX, int pixelY, int imageWidth, int imageHeight)
+            {
+                this.city = city;
+                this.pixelX = pixelX;
+                this.pixelY = pixelY;
+                this.mapU = (float) pixelX / (float) imageWidth;
+                this.mapV = (float) pixelY / (float) imageHeight;
             }
         }
 
@@ -302,6 +358,13 @@ class jDemicEngine
         boolean framebufferResize;
         private boolean mapFocusMode;
         private boolean tabPressed;
+        private boolean leftClickPressed;
+        private List<CityNode> pandemicCities;
+        private List<AlignedCityNode> alignedCityNodes;
+        private BufferedImage pandemicMapBaseImage;
+        private int mapTextureWidth;
+        private int mapTextureHeight;
+        private int hoveredCityIndex = -1;
 
         // ======= METHODS ======= //
 
@@ -385,6 +448,182 @@ class jDemicEngine
                 mapFocusMode = !mapFocusMode;
             }
             tabPressed = isTabDown;
+
+            boolean isLeftClickDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+            int hoveredCity = detectHoveredCityIndex();
+
+            if(isLeftClickDown && !leftClickPressed && hoveredCity != -1)
+            {
+                var City = alignedCityNodes.get(hoveredCity).city;
+                City.clickEvent();
+            }
+            leftClickPressed = isLeftClickDown;
+
+            updateHoveredCityState();
+        }
+
+        private void updateHoveredCityState()
+        {
+            if(alignedCityNodes == null || alignedCityNodes.isEmpty())
+            {
+                return;
+            }
+
+            int hoveredIndex = detectHoveredCityIndex();
+            if(hoveredIndex != hoveredCityIndex)
+            {
+                hoveredCityIndex = hoveredIndex;
+                refreshPandemicMapTexture();
+            }
+        }
+
+        private int detectHoveredCityIndex()
+        {
+            try(MemoryStack stack = stackPush())
+            {
+                DoubleBuffer cursorX = stack.mallocDouble(1);
+                DoubleBuffer cursorY = stack.mallocDouble(1);
+                glfwGetCursorPos(window, cursorX, cursorY);
+
+                IntBuffer windowWidth = stack.mallocInt(1);
+                IntBuffer windowHeight = stack.mallocInt(1);
+                IntBuffer framebufferWidth = stack.mallocInt(1);
+                IntBuffer framebufferHeight = stack.mallocInt(1);
+                glfwGetWindowSize(window, windowWidth, windowHeight);
+                glfwGetFramebufferSize(window, framebufferWidth, framebufferHeight);
+
+                if(windowWidth.get(0) == 0 || windowHeight.get(0) == 0)
+                {
+                    return -1;
+                }
+
+                float cursorFramebufferX = (float) (cursorX.get(0) * framebufferWidth.get(0) / (double) windowWidth.get(0));
+                float cursorFramebufferY = (float) (cursorY.get(0) * framebufferHeight.get(0) / (double) windowHeight.get(0));
+
+                Matrix4f model = new Matrix4f().identity();
+                Matrix4f view = buildCurrentViewMatrix();
+                Matrix4f projection = buildCurrentProjectionMatrix();
+                Matrix4f mvp = new Matrix4f(projection).mul(view).mul(model);
+
+                int bestIndex = -1;
+                float bestDistanceSquared = MAP_HOVER_RADIUS_PX * MAP_HOVER_RADIUS_PX;
+
+                for(int i = 0; i < alignedCityNodes.size(); i++)
+                {
+                    AlignedCityNode alignedNode = alignedCityNodes.get(i);
+                    Vector2f screen = projectNodeToScreen(alignedNode, mvp);
+                    if(screen == null)
+                    {
+                        continue;
+                    }
+
+                    float dx = screen.x - cursorFramebufferX;
+                    float dy = screen.y - cursorFramebufferY;
+                    float distanceSquared = (dx * dx) + (dy * dy);
+                    if(distanceSquared < bestDistanceSquared)
+                    {
+                        bestDistanceSquared = distanceSquared;
+                        bestIndex = i;
+                    }
+                }
+
+                return bestIndex;
+            }
+        }
+
+        
+
+        private Vector2f projectNodeToScreen(AlignedCityNode alignedNode, Matrix4f mvp)
+        {
+            float worldX = -1.00f + (alignedNode.mapU * 2.00f);
+            float worldY = 0.145f;
+            float worldZ = -0.52f + (alignedNode.mapV * 1.04f);
+
+            Vector4f clip = new Vector4f(worldX, worldY, worldZ, 1.0f);
+            mvp.transform(clip);
+
+            if(clip.w <= 0.0f)
+            {
+                return null;
+            }
+
+            float ndcX = clip.x / clip.w;
+            float ndcY = clip.y / clip.w;
+
+            float screenX = (ndcX * 0.5f + 0.5f) * swapChainExtent.width();
+            float screenY = (ndcY * 0.5f + 0.5f) * swapChainExtent.height();
+
+            return new Vector2f(screenX, screenY);
+        }
+
+        private Matrix4f buildCurrentViewMatrix()
+        {
+            Matrix4f view = new Matrix4f();
+            if(mapFocusMode)
+            {
+                view.lookAt(0.0f, 1.25f, 0.0f, 0.0f, 0.145f, 0.0f, 0.0f, 0.0f, -1.0f);
+            }
+            else
+            {
+                view.lookAt(0.0f, 2.4f, 2.8f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+            }
+            return view;
+        }
+
+        private Matrix4f buildCurrentProjectionMatrix()
+        {
+            Matrix4f projection = new Matrix4f();
+            projection.perspective((float) Math.toRadians(mapFocusMode ? 50.0f : 45.0f),
+                                   (float)swapChainExtent.width() / (float)swapChainExtent.height(),
+                                   0.1f,
+                                   10.0f);
+            projection.m11(projection.m11() * -1);
+            return projection;
+        }
+
+        private void refreshPandemicMapTexture()
+        {
+            if(device == null || pandemicMapBaseImage == null)
+            {
+                return;
+            }
+
+            vkDeviceWaitIdle(device);
+
+            BufferedImage annotated = createAnnotatedMapImage(hoveredCityIndex);
+            ByteBuffer rgba = toRgbaByteBuffer(annotated);
+
+            try(MemoryStack stack = stackPush())
+            {
+                long imageSize = (long) mapTextureWidth * mapTextureHeight * 4;
+                LongBuffer pStagingBuffer = stack.mallocLong(1);
+                LongBuffer pStagingBufferMemory = stack.mallocLong(1);
+                createBuffer(imageSize,
+                             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                             pStagingBuffer,
+                             pStagingBufferMemory);
+
+                PointerBuffer data = stack.mallocPointer(1);
+                vkMapMemory(device, pStagingBufferMemory.get(0), 0, imageSize, 0, data);
+                memcpy(data.getByteBuffer(0, (int) imageSize), rgba, imageSize);
+                vkUnmapMemory(device, pStagingBufferMemory.get(0));
+
+                transitionImageLayout(mapTextureImage,
+                                      VK_FORMAT_R8G8B8A8_SRGB,
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                      mapMipLevels);
+                copyBufferToImage(pStagingBuffer.get(0), mapTextureImage, mapTextureWidth, mapTextureHeight);
+                generateMipmaps(mapTextureImage, VK_FORMAT_R8G8B8A8_SRGB, mapTextureWidth, mapTextureHeight, mapMipLevels);
+
+                vkDestroyBuffer(device, pStagingBuffer.get(0), null);
+                vkFreeMemory(device, pStagingBufferMemory.get(0), null);
+            }
+            finally
+            {
+                memFree(rgba);
+            }
         }
 
         private void cleanupSwapChain()
@@ -1263,7 +1502,7 @@ class jDemicEngine
             woodTextureImage = wood.image;
             woodTextureImageMemory = wood.memory;
 
-            TextureResource map = createTextureImage("textures/pandemicmap.png");
+            TextureResource map = createTextureImage(PANDEMIC_MAP_TEXTURE_PATH);
             mapMipLevels = map.mipLevels;
             mapTextureImage = map.image;
             mapTextureImageMemory = map.memory;
@@ -1280,19 +1519,11 @@ class jDemicEngine
                                       "Missing texture resource: " + resourcePath).toURI();
                 String filename = new java.io.File(resourceUri).getPath();
 
-                IntBuffer pWidth = stack.mallocInt(1);
-                IntBuffer pHeight = stack.mallocInt(1);
-                IntBuffer pChannels = stack.mallocInt(1);
+                LoadedTextureData textureData = loadTextureData(resourcePath, filename, stack);
+                ByteBuffer pixels = textureData.pixels;
 
-                ByteBuffer pixels = stbi_load(filename, pWidth, pHeight, pChannels, STBI_rgb_alpha);
-
-                long imageSize = (long) pWidth.get(0) * pHeight.get(0) * 4;
-                int mipLevels = (int) Math.floor(log2(Math.max(pWidth.get(0), pHeight.get(0)))) + 1;
-
-                if(pixels == null)
-                {
-                    throw new RuntimeException("Failed to load texture image " + filename);
-                }
+                long imageSize = (long) textureData.width * textureData.height * 4;
+                int mipLevels = (int) Math.floor(log2(Math.max(textureData.width, textureData.height))) + 1;
 
                 LongBuffer pStagingBuffer = stack.mallocLong(1);
                 LongBuffer pStagingBufferMemory = stack.mallocLong(1);
@@ -1306,11 +1537,19 @@ class jDemicEngine
                 vkMapMemory(device, pStagingBufferMemory.get(0), 0, imageSize, 0, data);
                 memcpy(data.getByteBuffer(0, (int) imageSize), pixels, imageSize);
                 vkUnmapMemory(device, pStagingBufferMemory.get(0));
-                stbi_image_free(pixels);
+
+                if(textureData.stbOwned)
+                {
+                    stbi_image_free(pixels);
+                }
+                else
+                {
+                    memFree(pixels);
+                }
 
                 LongBuffer pTextureImage = stack.mallocLong(1);
                 LongBuffer pTextureImageMemory = stack.mallocLong(1);
-                createImage(pWidth.get(0), pHeight.get(0),
+                createImage(textureData.width, textureData.height,
                             mipLevels,
                             VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
                             VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -1326,8 +1565,8 @@ class jDemicEngine
                                       VK_IMAGE_LAYOUT_UNDEFINED,
                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                       mipLevels);
-                copyBufferToImage(pStagingBuffer.get(0), textureImage, pWidth.get(0), pHeight.get(0));
-                generateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, pWidth.get(0), pHeight.get(0), mipLevels);
+                copyBufferToImage(pStagingBuffer.get(0), textureImage, textureData.width, textureData.height);
+                generateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, textureData.width, textureData.height, mipLevels);
 
                 vkDestroyBuffer(device, pStagingBuffer.get(0), null);
                 vkFreeMemory(device, pStagingBufferMemory.get(0), null);
@@ -1338,6 +1577,216 @@ class jDemicEngine
             {
                 throw new RuntimeException("Failed to resolve texture resource path: " + resourcePath, e);
             }
+        }
+
+        private LoadedTextureData loadTextureData(String resourcePath, String filename, MemoryStack stack)
+        {
+            if(PANDEMIC_MAP_TEXTURE_PATH.equals(resourcePath))
+            {
+                return createAnnotatedPandemicMapTextureData(filename);
+            }
+
+            IntBuffer pWidth = stack.mallocInt(1);
+            IntBuffer pHeight = stack.mallocInt(1);
+            IntBuffer pChannels = stack.mallocInt(1);
+            ByteBuffer pixels = stbi_load(filename, pWidth, pHeight, pChannels, STBI_rgb_alpha);
+
+            if(pixels == null)
+            {
+                throw new RuntimeException("Failed to load texture image " + filename);
+            }
+
+            return new LoadedTextureData(pixels, pWidth.get(0), pHeight.get(0), true);
+        }
+
+        private LoadedTextureData createAnnotatedPandemicMapTextureData(String filename)
+        {
+            try
+            {
+                BufferedImage source = ImageIO.read(new File(filename));
+                if(source == null)
+                {
+                    throw new IOException("Could not decode map image file");
+                }
+
+                pandemicMapBaseImage = source;
+                mapTextureWidth = source.getWidth();
+                mapTextureHeight = source.getHeight();
+                var tempCity = new PandemicMapGraph();
+                pandemicCities = tempCity.getCityList();
+                alignedCityNodes = alignNodesToMapBackground(source, pandemicCities);
+
+                BufferedImage annotated = createAnnotatedMapImage(hoveredCityIndex);
+                return new LoadedTextureData(toRgbaByteBuffer(annotated), annotated.getWidth(), annotated.getHeight(), false);
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException("Failed to annotate pandemic map texture: " + filename, e);
+            }
+        }
+
+        private BufferedImage createAnnotatedMapImage(int hoveredIndex)
+        {
+            BufferedImage annotated = new BufferedImage(pandemicMapBaseImage.getWidth(), pandemicMapBaseImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = annotated.createGraphics();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2d.drawImage(pandemicMapBaseImage, 0, 0, null);
+
+            int fontSize = Math.max(12, pandemicMapBaseImage.getWidth() / 150);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, fontSize));
+            FontMetrics metrics = g2d.getFontMetrics();
+
+            for(int i = 0; i < alignedCityNodes.size(); i++)
+            {
+                AlignedCityNode alignedNode = alignedCityNodes.get(i);
+                CityNode city = alignedNode.city;
+                int nodeX = alignedNode.pixelX;
+                int nodeY = alignedNode.pixelY;
+
+                int nodeRadius = i == hoveredIndex ? MAP_NODE_HOVER_RADIUS_PX : MAP_NODE_RADIUS_PX;
+                Color nodeColor = colorForDisease(city.getNativeColor());
+                g2d.setColor(nodeColor);
+                g2d.fillOval(nodeX - nodeRadius, nodeY - nodeRadius, nodeRadius * 2, nodeRadius * 2);
+                g2d.setColor(new Color(10, 10, 10, 220));
+                g2d.drawOval(nodeX - nodeRadius, nodeY - nodeRadius, nodeRadius * 2, nodeRadius * 2);
+
+                String label = city.getName();
+                int textWidth = metrics.stringWidth(label);
+                int labelX = Math.max(0, Math.min(nodeX - (textWidth / 2), pandemicMapBaseImage.getWidth() - textWidth));
+                int labelY = nodeY - 10;
+                if(labelY < metrics.getAscent())
+                {
+                    labelY = nodeY + metrics.getAscent() + 8;
+                }
+
+                drawCityLabel(g2d, metrics, label, labelX, labelY, pandemicMapBaseImage.getWidth(), pandemicMapBaseImage.getHeight());
+                g2d.drawString(label, labelX, labelY);
+            }
+
+            g2d.dispose();
+            return annotated;
+        }
+
+        private List<AlignedCityNode> alignNodesToMapBackground(BufferedImage source, List<CityNode> cities)
+        {
+            List<AlignedCityNode> alignedNodes = new ArrayList<>(cities.size());
+
+            for(CityNode city : cities)
+            {
+                float adjustedX = city.getRenderX() + MAP_NODE_ALIGNMENT_OFFSET_X;
+                float adjustedY = city.getRenderY() + MAP_NODE_ALIGNMENT_OFFSET_Y;
+                int expectedX = Math.round(adjustedX * source.getWidth());
+                int expectedY = Math.round(adjustedY * source.getHeight());
+
+                Vector2f snapped = snapNodePosition(source, city.getNativeColor(), expectedX, expectedY, 18);
+                alignedNodes.add(new AlignedCityNode(city,
+                                                     Math.round(snapped.x),
+                                                     Math.round(snapped.y),
+                                                     source.getWidth(),
+                                                     source.getHeight()));
+            }
+
+            return alignedNodes;
+        }
+
+        private Vector2f snapNodePosition(BufferedImage image, CityNode.DiseaseColor diseaseColor, int expectedX, int expectedY, int radius)
+        {
+            int width = image.getWidth();
+            int height = image.getHeight();
+            int clampedExpectedX = Math.max(0, Math.min(expectedX, width - 1));
+            int clampedExpectedY = Math.max(0, Math.min(expectedY, height - 1));
+
+            float bestScore = Float.NEGATIVE_INFINITY;
+            int bestX = clampedExpectedX;
+            int bestY = clampedExpectedY;
+
+            for(int y = Math.max(0, clampedExpectedY - radius); y <= Math.min(height - 1, clampedExpectedY + radius); y++)
+            {
+                for(int x = Math.max(0, clampedExpectedX - radius); x <= Math.min(width - 1, clampedExpectedX + radius); x++)
+                {
+                    int argb = image.getRGB(x, y);
+                    int red = (argb >> 16) & 0xFF;
+                    int green = (argb >> 8) & 0xFF;
+                    int blue = argb & 0xFF;
+                    float score = colorMatchScore(diseaseColor, red, green, blue);
+
+                    int dx = x - clampedExpectedX;
+                    int dy = y - clampedExpectedY;
+                    float distancePenalty = (dx * dx + dy * dy) * 0.22f;
+                    score -= distancePenalty;
+
+                    if(score > bestScore)
+                    {
+                        bestScore = score;
+                        bestX = x;
+                        bestY = y;
+                    }
+                }
+            }
+
+            return new Vector2f(bestX, bestY);
+        }
+
+        private float colorMatchScore(CityNode.DiseaseColor diseaseColor, int red, int green, int blue)
+        {
+            return switch (diseaseColor)
+            {
+                case BLUE -> (blue * 2.2f) - (red * 0.8f) - (green * 0.5f);
+                case YELLOW -> ((red + green) * 1.25f) - (blue * 1.4f);
+                case RED -> (red * 2.3f) - (green * 0.9f) - (blue * 1.1f);
+                case BLACK -> ((red + green + blue) * 0.95f) - Math.abs(red - green) - Math.abs(green - blue);
+            };
+        }
+
+        private ByteBuffer toRgbaByteBuffer(BufferedImage image)
+        {
+            int width = image.getWidth();
+            int height = image.getHeight();
+            int[] argbPixels = new int[width * height];
+            image.getRGB(0, 0, width, height, argbPixels, 0, width);
+
+            ByteBuffer rgbaPixels = memAlloc(width * height * 4);
+            for(int argbPixel : argbPixels)
+            {
+                rgbaPixels.put((byte) ((argbPixel >> 16) & 0xFF));
+                rgbaPixels.put((byte) ((argbPixel >> 8) & 0xFF));
+                rgbaPixels.put((byte) (argbPixel & 0xFF));
+                rgbaPixels.put((byte) ((argbPixel >> 24) & 0xFF));
+            }
+            rgbaPixels.flip();
+            return rgbaPixels;
+        }
+
+        private Color colorForDisease(CityNode.DiseaseColor diseaseColor)
+        {
+            return switch (diseaseColor)
+            {
+                case BLUE -> new Color(69, 130, 236);
+                case YELLOW -> new Color(235, 197, 62);
+                case BLACK -> new Color(64, 64, 64);
+                case RED -> new Color(225, 69, 69);
+            };
+        }
+
+        private void drawCityLabel(Graphics2D g2d, FontMetrics metrics, String label, int labelX, int labelY, int imageWidth, int imageHeight)
+        {
+            int paddingX = 3;
+            int paddingY = 2;
+            int textWidth = metrics.stringWidth(label);
+            int textHeight = metrics.getAscent() + metrics.getDescent();
+            int boxX = Math.max(0, labelX - paddingX);
+            int boxY = Math.max(0, labelY - metrics.getAscent() - paddingY);
+            int boxWidth = Math.min(imageWidth - boxX, textWidth + (paddingX));
+            int boxHeight = Math.min(imageHeight - boxY, textHeight + (paddingY));
+
+            g2d.setColor(new Color(12, 24, 46, 145));
+            g2d.fill(new RoundRectangle2D.Float(boxX, boxY, boxWidth, boxHeight, 6, 6));
+            g2d.setColor(new Color(122, 169, 216, 150));
+            g2d.draw(new RoundRectangle2D.Float(boxX, boxY, boxWidth, boxHeight, 6, 6));
+            g2d.setColor(new Color(15, 20, 28, 210));
+            g2d.drawString(label, labelX + 1, labelY + 1);
+            g2d.setColor(Color.WHITE);
         }
 
         private void generateMipmaps(long image, int imageFormat, int width, int height, int mipLevels)
@@ -1657,6 +2106,16 @@ class jDemicEngine
                     destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
                 }
+                else if(oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                {
+
+                    barrier.srcAccessMask(VK_ACCESS_SHADER_READ_BIT);
+                    barrier.dstAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT);
+
+                    sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                    destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+                }
                 else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 {
 
@@ -1760,10 +2219,10 @@ class jDemicEngine
             // Centered map panel on top of the table
             mapPanelFirstIndex = generatedIndices.size();
             addQuad(generatedVertices, generatedIndices,
-                    new Vector3f(-0.62f, 0.145f, 0.42f),
-                    new Vector3f(0.62f, 0.145f, 0.42f),
-                    new Vector3f(0.62f, 0.145f, -0.42f),
-                    new Vector3f(-0.62f, 0.145f, -0.42f),
+                    new Vector3f(-1.00f, 0.145f, 0.52f),
+                    new Vector3f(1.00f, 0.145f, 0.52f),
+                    new Vector3f(1.00f, 0.145f, -0.52f),
+                    new Vector3f(-1.00f, 0.145f, -0.52f),
                     white);
             mapPanelIndexCount = generatedIndices.size() - mapPanelFirstIndex;
             woodIndexCount = mapPanelFirstIndex;
@@ -2385,17 +2844,8 @@ class jDemicEngine
                 UniformBufferObject ubo = new UniformBufferObject();
 
                 ubo.model.identity();
-                if(mapFocusMode)
-                {
-                    ubo.view.lookAt(0.0f, 1.25f, 0.0f, 0.0f, 0.145f, 0.0f, 0.0f, 0.0f, -1.0f);
-                }
-                else
-                {
-                    ubo.view.lookAt(0.0f, 2.4f, 2.8f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-                }
-                ubo.proj.perspective((float) Math.toRadians(mapFocusMode ? 50.0f : 45.0f),
-                                     (float)swapChainExtent.width() / (float)swapChainExtent.height(), 0.1f, 10.0f);
-                ubo.proj.m11(ubo.proj.m11() * -1);
+                ubo.view.set(buildCurrentViewMatrix());
+                ubo.proj.set(buildCurrentProjectionMatrix());
 
                 PointerBuffer data = stack.mallocPointer(1);
                 vkMapMemory(device, uniformBuffersMemory.get(currentImage), 0, UniformBufferObject.SIZEOF, 0, data);
