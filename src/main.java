@@ -1,33 +1,23 @@
 import jdemic.VulkanModules.Frame;
 import jdemic.VulkanModules.ShaderSPIRVUtils.SPIRV;
-import jdemic.GameLogic.CityNode;
-import jdemic.GameLogic.PandemicMapGraph;
+import jdemic.Rendering.HoverMechanic;
+import jdemic.Rendering.MapRenderer;
+import jdemic.Rendering.SkydomeRenderer;
 
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector2fc;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-import org.joml.Vector4f;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.Pointer;
 import org.lwjgl.vulkan.*;
 
 import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
-import java.awt.geom.RoundRectangle2D;
-import javax.imageio.ImageIO;
-import java.io.File;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
-import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.util.*;
@@ -48,7 +38,6 @@ import static org.lwjgl.system.Configuration.DEBUG;
 import static org.lwjgl.system.MemoryStack.stackGet;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
-import static org.lwjgl.system.MemoryUtil.memAlloc;
 import static org.lwjgl.system.MemoryUtil.memFree;
 import static org.lwjgl.vulkan.EXTDebugUtils.*;
 import static org.lwjgl.vulkan.KHRSurface.*;
@@ -68,13 +57,6 @@ class jDemicEngine
         private static final int HEIGHT = 600;
 
         private static final int MAX_FRAMES_IN_FLIGHT = 2;
-        private static final String PANDEMIC_MAP_TEXTURE_PATH = "textures/pandemicmap.png";
-        private static final float MAP_NODE_ALIGNMENT_OFFSET_X = 0.006f;
-        private static final float MAP_NODE_ALIGNMENT_OFFSET_Y = -0.004f;
-        private static final float MAP_HOVER_RADIUS_PX = 18.0f;
-        private static final int MAP_NODE_RADIUS_PX = 5*5;
-        private static final int MAP_NODE_HOVER_RADIUS_PX = 8*5;
-        private static final float MAP_BORDER_FRACTION = 0.025f;
 
         private static final boolean ENABLE_VALIDATION_LAYERS = DEBUG.get(true);
 
@@ -196,40 +178,6 @@ class jDemicEngine
             }
         }
 
-        private static class LoadedTextureData
-        {
-            private final ByteBuffer pixels;
-            private final int width;
-            private final int height;
-            private final boolean stbOwned;
-
-            private LoadedTextureData(ByteBuffer pixels, int width, int height, boolean stbOwned)
-            {
-                this.pixels = pixels;
-                this.width = width;
-                this.height = height;
-                this.stbOwned = stbOwned;
-            }
-        }
-
-        private static class AlignedCityNode
-        {
-            private final CityNode city;
-            private final int pixelX;
-            private final int pixelY;
-            private final float mapU;
-            private final float mapV;
-
-            private AlignedCityNode(CityNode city, int pixelX, int pixelY, int imageWidth, int imageHeight)
-            {
-                this.city = city;
-                this.pixelX = pixelX;
-                this.pixelY = pixelY;
-                this.mapU = (float) pixelX / (float) imageWidth;
-                this.mapV = (float) pixelY / (float) imageHeight;
-            }
-        }
-
         private static class Vertex
         {
 
@@ -342,6 +290,10 @@ class jDemicEngine
         private long mapTextureImage;
         private long mapTextureImageMemory;
         private long mapTextureImageView;
+        private int skydomeMipLevels;
+        private long skydomeTextureImage;
+        private long skydomeTextureImageMemory;
+        private long skydomeTextureImageView;
         private long textureSampler;
 
         private Vertex[] vertices;
@@ -353,6 +305,11 @@ class jDemicEngine
         private int woodIndexCount;
         private int mapPanelFirstIndex;
         private int mapPanelIndexCount;
+        private int skydomeSphereFirstIndex;
+        private int skydomeSphereIndexCount;
+
+        private long skydomePipeline;
+        private List<Long> descriptorSetsSkydome;
 
         private List<Long> uniformBuffers;
         private List<Long> uniformBuffersMemory;
@@ -365,15 +322,8 @@ class jDemicEngine
         private int currentFrame;
 
         boolean framebufferResize;
-        private boolean mapFocusMode;
-        private boolean tabPressed;
-        private boolean leftClickPressed;
-        private List<CityNode> pandemicCities;
-        private List<AlignedCityNode> alignedCityNodes;
-        private BufferedImage pandemicMapBaseImage;
-        private int mapTextureWidth;
-        private int mapTextureHeight;
-        private int hoveredCityIndex = -1;
+        private final HoverMechanic hoverMechanic = new HoverMechanic();
+        private final MapRenderer mapRenderer = new MapRenderer();
 
         // ======= METHODS ======= //
 
@@ -451,141 +401,7 @@ class jDemicEngine
 
         private void updateInputState()
         {
-            boolean isTabDown = glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS;
-            if(isTabDown && !tabPressed)
-            {
-                mapFocusMode = !mapFocusMode;
-            }
-            tabPressed = isTabDown;
-
-            boolean isLeftClickDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-            int hoveredCity = detectHoveredCityIndex();
-
-            if(isLeftClickDown && !leftClickPressed && hoveredCity != -1)
-            {
-                var City = alignedCityNodes.get(hoveredCity).city;
-                City.clickEvent();
-            }
-            leftClickPressed = isLeftClickDown;
-
-            updateHoveredCityState();
-        }
-
-        private void updateHoveredCityState()
-        {
-            if(alignedCityNodes == null || alignedCityNodes.isEmpty())
-            {
-                return;
-            }
-
-            hoveredCityIndex = detectHoveredCityIndex();
-        }
-
-        private int detectHoveredCityIndex()
-        {
-            try(MemoryStack stack = stackPush())
-            {
-                DoubleBuffer cursorX = stack.mallocDouble(1);
-                DoubleBuffer cursorY = stack.mallocDouble(1);
-                glfwGetCursorPos(window, cursorX, cursorY);
-
-                IntBuffer windowWidth = stack.mallocInt(1);
-                IntBuffer windowHeight = stack.mallocInt(1);
-                IntBuffer framebufferWidth = stack.mallocInt(1);
-                IntBuffer framebufferHeight = stack.mallocInt(1);
-                glfwGetWindowSize(window, windowWidth, windowHeight);
-                glfwGetFramebufferSize(window, framebufferWidth, framebufferHeight);
-
-                if(windowWidth.get(0) == 0 || windowHeight.get(0) == 0)
-                {
-                    return -1;
-                }
-
-                float cursorFramebufferX = (float) (cursorX.get(0) * framebufferWidth.get(0) / (double) windowWidth.get(0));
-                float cursorFramebufferY = (float) (cursorY.get(0) * framebufferHeight.get(0) / (double) windowHeight.get(0));
-
-                Matrix4f model = new Matrix4f().identity();
-                Matrix4f view = buildCurrentViewMatrix();
-                Matrix4f projection = buildCurrentProjectionMatrix();
-                Matrix4f mvp = new Matrix4f(projection).mul(view).mul(model);
-
-                int bestIndex = -1;
-                float bestDistanceSquared = MAP_HOVER_RADIUS_PX * MAP_HOVER_RADIUS_PX;
-
-                for(int i = 0; i < alignedCityNodes.size(); i++)
-                {
-                    AlignedCityNode alignedNode = alignedCityNodes.get(i);
-                    Vector2f screen = projectNodeToScreen(alignedNode, mvp);
-                    if(screen == null)
-                    {
-                        continue;
-                    }
-
-                    float dx = screen.x - cursorFramebufferX;
-                    float dy = screen.y - cursorFramebufferY;
-                    float distanceSquared = (dx * dx) + (dy * dy);
-                    if(distanceSquared < bestDistanceSquared)
-                    {
-                        bestDistanceSquared = distanceSquared;
-                        bestIndex = i;
-                    }
-                }
-
-                return bestIndex;
-            }
-        }
-
-        
-
-        private Vector2f projectNodeToScreen(AlignedCityNode alignedNode, Matrix4f mvp)
-        {
-            // Adjust U/V to account for checkerboard border inset
-            float insetU = MAP_BORDER_FRACTION + alignedNode.mapU * (1.0f - 2.0f * MAP_BORDER_FRACTION);
-            float insetV = MAP_BORDER_FRACTION + alignedNode.mapV * (1.0f - 2.0f * MAP_BORDER_FRACTION);
-            float worldX = -1.00f + (insetU * 2.00f);
-            float worldY = 0.145f;
-            float worldZ = -0.52f + (insetV * 1.04f);
-
-            Vector4f clip = new Vector4f(worldX, worldY, worldZ, 1.0f);
-            mvp.transform(clip);
-
-            if(clip.w <= 0.0f)
-            {
-                return null;
-            }
-
-            float ndcX = clip.x / clip.w;
-            float ndcY = clip.y / clip.w;
-
-            float screenX = (ndcX * 0.5f + 0.5f) * swapChainExtent.width();
-            float screenY = (ndcY * 0.5f + 0.5f) * swapChainExtent.height();
-
-            return new Vector2f(screenX, screenY);
-        }
-
-        private Matrix4f buildCurrentViewMatrix()
-        {
-            Matrix4f view = new Matrix4f();
-            if(mapFocusMode)
-            {
-                view.lookAt(0.0f, 1.25f, 0.0f, 0.0f, 0.145f, 0.0f, 0.0f, 0.0f, -1.0f);
-            }
-            else
-            {
-                view.lookAt(0.0f, 2.4f, 2.8f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-            }
-            return view;
-        }
-
-        private Matrix4f buildCurrentProjectionMatrix()
-        {
-            Matrix4f projection = new Matrix4f();
-            projection.perspective((float) Math.toRadians(mapFocusMode ? 50.0f : 45.0f),
-                                   (float)swapChainExtent.width() / (float)swapChainExtent.height(),
-                                   0.1f,
-                                   10.0f);
-            projection.m11(projection.m11() * -1);
-            return projection;
+            hoverMechanic.updateInputState(window, swapChainExtent, mapRenderer.getAlignedCityNodes());
         }
 
         private void cleanupSwapChain()
@@ -612,6 +428,7 @@ class jDemicEngine
             }
 
             vkDestroyPipeline(device, graphicsPipeline, null);
+            vkDestroyPipeline(device, skydomePipeline, null);
 
             vkDestroyPipelineLayout(device, pipelineLayout, null);
 
@@ -631,6 +448,10 @@ class jDemicEngine
             vkDestroyImageView(device, mapTextureImageView, null);
             vkDestroyImage(device, mapTextureImage, null);
             vkFreeMemory(device, mapTextureImageMemory, null);
+
+            vkDestroyImageView(device, skydomeTextureImageView, null);
+            vkDestroyImage(device, skydomeTextureImage, null);
+            vkFreeMemory(device, skydomeTextureImageMemory, null);
 
             vkDestroyImageView(device, woodTextureImageView, null);
             vkDestroyImage(device, woodTextureImage, null);
@@ -1276,6 +1097,12 @@ class jDemicEngine
 
                 graphicsPipeline = pGraphicsPipeline.get(0);
 
+                // ===> SKYDOME PIPELINE <===
+
+                skydomePipeline = SkydomeRenderer.createPipeline(device, stack, entryPoint,
+                    vertexInputInfo, inputAssembly, viewportState, multisampling, colorBlending,
+                    pipelineLayout, renderPass, msaaSamples);
+
                 // ===> RELEASE RESOURCES <===
 
                 vkDestroyShaderModule(device, vertShaderModule, null);
@@ -1464,10 +1291,15 @@ class jDemicEngine
             woodTextureImage = wood.image;
             woodTextureImageMemory = wood.memory;
 
-            TextureResource map = createTextureImage(PANDEMIC_MAP_TEXTURE_PATH);
+            TextureResource map = createTextureImage(MapRenderer.PANDEMIC_MAP_TEXTURE_PATH);
             mapMipLevels = map.mipLevels;
             mapTextureImage = map.image;
             mapTextureImageMemory = map.memory;
+
+            TextureResource skydome = createTextureImage("textures/skydome.png");
+            skydomeMipLevels = skydome.mipLevels;
+            skydomeTextureImage = skydome.image;
+            skydomeTextureImageMemory = skydome.memory;
         }
 
         private TextureResource createTextureImage(String resourcePath)
@@ -1481,7 +1313,7 @@ class jDemicEngine
                                       "Missing texture resource: " + resourcePath).toURI();
                 String filename = new java.io.File(resourceUri).getPath();
 
-                LoadedTextureData textureData = loadTextureData(resourcePath, filename, stack);
+                MapRenderer.LoadedTextureData textureData = loadTextureData(resourcePath, filename, stack);
                 ByteBuffer pixels = textureData.pixels;
 
                 long imageSize = (long) textureData.width * textureData.height * 4;
@@ -1541,228 +1373,9 @@ class jDemicEngine
             }
         }
 
-        private LoadedTextureData loadTextureData(String resourcePath, String filename, MemoryStack stack)
+        private MapRenderer.LoadedTextureData loadTextureData(String resourcePath, String filename, MemoryStack stack)
         {
-            if(PANDEMIC_MAP_TEXTURE_PATH.equals(resourcePath))
-            {
-                return createAnnotatedPandemicMapTextureData(filename);
-            }
-
-            IntBuffer pWidth = stack.mallocInt(1);
-            IntBuffer pHeight = stack.mallocInt(1);
-            IntBuffer pChannels = stack.mallocInt(1);
-            ByteBuffer pixels = stbi_load(filename, pWidth, pHeight, pChannels, STBI_rgb_alpha);
-
-            if(pixels == null)
-            {
-                throw new RuntimeException("Failed to load texture image " + filename);
-            }
-
-            return new LoadedTextureData(pixels, pWidth.get(0), pHeight.get(0), true);
-        }
-
-        private LoadedTextureData createAnnotatedPandemicMapTextureData(String filename)
-        {
-            try
-            {
-                BufferedImage source = ImageIO.read(new File(filename));
-                if(source == null)
-                {
-                    throw new IOException("Could not decode map image file");
-                }
-
-                pandemicMapBaseImage = source;
-                mapTextureWidth = source.getWidth();
-                mapTextureHeight = source.getHeight();
-                var tempCity = new PandemicMapGraph();
-                pandemicCities = tempCity.getCityList();
-                alignedCityNodes = alignNodesToMapBackground(source, pandemicCities);
-
-                BufferedImage annotated = createAnnotatedMapImage(-1);
-                return new LoadedTextureData(toRgbaByteBuffer(annotated), annotated.getWidth(), annotated.getHeight(), false);
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException("Failed to annotate pandemic map texture: " + filename, e);
-            }
-        }
-
-        private BufferedImage createAnnotatedMapImage(int hoveredIndex)
-        {
-            int w = pandemicMapBaseImage.getWidth();
-            int h = pandemicMapBaseImage.getHeight();
-
-            BufferedImage annotated = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g2d = annotated.createGraphics();
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-            int borderW = Math.max(6, (int)(w * MAP_BORDER_FRACTION));
-            int borderH = Math.max(6, (int)(h * MAP_BORDER_FRACTION));
-
-            g2d.setComposite(java.awt.AlphaComposite.Clear);
-            g2d.fillRect(0, 0, w, h);
-            g2d.setComposite(java.awt.AlphaComposite.SrcOver);
-
-            g2d.drawImage(pandemicMapBaseImage, borderW, borderH, w - 2 * borderW, h - 2 * borderH, null);
-
-            int fontSize = Math.max(12, w / 150);
-            g2d.setFont(new Font("SansSerif", Font.BOLD, fontSize));
-            FontMetrics metrics = g2d.getFontMetrics();
-
-            int mapW = w - 2 * borderW;
-            int mapH = h - 2 * borderH;
-
-            for(int i = 0; i < alignedCityNodes.size(); i++)
-            {
-                AlignedCityNode alignedNode = alignedCityNodes.get(i);
-                CityNode city = alignedNode.city;
-                int nodeX = borderW + (int)((float) alignedNode.pixelX / w * mapW);
-                int nodeY = borderH + (int)((float) alignedNode.pixelY / h * mapH);
-
-                int nodeRadius = MAP_NODE_RADIUS_PX;
-                Color nodeColor = colorForDisease(city.getNativeColor());
-                g2d.setColor(nodeColor);
-                g2d.fillOval(nodeX - nodeRadius, nodeY - nodeRadius, nodeRadius * 2, nodeRadius * 2);
-                g2d.setColor(new Color(10, 10, 10, 220));
-                g2d.drawOval(nodeX - nodeRadius, nodeY - nodeRadius, nodeRadius * 2, nodeRadius * 2);
-
-                String label = city.getName();
-                int textWidth = metrics.stringWidth(label);
-                int labelX = Math.max(0, Math.min(nodeX - (textWidth / 2), w - textWidth));
-                int labelY = nodeY - 10;
-                if(labelY < metrics.getAscent())
-                {
-                    labelY = nodeY + metrics.getAscent() + 8;
-                }
-
-                drawCityLabel(g2d, metrics, label, labelX, labelY, w, h);
-                g2d.drawString(label, labelX, labelY);
-            }
-
-            g2d.dispose();
-            return annotated;
-        }
-
-        private List<AlignedCityNode> alignNodesToMapBackground(BufferedImage source, List<CityNode> cities)
-        {
-            List<AlignedCityNode> alignedNodes = new ArrayList<>(cities.size());
-
-            for(CityNode city : cities)
-            {
-                float adjustedX = city.getRenderX() + MAP_NODE_ALIGNMENT_OFFSET_X;
-                float adjustedY = city.getRenderY() + MAP_NODE_ALIGNMENT_OFFSET_Y;
-                int expectedX = Math.round(adjustedX * source.getWidth());
-                int expectedY = Math.round(adjustedY * source.getHeight());
-
-                Vector2f snapped = snapNodePosition(source, city.getNativeColor(), expectedX, expectedY, 18);
-                alignedNodes.add(new AlignedCityNode(city,
-                                                     Math.round(snapped.x),
-                                                     Math.round(snapped.y),
-                                                     source.getWidth(),
-                                                     source.getHeight()));
-            }
-
-            return alignedNodes;
-        }
-
-        private Vector2f snapNodePosition(BufferedImage image, CityNode.DiseaseColor diseaseColor, int expectedX, int expectedY, int radius)
-        {
-            int width = image.getWidth();
-            int height = image.getHeight();
-            int clampedExpectedX = Math.max(0, Math.min(expectedX, width - 1));
-            int clampedExpectedY = Math.max(0, Math.min(expectedY, height - 1));
-
-            float bestScore = Float.NEGATIVE_INFINITY;
-            int bestX = clampedExpectedX;
-            int bestY = clampedExpectedY;
-
-            for(int y = Math.max(0, clampedExpectedY - radius); y <= Math.min(height - 1, clampedExpectedY + radius); y++)
-            {
-                for(int x = Math.max(0, clampedExpectedX - radius); x <= Math.min(width - 1, clampedExpectedX + radius); x++)
-                {
-                    int argb = image.getRGB(x, y);
-                    int red = (argb >> 16) & 0xFF;
-                    int green = (argb >> 8) & 0xFF;
-                    int blue = argb & 0xFF;
-                    float score = colorMatchScore(diseaseColor, red, green, blue);
-
-                    int dx = x - clampedExpectedX;
-                    int dy = y - clampedExpectedY;
-                    float distancePenalty = (dx * dx + dy * dy) * 0.22f;
-                    score -= distancePenalty;
-
-                    if(score > bestScore)
-                    {
-                        bestScore = score;
-                        bestX = x;
-                        bestY = y;
-                    }
-                }
-            }
-
-            return new Vector2f(bestX, bestY);
-        }
-
-        private float colorMatchScore(CityNode.DiseaseColor diseaseColor, int red, int green, int blue)
-        {
-            return switch (diseaseColor)
-            {
-                case BLUE -> (blue * 2.2f) - (red * 0.8f) - (green * 0.5f);
-                case YELLOW -> ((red + green) * 1.25f) - (blue * 1.4f);
-                case RED -> (red * 2.3f) - (green * 0.9f) - (blue * 1.1f);
-                case BLACK -> ((red + green + blue) * 0.95f) - Math.abs(red - green) - Math.abs(green - blue);
-            };
-        }
-
-        private ByteBuffer toRgbaByteBuffer(BufferedImage image)
-        {
-            int width = image.getWidth();
-            int height = image.getHeight();
-            int[] argbPixels = new int[width * height];
-            image.getRGB(0, 0, width, height, argbPixels, 0, width);
-
-            ByteBuffer rgbaPixels = memAlloc(width * height * 4);
-            for(int argbPixel : argbPixels)
-            {
-                rgbaPixels.put((byte) ((argbPixel >> 16) & 0xFF));
-                rgbaPixels.put((byte) ((argbPixel >> 8) & 0xFF));
-                rgbaPixels.put((byte) (argbPixel & 0xFF));
-                rgbaPixels.put((byte) ((argbPixel >> 24) & 0xFF));
-            }
-            rgbaPixels.flip();
-            return rgbaPixels;
-        }
-
-        private Color colorForDisease(CityNode.DiseaseColor diseaseColor)
-        {
-            return switch (diseaseColor)
-            {
-                case BLUE -> new Color(69, 130, 236);
-                case YELLOW -> new Color(235, 197, 62);
-                case BLACK -> new Color(64, 64, 64);
-                case RED -> new Color(225, 69, 69);
-            };
-        }
-
-        private void drawCityLabel(Graphics2D g2d, FontMetrics metrics, String label, int labelX, int labelY, int imageWidth, int imageHeight)
-        {
-            int paddingX = 3;
-            int paddingY = 2;
-            int textWidth = metrics.stringWidth(label);
-            int textHeight = metrics.getAscent() + metrics.getDescent();
-            int boxX = Math.max(0, labelX - paddingX);
-            int boxY = Math.max(0, labelY - metrics.getAscent() - paddingY);
-            int boxWidth = Math.min(imageWidth - boxX, textWidth + (paddingX));
-            int boxHeight = Math.min(imageHeight - boxY, textHeight + (paddingY));
-
-            g2d.setColor(new Color(12, 24, 46, 145));
-            g2d.fill(new RoundRectangle2D.Float(boxX, boxY, boxWidth, boxHeight, 6, 6));
-            g2d.setColor(new Color(122, 169, 216, 150));
-            g2d.draw(new RoundRectangle2D.Float(boxX, boxY, boxWidth, boxHeight, 6, 6));
-            g2d.setColor(new Color(15, 20, 28, 210));
-            g2d.drawString(label, labelX + 1, labelY + 1);
-            g2d.setColor(Color.WHITE);
+            return mapRenderer.loadTextureData(resourcePath, filename, stack);
         }
 
         private void generateMipmaps(long image, int imageFormat, int width, int height, int mipLevels)
@@ -1914,6 +1527,7 @@ class jDemicEngine
         {
             woodTextureImageView = createImageView(woodTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, woodMipLevels);
             mapTextureImageView = createImageView(mapTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mapMipLevels);
+            skydomeTextureImageView = createImageView(skydomeTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, skydomeMipLevels);
         }
 
         private void createTextureSampler()
@@ -2203,6 +1817,14 @@ class jDemicEngine
             mapPanelIndexCount = generatedIndices.size() - mapPanelFirstIndex;
             woodIndexCount = mapPanelFirstIndex;
 
+            // Skydome sphere (unit sphere for equirectangular sky rendering)
+            SkydomeRenderer.SphereGeometry sphere = SkydomeRenderer.generateSphereGeometry(
+                generatedVertices, generatedIndices,
+                (pos, color, texCoords) -> new Vertex(pos, color, texCoords),
+                32, 32);
+            skydomeSphereFirstIndex = sphere.firstIndex;
+            skydomeSphereIndexCount = sphere.indexCount;
+
             vertices = generatedVertices.toArray(new Vertex[0]);
             indices = new int[generatedIndices.size()];
             for(int i = 0; i < generatedIndices.size(); i++)
@@ -2399,16 +2021,16 @@ class jDemicEngine
 
                 VkDescriptorPoolSize uniformBufferPoolSize = poolSizes.get(0);
                 uniformBufferPoolSize.type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-                uniformBufferPoolSize.descriptorCount(swapChainImages.size() * 2);
+                uniformBufferPoolSize.descriptorCount(swapChainImages.size() * 3);
 
                 VkDescriptorPoolSize textureSamplerPoolSize = poolSizes.get(1);
                 textureSamplerPoolSize.type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-                textureSamplerPoolSize.descriptorCount(swapChainImages.size() * 2);
+                textureSamplerPoolSize.descriptorCount(swapChainImages.size() * 3);
 
                 VkDescriptorPoolCreateInfo poolInfo = VkDescriptorPoolCreateInfo.calloc(stack);
                 poolInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO);
                 poolInfo.pPoolSizes(poolSizes);
-                poolInfo.maxSets(swapChainImages.size() * 2);
+                poolInfo.maxSets(swapChainImages.size() * 3);
 
                 LongBuffer pDescriptorPool = stack.mallocLong(1);
 
@@ -2440,6 +2062,7 @@ class jDemicEngine
 
                 descriptorSetsWood = allocateAndWriteDescriptorSets(stack, allocInfo, woodTextureImageView);
                 descriptorSetsMap = allocateAndWriteDescriptorSets(stack, allocInfo, mapTextureImageView);
+                descriptorSetsSkydome = allocateAndWriteDescriptorSets(stack, allocInfo, skydomeTextureImageView);
             }
         }
 
@@ -2721,23 +2344,28 @@ class jDemicEngine
 
                     vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
                     {
-                        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+                    LongBuffer vertexBuffers = stack.longs(vertexBuffer);
+                    LongBuffer offsets = stack.longs(0);
+                    vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets);
+                    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-                        LongBuffer vertexBuffers = stack.longs(vertexBuffer);
-                        LongBuffer offsets = stack.longs(0);
-                        vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets);
+                    // Draw skydome first (no depth write, always behind everything)
+                    SkydomeRenderer.recordDrawCommands(commandBuffer, stack,
+                        skydomePipeline, pipelineLayout, descriptorSetsSkydome.get(i),
+                        skydomeSphereFirstIndex, skydomeSphereIndexCount);
 
-                        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+                    // Draw table and map with normal pipeline
+                    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-                        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                pipelineLayout, 0, stack.longs(descriptorSetsWood.get(i)), null);
+                    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            pipelineLayout, 0, stack.longs(descriptorSetsWood.get(i)), null);
 
-                        vkCmdDrawIndexed(commandBuffer, woodIndexCount, 1, 0, 0, 0);
+                    vkCmdDrawIndexed(commandBuffer, woodIndexCount, 1, 0, 0, 0);
 
-                        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                pipelineLayout, 0, stack.longs(descriptorSetsMap.get(i)), null);
+                    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            pipelineLayout, 0, stack.longs(descriptorSetsMap.get(i)), null);
 
-                        vkCmdDrawIndexed(commandBuffer, mapPanelIndexCount, 1, mapPanelFirstIndex, 0, 0);
+                    vkCmdDrawIndexed(commandBuffer, mapPanelIndexCount, 1, mapPanelFirstIndex, 0, 0);
                     }
                     vkCmdEndRenderPass(commandBuffer);
 
@@ -2829,18 +2457,19 @@ class jDemicEngine
                 UniformBufferObject ubo = new UniformBufferObject();
 
                 ubo.model.identity();
-                ubo.view.set(buildCurrentViewMatrix());
-                ubo.proj.set(buildCurrentProjectionMatrix());
+                ubo.view.set(hoverMechanic.buildCurrentViewMatrix());
+                ubo.proj.set(hoverMechanic.buildCurrentProjectionMatrix(swapChainExtent));
                 ubo.time = (float) glfwGetTime();
 
+                var alignedCityNodes = mapRenderer.getAlignedCityNodes();
+                int hoveredCityIndex = hoverMechanic.getHoveredCityIndex();
                 if(hoveredCityIndex >= 0 && alignedCityNodes != null && hoveredCityIndex < alignedCityNodes.size())
                 {
-                    AlignedCityNode node = alignedCityNodes.get(hoveredCityIndex);
-                    ubo.hoverU = MAP_BORDER_FRACTION + node.mapU * (1.0f - 2.0f * MAP_BORDER_FRACTION);
-                    ubo.hoverV = MAP_BORDER_FRACTION + node.mapV * (1.0f - 2.0f * MAP_BORDER_FRACTION);
-                    ubo.hoverRadiusU = (float) MAP_NODE_HOVER_RADIUS_PX / (float) mapTextureWidth;
-                    ubo.hoverRadiusV = (float) MAP_NODE_HOVER_RADIUS_PX / (float) mapTextureHeight;
-                    Color c = colorForDisease(node.city.getNativeColor());
+                    ubo.hoverU = hoverMechanic.getHoverU(alignedCityNodes);
+                    ubo.hoverV = hoverMechanic.getHoverV(alignedCityNodes);
+                    ubo.hoverRadiusU = hoverMechanic.getHoverRadiusU(mapRenderer.getMapTextureWidth());
+                    ubo.hoverRadiusV = hoverMechanic.getHoverRadiusV(mapRenderer.getMapTextureHeight());
+                    Color c = hoverMechanic.getHoverColor(alignedCityNodes);
                     ubo.hoverColorR = c.getRed() / 255.0f;
                     ubo.hoverColorG = c.getGreen() / 255.0f;
                     ubo.hoverColorB = c.getBlue() / 255.0f;
