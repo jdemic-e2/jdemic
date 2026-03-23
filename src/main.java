@@ -368,12 +368,18 @@ class jDemicEngine
         private int mapTextureHeight;
         private int hoveredCityIndex = -1;
 
+        private long stagingBufferHandle; 
+        private long stagingBufferMemoryHandle;
+        private ByteBuffer mappedData;
+        long imageSize;
+
         // ======= METHODS ======= //
 
         public void run()
         {
             initWindow();
             initVulkan();
+            initBuffer();
             mainLoop();
             cleanup();
         }
@@ -400,6 +406,27 @@ class jDemicEngine
             // In Java, we don't really need a user pointer here, because
             // we can simply pass an instance method reference to glfwSetFramebufferSizeCallback
             glfwSetFramebufferSizeCallback(window, this::framebufferResizeCallback);
+        }
+
+        private void initBuffer(){
+            try(MemoryStack stack = stackPush()){
+                LongBuffer pBuffer = stack.mallocLong(1);
+                LongBuffer pMemory = stack.mallocLong(1);
+                imageSize = mapTextureWidth * mapTextureHeight * 4;
+                PointerBuffer data = stack.mallocPointer(1);
+                createBuffer(imageSize,
+                             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                             pBuffer,
+                             pMemory);
+
+                this.stagingBufferHandle = pBuffer.get(0);
+                this.stagingBufferMemoryHandle = pMemory.get(0);
+
+                vkMapMemory(device, stagingBufferMemoryHandle, 0, imageSize, 0, data);
+                mappedData = data.getByteBuffer(0, (int)imageSize);
+
+            }
         }
 
         private void framebufferResizeCallback(long window, int width, int height)
@@ -593,37 +620,22 @@ class jDemicEngine
                 return;
             }
 
-            vkDeviceWaitIdle(device);
-
             BufferedImage annotated = createAnnotatedMapImage(hoveredCityIndex);
             ByteBuffer rgba = toRgbaByteBuffer(annotated);
 
             try(MemoryStack stack = stackPush())
             {
-                long imageSize = (long) mapTextureWidth * mapTextureHeight * 4;
-                LongBuffer pStagingBuffer = stack.mallocLong(1);
-                LongBuffer pStagingBufferMemory = stack.mallocLong(1);
-                createBuffer(imageSize,
-                             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                             pStagingBuffer,
-                             pStagingBufferMemory);
-
-                PointerBuffer data = stack.mallocPointer(1);
-                vkMapMemory(device, pStagingBufferMemory.get(0), 0, imageSize, 0, data);
-                memcpy(data.getByteBuffer(0, (int) imageSize), rgba, imageSize);
-                vkUnmapMemory(device, pStagingBufferMemory.get(0));
+                mappedData.rewind();
+                memcpy(mappedData, rgba, imageSize);
 
                 transitionImageLayout(mapTextureImage,
                                       VK_FORMAT_R8G8B8A8_SRGB,
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                       mapMipLevels);
-                copyBufferToImage(pStagingBuffer.get(0), mapTextureImage, mapTextureWidth, mapTextureHeight);
+                copyBufferToImage(stagingBufferHandle, mapTextureImage, mapTextureWidth, mapTextureHeight);
                 generateMipmaps(mapTextureImage, VK_FORMAT_R8G8B8A8_SRGB, mapTextureWidth, mapTextureHeight, mapMipLevels);
-
-                vkDestroyBuffer(device, pStagingBuffer.get(0), null);
-                vkFreeMemory(device, pStagingBufferMemory.get(0), null);
+                    
             }
             finally
             {
@@ -686,6 +698,10 @@ class jDemicEngine
 
             vkDestroyBuffer(device, vertexBuffer, null);
             vkFreeMemory(device, vertexBufferMemory, null);
+
+            vkUnmapMemory(device, stagingBufferMemoryHandle);
+            vkDestroyBuffer(device, stagingBufferHandle, null);
+            vkFreeMemory(device, stagingBufferMemoryHandle, null);
 
             inFlightFrames.forEach(frame ->
             {
