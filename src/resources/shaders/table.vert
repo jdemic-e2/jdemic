@@ -6,6 +6,13 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 view;
     mat4 proj;
     float time;
+    float hoverU;
+    float hoverV;
+    float hoverRadiusU;
+    float hoverRadiusV;
+    float hoverColorR;
+    float hoverColorG;
+    float hoverColorB;
 } ubo;
 
 layout(location = 0) in vec3 inPosition;

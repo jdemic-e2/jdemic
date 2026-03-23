@@ -1,6 +1,20 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+layout(binding = 0) uniform UniformBufferObject {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+    float time;
+    float hoverU;
+    float hoverV;
+    float hoverRadiusU;
+    float hoverRadiusV;
+    float hoverColorR;
+    float hoverColorG;
+    float hoverColorB;
+} ubo;
+
 layout(binding = 1) uniform sampler2D texSampler;
 
 layout(location = 0) in vec3 fragColor;
@@ -37,6 +51,31 @@ void main() {
         // Composite the map texture on top using its alpha
         vec4 mapTex = texture(texSampler, fragTexCoord);
         col = mix(col, mapTex.rgb, mapTex.a);
+
+        // Draw hover circle overlay when hoverRadiusU > 0
+        if(ubo.hoverRadiusU > 0.0)
+        {
+            float du = (fragTexCoord.x - ubo.hoverU) / ubo.hoverRadiusU;
+            float dv = (fragTexCoord.y - ubo.hoverV) / ubo.hoverRadiusV;
+            float dist = du * du + dv * dv;
+
+            if(dist < 1.0)
+            {
+                vec3 hoverCol = vec3(ubo.hoverColorR, ubo.hoverColorG, ubo.hoverColorB);
+                float alpha = smoothstep(1.0, 0.85, dist);
+                col = mix(col, hoverCol, alpha * 0.9);
+            }
+
+            // Dark outline ring
+            float outlineOuter = 1.05;
+            float outlineInner = 0.90;
+            if(dist < outlineOuter && dist > outlineInner)
+            {
+                float ring = smoothstep(outlineOuter, outlineOuter - 0.05, dist)
+                           * smoothstep(outlineInner, outlineInner + 0.05, dist);
+                col = mix(col, vec3(0.04, 0.04, 0.04), ring * 0.86);
+            }
+        }
 
         outColor = vec4(col, 1.0);
     }

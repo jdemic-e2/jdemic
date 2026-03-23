@@ -160,12 +160,19 @@ class jDemicEngine
         private static class UniformBufferObject
         {
 
-            private static final int SIZEOF = (3 * 16 + 4) * Float.BYTES;
+            private static final int SIZEOF = (3 * 16 + 4 + 7) * Float.BYTES;
 
             private Matrix4f model;
             private Matrix4f view;
             private Matrix4f proj;
             private float time;
+            private float hoverU;
+            private float hoverV;
+            private float hoverRadiusU;
+            private float hoverRadiusV;
+            private float hoverColorR;
+            private float hoverColorG;
+            private float hoverColorB;
 
             public UniformBufferObject()
             {
@@ -368,18 +375,12 @@ class jDemicEngine
         private int mapTextureHeight;
         private int hoveredCityIndex = -1;
 
-        private long stagingBufferHandle; 
-        private long stagingBufferMemoryHandle;
-        private ByteBuffer mappedData;
-        long imageSize;
-
         // ======= METHODS ======= //
 
         public void run()
         {
             initWindow();
             initVulkan();
-            initBuffer();
             mainLoop();
             cleanup();
         }
@@ -406,27 +407,6 @@ class jDemicEngine
             // In Java, we don't really need a user pointer here, because
             // we can simply pass an instance method reference to glfwSetFramebufferSizeCallback
             glfwSetFramebufferSizeCallback(window, this::framebufferResizeCallback);
-        }
-
-        private void initBuffer(){
-            try(MemoryStack stack = stackPush()){
-                LongBuffer pBuffer = stack.mallocLong(1);
-                LongBuffer pMemory = stack.mallocLong(1);
-                imageSize = mapTextureWidth * mapTextureHeight * 4;
-                PointerBuffer data = stack.mallocPointer(1);
-                createBuffer(imageSize,
-                             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                             pBuffer,
-                             pMemory);
-
-                this.stagingBufferHandle = pBuffer.get(0);
-                this.stagingBufferMemoryHandle = pMemory.get(0);
-
-                vkMapMemory(device, stagingBufferMemoryHandle, 0, imageSize, 0, data);
-                mappedData = data.getByteBuffer(0, (int)imageSize);
-
-            }
         }
 
         private void framebufferResizeCallback(long window, int width, int height)
@@ -498,12 +478,7 @@ class jDemicEngine
                 return;
             }
 
-            int hoveredIndex = detectHoveredCityIndex();
-            if(hoveredIndex != hoveredCityIndex)
-            {
-                hoveredCityIndex = hoveredIndex;
-                refreshPandemicMapTexture();
-            }
+            hoveredCityIndex = detectHoveredCityIndex();
         }
 
         private int detectHoveredCityIndex()
@@ -613,36 +588,6 @@ class jDemicEngine
             return projection;
         }
 
-        private void refreshPandemicMapTexture()
-        {
-            if(device == null || pandemicMapBaseImage == null)
-            {
-                return;
-            }
-
-            BufferedImage annotated = createAnnotatedMapImage(hoveredCityIndex);
-            ByteBuffer rgba = toRgbaByteBuffer(annotated);
-
-            try(MemoryStack stack = stackPush())
-            {
-                mappedData.rewind();
-                memcpy(mappedData, rgba, imageSize);
-
-                transitionImageLayout(mapTextureImage,
-                                      VK_FORMAT_R8G8B8A8_SRGB,
-                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                      mapMipLevels);
-                copyBufferToImage(stagingBufferHandle, mapTextureImage, mapTextureWidth, mapTextureHeight);
-                generateMipmaps(mapTextureImage, VK_FORMAT_R8G8B8A8_SRGB, mapTextureWidth, mapTextureHeight, mapMipLevels);
-                    
-            }
-            finally
-            {
-                memFree(rgba);
-            }
-        }
-
         private void cleanupSwapChain()
         {
 
@@ -698,10 +643,6 @@ class jDemicEngine
 
             vkDestroyBuffer(device, vertexBuffer, null);
             vkFreeMemory(device, vertexBufferMemory, null);
-
-            vkUnmapMemory(device, stagingBufferMemoryHandle);
-            vkDestroyBuffer(device, stagingBufferHandle, null);
-            vkFreeMemory(device, stagingBufferMemoryHandle, null);
 
             inFlightFrames.forEach(frame ->
             {
@@ -1164,7 +1105,7 @@ class jDemicEngine
                 uboLayoutBinding.descriptorCount(1);
                 uboLayoutBinding.descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
                 uboLayoutBinding.pImmutableSamplers(null);
-                uboLayoutBinding.stageFlags(VK_SHADER_STAGE_VERTEX_BIT);
+                uboLayoutBinding.stageFlags(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
                 VkDescriptorSetLayoutBinding samplerLayoutBinding = bindings.get(1);
                 samplerLayoutBinding.binding(1);
@@ -1637,7 +1578,7 @@ class jDemicEngine
                 pandemicCities = tempCity.getCityList();
                 alignedCityNodes = alignNodesToMapBackground(source, pandemicCities);
 
-                BufferedImage annotated = createAnnotatedMapImage(hoveredCityIndex);
+                BufferedImage annotated = createAnnotatedMapImage(-1);
                 return new LoadedTextureData(toRgbaByteBuffer(annotated), annotated.getWidth(), annotated.getHeight(), false);
             }
             catch (IOException e)
@@ -1650,21 +1591,19 @@ class jDemicEngine
         {
             int w = pandemicMapBaseImage.getWidth();
             int h = pandemicMapBaseImage.getHeight();
+
             BufferedImage annotated = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = annotated.createGraphics();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-            // Border region handled by the GPU shader (animated checkerboard)
             int borderW = Math.max(6, (int)(w * MAP_BORDER_FRACTION));
             int borderH = Math.max(6, (int)(h * MAP_BORDER_FRACTION));
 
-            // Clear to fully transparent so the shader checkerboard shows through
             g2d.setComposite(java.awt.AlphaComposite.Clear);
             g2d.fillRect(0, 0, w, h);
             g2d.setComposite(java.awt.AlphaComposite.SrcOver);
 
-            // Draw the map image inset within the border
             g2d.drawImage(pandemicMapBaseImage, borderW, borderH, w - 2 * borderW, h - 2 * borderH, null);
 
             int fontSize = Math.max(12, w / 150);
@@ -1678,11 +1617,10 @@ class jDemicEngine
             {
                 AlignedCityNode alignedNode = alignedCityNodes.get(i);
                 CityNode city = alignedNode.city;
-                // Remap city pixel positions into the inset map area
                 int nodeX = borderW + (int)((float) alignedNode.pixelX / w * mapW);
                 int nodeY = borderH + (int)((float) alignedNode.pixelY / h * mapH);
 
-                int nodeRadius = i == hoveredIndex ? MAP_NODE_HOVER_RADIUS_PX : MAP_NODE_RADIUS_PX;
+                int nodeRadius = MAP_NODE_RADIUS_PX;
                 Color nodeColor = colorForDisease(city.getNativeColor());
                 g2d.setColor(nodeColor);
                 g2d.fillOval(nodeX - nodeRadius, nodeY - nodeRadius, nodeRadius * 2, nodeRadius * 2);
@@ -2693,7 +2631,15 @@ class jDemicEngine
             ubo.model.get(0, buffer);
             ubo.view.get(alignas(mat4Size, alignof(ubo.view)), buffer);
             ubo.proj.get(alignas(mat4Size * 2, alignof(ubo.view)), buffer);
-            buffer.putFloat(mat4Size * 3, ubo.time);
+            int offset = mat4Size * 3;
+            buffer.putFloat(offset, ubo.time);
+            buffer.putFloat(offset + 4, ubo.hoverU);
+            buffer.putFloat(offset + 8, ubo.hoverV);
+            buffer.putFloat(offset + 12, ubo.hoverRadiusU);
+            buffer.putFloat(offset + 16, ubo.hoverRadiusV);
+            buffer.putFloat(offset + 20, ubo.hoverColorR);
+            buffer.putFloat(offset + 24, ubo.hoverColorG);
+            buffer.putFloat(offset + 28, ubo.hoverColorB);
         }
 
         private int findMemoryType(MemoryStack stack, int typeFilter, int properties)
@@ -2886,6 +2832,19 @@ class jDemicEngine
                 ubo.view.set(buildCurrentViewMatrix());
                 ubo.proj.set(buildCurrentProjectionMatrix());
                 ubo.time = (float) glfwGetTime();
+
+                if(hoveredCityIndex >= 0 && alignedCityNodes != null && hoveredCityIndex < alignedCityNodes.size())
+                {
+                    AlignedCityNode node = alignedCityNodes.get(hoveredCityIndex);
+                    ubo.hoverU = MAP_BORDER_FRACTION + node.mapU * (1.0f - 2.0f * MAP_BORDER_FRACTION);
+                    ubo.hoverV = MAP_BORDER_FRACTION + node.mapV * (1.0f - 2.0f * MAP_BORDER_FRACTION);
+                    ubo.hoverRadiusU = (float) MAP_NODE_HOVER_RADIUS_PX / (float) mapTextureWidth;
+                    ubo.hoverRadiusV = (float) MAP_NODE_HOVER_RADIUS_PX / (float) mapTextureHeight;
+                    Color c = colorForDisease(node.city.getNativeColor());
+                    ubo.hoverColorR = c.getRed() / 255.0f;
+                    ubo.hoverColorG = c.getGreen() / 255.0f;
+                    ubo.hoverColorB = c.getBlue() / 255.0f;
+                }
 
                 PointerBuffer data = stack.mallocPointer(1);
                 vkMapMemory(device, uniformBuffersMemory.get(currentImage), 0, UniformBufferObject.SIZEOF, 0, data);
