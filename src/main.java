@@ -1,5 +1,6 @@
 import jdemic.VulkanModules.Frame;
 import jdemic.VulkanModules.ShaderSPIRVUtils.SPIRV;
+import jdemic.Rendering.EdgeRenderer;
 import jdemic.Rendering.HoverMechanic;
 import jdemic.Rendering.MapRenderer;
 import jdemic.Rendering.SkydomeRenderer;
@@ -141,8 +142,8 @@ class jDemicEngine
 
         private static class UniformBufferObject
         {
-
-            private static final int SIZEOF = (3 * 16 + 4 + 7) * Float.BYTES;
+            // 3 mat4 (192) + 8 floats (32) + 1 float edgeCount (4) + 12 pad + 8 vec4 (128) = 368
+            private static final int SIZEOF = 368;
 
             private Matrix4f model;
             private Matrix4f view;
@@ -155,6 +156,8 @@ class jDemicEngine
             private float hoverColorR;
             private float hoverColorG;
             private float hoverColorB;
+            private float hoverEdgeCount;
+            private final float[] hoverEdges = new float[8 * 4];
 
             public UniformBufferObject()
             {
@@ -2263,6 +2266,16 @@ class jDemicEngine
             buffer.putFloat(offset + 20, ubo.hoverColorR);
             buffer.putFloat(offset + 24, ubo.hoverColorG);
             buffer.putFloat(offset + 28, ubo.hoverColorB);
+            buffer.putFloat(offset + 32, ubo.hoverEdgeCount);
+            // vec4 fields start at offset+48 (16-byte aligned after the float at offset+32)
+            int edgeBase = offset + 48;
+            for (int i = 0; i < 8; i++)
+            {
+                buffer.putFloat(edgeBase + i * 16,      ubo.hoverEdges[i * 4]);
+                buffer.putFloat(edgeBase + i * 16 + 4,   ubo.hoverEdges[i * 4 + 1]);
+                buffer.putFloat(edgeBase + i * 16 + 8,   ubo.hoverEdges[i * 4 + 2]);
+                buffer.putFloat(edgeBase + i * 16 + 12,  ubo.hoverEdges[i * 4 + 3]);
+            }
         }
 
         private int findMemoryType(MemoryStack stack, int typeFilter, int properties)
@@ -2473,6 +2486,24 @@ class jDemicEngine
                     ubo.hoverColorR = c.getRed() / 255.0f;
                     ubo.hoverColorG = c.getGreen() / 255.0f;
                     ubo.hoverColorB = c.getBlue() / 255.0f;
+
+                    var edgeSegments = EdgeRenderer.computeHoverEdgeSegments(
+                        alignedCityNodes, hoveredCityIndex, 0.025f);
+                    ubo.hoverEdgeCount = edgeSegments.size();
+                    java.util.Arrays.fill(ubo.hoverEdges, 0.0f);
+                    for (int i = 0; i < edgeSegments.size() && i < EdgeRenderer.MAX_HOVER_EDGE_SEGMENTS; i++)
+                    {
+                        float[] seg = edgeSegments.get(i);
+                        ubo.hoverEdges[i * 4]     = seg[0];
+                        ubo.hoverEdges[i * 4 + 1] = seg[1];
+                        ubo.hoverEdges[i * 4 + 2] = seg[2];
+                        ubo.hoverEdges[i * 4 + 3] = seg[3];
+                    }
+                }
+                else
+                {
+                    ubo.hoverEdgeCount = 0;
+                    java.util.Arrays.fill(ubo.hoverEdges, 0.0f);
                 }
 
                 PointerBuffer data = stack.mallocPointer(1);
