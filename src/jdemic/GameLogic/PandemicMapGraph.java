@@ -1,5 +1,6 @@
 package jdemic.GameLogic;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class PandemicMapGraph
@@ -8,15 +9,16 @@ public final class PandemicMapGraph
     public PandemicMapGraph()
     {
         this.cityList = createNodes();
+        createNeighbours();
     }
 
     public static List<CityNode> createNodes()
     {
         return List.of(
             // Blue cities
-            new CityNode("San Francisco", CityNode.DiseaseColor.BLUE, 0.14f, 0.34f),
-            new CityNode("Chicago", CityNode.DiseaseColor.BLUE, 0.24f, 0.30f),
-            new CityNode("Montreal", CityNode.DiseaseColor.BLUE, 0.30f, 0.26f),
+            new CityNode("San Francisco", CityNode.DiseaseColor.BLUE, 0.14f, 0.34f), //
+            new CityNode("Chicago", CityNode.DiseaseColor.BLUE, 0.24f, 0.30f), // 
+            new CityNode("Montreal", CityNode.DiseaseColor.BLUE, 0.30f, 0.26f), // 
             new CityNode("New York", CityNode.DiseaseColor.BLUE, 0.30f, 0.32f),
             new CityNode("Washington", CityNode.DiseaseColor.BLUE, 0.28f, 0.35f),
             new CityNode("Atlanta", CityNode.DiseaseColor.BLUE, 0.25f, 0.39f),
@@ -71,7 +73,23 @@ public final class PandemicMapGraph
         );
     }
 
+    private void createNeighbours(){
+        getCity("San Francisco").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Chicago"), getCity("Tokyo"), getCity("Manila"), getCity("Los Angeles"))));
+        getCity("Chicago").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("San Francisco"), getCity("Los Angeles"), getCity("Atlanta"), getCity("Mexico City"), getCity("Montreal"))));
+        getCity("Montreal").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Washington"), getCity("New York"), getCity("Chicago"))));
+        
+    }   
+
     public List<CityNode> getCityList(){
         return this.cityList;
+    }
+
+    public CityNode getCity(String name){
+        CityNode city = cityList
+                            .stream()
+                            .filter(e -> name.equals(e.getName()))
+                            .findAny()
+                            .orElse(null);
+        return city;
     }
 }

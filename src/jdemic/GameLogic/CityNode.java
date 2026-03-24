@@ -1,6 +1,7 @@
 package jdemic.GameLogic;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.EnumMap;
@@ -45,7 +46,11 @@ public class CityNode {
     }
 
     // Graph Building Methods
-    
+    public void addConnectionMultiple(List<CityNode> neighbors){
+        neighbors
+            .forEach(e -> this.addConnection(e));
+    }
+
     public void addConnection(CityNode neighbor) 
     {
         this.connectedCities.add(neighbor);
@@ -80,7 +85,15 @@ public class CityNode {
     }
 
     public void clickEvent(){
-        System.out.println(name + ": pressed");
+        if(!connectedCities.isEmpty()){
+            System.out.println("--- " + this.name + " ---");
+            connectedCities
+                .forEach(e -> System.out.println(e.getName()));
+        }
+        else{
+            System.out.println(this.getName() + " has no neighbours.");
+        }
+            
     }
 
     // Getters and Setters

@@ -1,25 +1,14 @@
 package jdemic.GameLogic;
 
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+
 public class Player {
     
-    private final String playerName;
-    private PlayerRoles Role;
-    private CityNode currentCity;
+    public PlayerState playerState;
 
-    public Player(String name, CityNode currentCity){
-        this.playerName = name;
-        this.currentCity = currentCity;
+    public Player(PlayerState state){
+        this.playerState = state;
     }
+    
 
-    public PlayerRoles getPlayerRole(){
-        return this.Role;
-    }
-
-    public CityNode getPlayerCurrentCity() {
-        return this.currentCity;
-    }
-
-    public String getPlayerName(){
-        return this.playerName;
-    }
 }
