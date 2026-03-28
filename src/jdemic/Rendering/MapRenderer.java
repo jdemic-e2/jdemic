@@ -154,6 +154,8 @@ public class MapRenderer
 
         g2d.drawImage(pandemicMapBaseImage, borderW, borderH, w - 2 * borderW, h - 2 * borderH, null);
 
+        EdgeRenderer.drawEdges(g2d, alignedCityNodes, w, h, MAP_BORDER_FRACTION);
+
         int fontSize = Math.max(12, w / 150);
         g2d.setFont(new Font("SansSerif", Font.BOLD, fontSize));
         FontMetrics metrics = g2d.getFontMetrics();

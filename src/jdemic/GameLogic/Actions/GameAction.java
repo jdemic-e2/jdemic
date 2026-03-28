@@ -1,0 +1,12 @@
+package jdemic.GameLogic.Actions;
+
+import jdemic.GameLogic.ServerRelatedClasses.GameState;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+
+public abstract class GameAction {
+
+    public abstract boolean isValid(GameState state);
+
+    public abstract void execute(GameState state, PlayerState playerState);
+    
+}

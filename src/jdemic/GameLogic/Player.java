@@ -1,25 +1,30 @@
 package jdemic.GameLogic;
 
+import java.util.Set;
+
+import jdemic.GameLogic.Actions.GameAction;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+
 public class Player {
     
-    private final String playerName;
-    private PlayerRoles Role;
-    private CityNode currentCity;
+    private PlayerState playerState;
+    private Set<GameAction> actions;
 
-    public Player(String name, CityNode currentCity){
-        this.playerName = name;
-        this.currentCity = currentCity;
+    public Player(PlayerState state) {
+        this.playerState = state;
+    }
+    
+    public void endTurn() {}
+
+    public void drawCards(Deck deck) {}
+
+    public void executeAction(GameAction action) {}
+
+    public PlayerState getState() {
+        return null;
     }
 
-    public PlayerRoles getPlayerRole(){
-        return this.Role;
-    }
+    public void discardCard(Card c) {}
 
-    public CityNode getPlayerCurrentCity() {
-        return this.currentCity;
-    }
-
-    public String getPlayerName(){
-        return this.playerName;
-    }
+    public void syncStateFromServer(PlayerState newState) {}
 }
