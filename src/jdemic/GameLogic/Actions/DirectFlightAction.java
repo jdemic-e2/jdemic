@@ -1,6 +1,7 @@
 package jdemic.GameLogic.Actions;
 
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.Card;
 
@@ -21,7 +22,7 @@ public class DirectFlightAction extends GameAction {
     }
 
     @Override
-    public void execute(GameState state) {
+    public void execute(GameState state, PlayerState playerState) {
         // TODO
     }
 }

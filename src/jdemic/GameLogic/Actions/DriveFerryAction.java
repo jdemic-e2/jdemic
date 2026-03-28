@@ -1,6 +1,7 @@
 package jdemic.GameLogic.Actions;
 
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
 
 public class DriveFerryAction extends GameAction {
@@ -18,7 +19,7 @@ public class DriveFerryAction extends GameAction {
     }
 
     @Override
-    public void execute(GameState state) {
+    public void execute(GameState state, PlayerState playerState) {
         // TODO
     }
 }

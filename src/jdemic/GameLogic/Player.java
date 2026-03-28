@@ -1,22 +1,29 @@
 package jdemic.GameLogic;
 
+import java.util.Set;
+
+import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 public class Player {
     
-    public PlayerState playerState;
+    private PlayerState playerState;
+    private Set<GameAction> actions;
 
     public Player(PlayerState state) {
         this.playerState = state;
     }
     
+    public void endTurn() {}
 
-    // Metoda pentru schimbarea locatiei, fara validare
-    public boolean move(CityNode destination) {
-        return false;
+    public void drawCards(Deck deck) {}
+
+    public void executeAction(GameAction action) {}
+
+    public PlayerState getState() {
+        return null;
     }
 
-    public void useCard(Card c) {}
     public void discardCard(Card c) {}
 
     public void syncStateFromServer(PlayerState newState) {}
