@@ -1,8 +1,8 @@
-package com.jdemic.network.core;
+package jdemic.DedicatedServer.network.core;
 
-import com.jdemic.network.transport.ClientHandler;
-import com.jdemic.network.security.SecureConnectionManager;
-import com.jdemic.network.security.SecureConnectionManager.SecureSocket;
+import jdemic.DedicatedServer.network.transport.ClientHandler;
+import jdemic.DedicatedServer.network.security.SecureConnectionManager;
+import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
 
 import java.io.IOException;
 import java.net.ServerSocket;

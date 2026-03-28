@@ -1,4 +1,4 @@
-package com.jdemic.network.security;
+package jdemic.DedicatedServer.network.security;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;

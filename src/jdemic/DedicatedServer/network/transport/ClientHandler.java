@@ -1,6 +1,6 @@
-package com.jdemic.network.transport;
+package jdemic.DedicatedServer.network.transport;
 
-import com.jdemic.network.security.SecureConnectionManager.SecureSocket;
+import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
