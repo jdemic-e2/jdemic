@@ -51,6 +51,14 @@ public class CityNode {
             .forEach(e -> this.addConnection(e));
     }
 
+    public void addResearchStation(){
+        this.hasResearchStation = true;
+    }
+
+    public void removeResearchStation(){
+        this.hasResearchStation = false;
+    }
+
     public void addConnection(CityNode neighbor) 
     {
         this.connectedCities.add(neighbor);
@@ -104,7 +112,6 @@ public class CityNode {
     public float getRenderX() { return renderX; }
     public float getRenderY() { return renderY; }
     public boolean hasResearchStation() { return hasResearchStation; }
-    public void setResearchStation(boolean hasResearchStation) { this.hasResearchStation = hasResearchStation; }
     
     public int getCubeCount(DiseaseColor color) 
     {

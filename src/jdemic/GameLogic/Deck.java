@@ -1,4 +1,5 @@
 package jdemic.GameLogic;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 import java.util.List;
 import java.util.ArrayList;

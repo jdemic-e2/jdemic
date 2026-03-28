@@ -2,7 +2,6 @@ package jdemic.GameLogic;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public final class PandemicMapGraph
 {
@@ -131,8 +130,6 @@ public final class PandemicMapGraph
         getCity("Jakarta").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Chennai"), getCity("Bangkok"), getCity("Ho Chi Minh City"), getCity("Sydney"))));
         getCity("Seoul").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Beijing"), getCity("Shanghai"), getCity("Tokyo"))));
         getCity("Sydney").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Los Angeles"), getCity("Manila"), getCity("Jakarta"))));
-
-
 
     }   
 
