@@ -165,16 +165,55 @@ public class SettingsScene {
     //Save and reset data
     private void saveToManager() {
         SettingsManager sm = SettingsManager.getInstance();
-        sm.playerNameProperty().set(nameField.getText());
-        sm.resolutionProperty().set(resCombo.getValue());
-        sm.isFullscreenProperty().set(fsToggle.isSelected());
-        sm.masterVolumeProperty().set(masterVol.getValue() / 100.0); // Assuming 0-1 scale in manager
+
+        // AUDIO
+        sm.masterVolumeProperty().set(masterVol.getValue() / 100.0);
         sm.musicVolumeProperty().set(musicVol.getValue() / 100.0);
+        // Update volume
+        AudioManager.getInstance().updateVolume();
+
+        // Name
+        sm.playerNameProperty().set(nameField.getText());
+
+        // Speed
         sm.animationSpeedProperty().set(speedCombo.getValue());
 
-        System.out.println("Settings Saved to Manager!");
+        // DISPLAY
+        javafx.stage.Screen screen = javafx.stage.Screen.getPrimary();
+        double screenWidth = screen.getBounds().getWidth();
+        double screenHeight = screen.getBounds().getHeight();
+
+        String selectedRes = resCombo.getValue();
+        String[] parts = selectedRes.split("x");
+        int chosenWidth = Integer.parseInt(parts[0]);
+        int chosenHeight = Integer.parseInt(parts[1]);
+
+        boolean wantFullScreen = fsToggle.isSelected();
+
+        // Check resolution (has to be same or lower than the monitor's normal resolution)
+        if (chosenWidth <= screenWidth && chosenHeight <= screenHeight) {
+            sm.resolutionProperty().set(selectedRes);
+
+            if (!wantFullScreen) {
+                stage.setFullScreen(false);
+                stage.setWidth(chosenWidth);
+                stage.setHeight(chosenHeight);
+                stage.centerOnScreen();
+            }
+        }
+
+        // Fullscreen setting apply
+        sm.isFullscreenProperty().set(wantFullScreen);
+        javafx.application.Platform.runLater(() -> {
+            if (stage.isFullScreen() != wantFullScreen) {
+                stage.setFullScreen(wantFullScreen);
+            }
+            stage.setFullScreenExitHint("");
+            stage.setFullScreenExitKeyCombination(javafx.scene.input.KeyCombination.NO_MATCH);
+        });
+
         hasUnsavedChanges = false;
-        // sm.saveSettings(); // This is for whenever JSON will work
+        System.out.println("Saved changes!");
     }
 
     private void resetUIToManager() {

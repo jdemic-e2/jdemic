@@ -11,15 +11,15 @@ public class SettingsManager {
     private final StringProperty language = new SimpleStringProperty("ENGLISH");
 
     // AUDIO
-    private final DoubleProperty masterVolume = new SimpleDoubleProperty(0.8);
+    private final DoubleProperty masterVolume = new SimpleDoubleProperty(0.5);
     private final DoubleProperty musicVolume = new SimpleDoubleProperty(0.5);
-    private final DoubleProperty sfxVolume = new SimpleDoubleProperty(0.7);
+    private final DoubleProperty sfxVolume = new SimpleDoubleProperty(0.5);
     private final BooleanProperty isMuted = new SimpleBooleanProperty(false);
 
     // DISPLAY
     private final StringProperty resolution = new SimpleStringProperty("1280x720");
     private final DoubleProperty uiScale = new SimpleDoubleProperty(1.0);
-    private final BooleanProperty isFullscreen = new SimpleBooleanProperty(true);
+    private final BooleanProperty isFullscreen = new SimpleBooleanProperty(false);
 
     // GAMEPLAY
     private final StringProperty animationSpeed = new SimpleStringProperty("FAST");
