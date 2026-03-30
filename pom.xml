@@ -31,6 +31,14 @@
         </resources>
         <plugins>
             <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
+                <configuration>
+                    <mainClass>org.example.Main</mainClass>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
                 <version>3.5.0</version>
@@ -43,8 +51,8 @@
                         <configuration>
                             <rules>
                                 <requireJavaVersion>
-                                    <version>[21,22)</version>
-                                    <message>jDemic Engine must be run with Java 21. Newer JDKs can trigger LWJGL Unsafe/JNI warnings.</message>
+                                    <version>[21,)</version>
+                                    <message>jDemic Engine requires at least Java 21.</message>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
@@ -56,7 +64,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
-                    <mainClass>main$EntryPoint</mainClass>
+                    <mainClass>jdemic.Launcher</mainClass>
                 </configuration>
             </plugin>
         </plugins>
@@ -69,6 +77,19 @@
             <groupId>org.joml</groupId>
             <artifactId>joml</artifactId>
             <version>${joml.version}</version>
+        </dependency>
+
+        <!-- ===== JAVA FX ===== -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>21</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>21</version>
         </dependency>
 
         <!-- ===== LWJGL core ===== -->
