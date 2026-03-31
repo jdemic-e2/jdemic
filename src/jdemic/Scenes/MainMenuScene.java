@@ -55,7 +55,11 @@ public class MainMenuScene {
         GlowUtil.applyGlow(titleBox, "#000000", 110);
 
         String text = "S Y S T E M   O N L I N E   •   A W A I T I N G   C O M M A N D   •   P R E S S   P L A Y   T O   B E G I N   •";
-        Pane scrollingText = Animations.createScrollingText(root, text);
+        Pane scrollingText = Animations.createScrollingText(root, text,60);
+
+       StackPane.setAlignment(scrollingText, Pos.BOTTOM_LEFT);
+       scrollingText.translateYProperty().bind(root.heightProperty().multiply(0.85));
+
         root.getChildren().add(scrollingText);
 
         Image mapImg = new Image(getClass().getResource("/backgroundMap.png").toExternalForm());
@@ -192,6 +196,7 @@ public class MainMenuScene {
         menuBox.getChildren().addAll(playBtn, tutorialBtn, settingsBtn, exitBtn);
         menuBox.translateXProperty().bind(root.widthProperty().multiply(-0.35));
         menuBox.translateYProperty().bind(root.heightProperty().multiply(-0.25));
+
         root.getChildren().add(menuBox);
     }
      public StackPane getRoot() {return root;}

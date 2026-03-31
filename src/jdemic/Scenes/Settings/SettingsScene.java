@@ -247,7 +247,7 @@ public class SettingsScene {
         Label header = TextUtil.createText("DISPLAY SETTINGS", "hkmodular", 0.03, "#ffffff", root);
 
         resCombo = new ComboBox<>();
-        resCombo.getItems().addAll("1280x720", "1600x900", "1920x1080");
+        resCombo.getItems().addAll("800x600","1280x720", "1600x900", "1920x1080");
         resCombo.setValue(sm.resolutionProperty().get()); // Load from manager
         resCombo.setStyle("-fx-background-color: black; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-font-family: 'hkmodular';");
         resCombo.setButtonCell(new ListCell<>() {
