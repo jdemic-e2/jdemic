@@ -1,6 +1,7 @@
 package jdemic.GameLogic;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.EnumMap;
@@ -45,7 +46,19 @@ public class CityNode {
     }
 
     // Graph Building Methods
-    
+    public void addConnectionMultiple(List<CityNode> neighbors){
+        neighbors
+            .forEach(e -> this.addConnection(e));
+    }
+
+    public void addResearchStation(){
+        this.hasResearchStation = true;
+    }
+
+    public void removeResearchStation(){
+        this.hasResearchStation = false;
+    }
+
     public void addConnection(CityNode neighbor) 
     {
         this.connectedCities.add(neighbor);
@@ -80,7 +93,15 @@ public class CityNode {
     }
 
     public void clickEvent(){
-        System.out.println(name + ": pressed");
+        if(!connectedCities.isEmpty()){
+            System.out.println("--- " + this.name + " ---");
+            connectedCities
+                .forEach(e -> System.out.println(e.getName()));
+        }
+        else{
+            System.out.println(this.getName() + " has no neighbours.");
+        }
+            
     }
 
     // Getters and Setters
@@ -91,7 +112,6 @@ public class CityNode {
     public float getRenderX() { return renderX; }
     public float getRenderY() { return renderY; }
     public boolean hasResearchStation() { return hasResearchStation; }
-    public void setResearchStation(boolean hasResearchStation) { this.hasResearchStation = hasResearchStation; }
     
     public int getCubeCount(DiseaseColor color) 
     {
