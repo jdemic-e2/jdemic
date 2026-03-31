@@ -1,9 +1,9 @@
-package com.jdemic;
+package jdemic.DedicatedServer;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import com.jdemic.network.security.SecureConnectionManager;
+import jdemic.DedicatedServer.network.security.SecureConnectionManager;
 
 public class SecurityTest {
     private static final int PORT = 8888;

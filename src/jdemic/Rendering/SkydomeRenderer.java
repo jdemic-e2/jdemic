@@ -183,8 +183,7 @@ public class SkydomeRenderer
         }
     }
 
-    @FunctionalInterface
-    public interface VertexFactory<V>
+    @FunctionalInterface public interface VertexFactory<V>
     {
         V create(Vector3f pos, Vector3f color, Vector2f texCoords);
     }
