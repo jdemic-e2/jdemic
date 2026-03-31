@@ -2,9 +2,19 @@ package jdemic.Scenes.Settings;
 
 import javafx.beans.property.*;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import javafx.stage.Stage;
+
+import java.io.*;
+
 public class SettingsManager {
     // Singleton Instance
     private static SettingsManager instance;
+
+    //JSON
+    private final String FILE_PATH = "src/resources/settings/settings.json";
+    private final Gson gson;
 
     // GENERAL
     private final StringProperty playerName = new SimpleStringProperty("Newbie");
@@ -25,7 +35,10 @@ public class SettingsManager {
     private final StringProperty animationSpeed = new SimpleStringProperty("FAST");
 
     // Constructors
-    private SettingsManager() {}
+    private SettingsManager() {
+        gson = new GsonBuilder().setPrettyPrinting().create();
+        loadSettings();
+    }
 
     public static SettingsManager getInstance() {
         if (instance == null) {
@@ -68,11 +81,62 @@ public class SettingsManager {
     }
 
     // Those should probably be a json so the settings can be saved and loaded between instances
-    public void saveSettings() {
-        // It creates a json file with the settings
+    public void loadSettings() {
+        File file  = new File(FILE_PATH);
+        if (!file.exists()) {
+            System.out.println("Settings file does not exist. Creating new settings file");
+            saveSettings();
+            return;
+        }
+        try (FileReader reader = new FileReader(file))
+        {
+            SettingsData settingsData = gson.fromJson(reader, SettingsData.class);
+            if (settingsData != null)
+            {
+                this.playerName.set(settingsData.playerName);
+                this.resolution.set(settingsData.resolution);
+                this.isFullscreen.set(settingsData.isFullScreen);
+                this.masterVolume.set(settingsData.masterVolume);
+                this.musicVolume.set(settingsData.musicVolume);
+                this.animationSpeed.set(settingsData.animationSpeed);
+                System.out.println("Settings loaded successfully");
+            }
+        } catch (IOException e) {
+            System.err.println("Settings file could not be read");
+        }
     }
 
-    public void loadSettings() {
-        // Loads a json file with the settings
+    public void saveSettings() {
+        SettingsData settingsData = new SettingsData();
+
+        settingsData.playerName = this.playerName.get();
+        settingsData.resolution = this.resolution.get();
+        settingsData.isFullScreen = this.isFullscreen.get();
+        settingsData.masterVolume = this.masterVolume.get();
+        settingsData.musicVolume = this.musicVolume.get();
+        settingsData.animationSpeed = this.animationSpeed.get();
+
+        try (FileWriter settingsWriter = new FileWriter(FILE_PATH))
+        {
+            gson.toJson(settingsData, settingsWriter);
+        } catch (IOException e) {
+            System.out.println("Settings file could not be written");
+        }
+    }
+
+    //I made those because the resolution would break if i tried not putting default settings
+    public double getSavedWidth() {
+        return Double.parseDouble(resolution.get().split("x")[0]);
+    }
+
+    public double getSavedHeight() {
+        return Double.parseDouble(resolution.get().split("x")[1]);
+    }
+
+    public void applySettingsToStage(Stage stage) {
+        stage.setWidth(getSavedWidth());
+        stage.setHeight(getSavedHeight());
+        stage.setFullScreen(isFullscreen.get());
+        stage.setFullScreenExitHint("");
     }
 }

@@ -212,6 +212,7 @@ public class SettingsScene {
             stage.setFullScreenExitKeyCombination(javafx.scene.input.KeyCombination.NO_MATCH);
         });
 
+        sm.saveSettings();
         hasUnsavedChanges = false;
         System.out.println("Saved changes!");
     }
