@@ -15,7 +15,7 @@ public class GameManager {
         this.map = new PandemicMapGraph();
         this.diseaseManager = new DiseaseManager();
         this.players = players;
-        this.cardDeck = new Deck();
+        this.cardDeck = new Deck(map);
 
         setupGame();
     }

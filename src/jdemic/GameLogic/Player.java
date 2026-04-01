@@ -9,6 +9,7 @@ public class Player {
     
     private PlayerState playerState;
     private Set<GameAction> actions;
+    public Deck deckReference;
 
     public Player(PlayerState state) {
         this.playerState = state;
@@ -21,10 +22,16 @@ public class Player {
     public void executeAction(GameAction action) {}
 
     public PlayerState getState() {
-        return null;
+        return this.playerState;
     }
 
-    public void discardCard(Card c) {}
+    public void discardCard(int index) {
+        Card c = playerState.getCard(index);
+        playerState.removeCard(index);
+        deckReference.discard(c);
+    }
 
-    public void syncStateFromServer(PlayerState newState) {}
+    public void syncStateFromServer(PlayerState newState) {
+        this.playerState = newState;
+    }
 }
