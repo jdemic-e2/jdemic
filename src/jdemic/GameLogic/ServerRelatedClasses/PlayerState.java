@@ -27,6 +27,10 @@ public class PlayerState{
         return this.currentCity;
     }
 
+    public void setCurrentCity(CityNode city){
+        this.currentCity = city;
+    }
+
     public String getPlayerName(){
         return this.playerName;
     }
