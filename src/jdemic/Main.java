@@ -17,7 +17,7 @@ public class Main extends Application {
         stage.setScene(scene);
         stage.show();
 
-        AudioManager.getInstance().playMusic("MENU");
+        //AudioManager.getInstance().playMusic("MENU");
     }
 
     public static void main(String[] args) {
