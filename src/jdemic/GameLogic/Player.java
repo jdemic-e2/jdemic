@@ -17,7 +17,16 @@ public class Player {
     
     public void endTurn() {}
 
-    public void drawCards(Deck deck) {}
+    public void drawCards(Deck deck) {
+        while(playerState.getHand().size() > 5){
+            if(playerState.getIsDiscarding() == false){
+                playerState.setIsDiscarding(true);
+            }
+        }
+        playerState.setIsDiscarding(false);
+        deck.drawHand(this.playerState);
+        
+    }
 
     public void executeAction(GameAction action) {}
 

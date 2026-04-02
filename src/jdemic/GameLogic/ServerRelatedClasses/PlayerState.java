@@ -11,10 +11,12 @@ public class PlayerState{
     private PlayerRoles Role;
     private CityNode currentCity;
     private List<Card> hand = new ArrayList<>();
+    private boolean discardingCards;
 
     public PlayerState(String name, CityNode currentCity){
         this.playerName = name;
         this.currentCity = currentCity;
+        this.discardingCards = false;
     }
 
     public PlayerRoles getPlayerRole(){
@@ -43,5 +45,13 @@ public class PlayerState{
 
     public void removeCard(int index){
         this.hand.remove(index);
+    }
+
+    public boolean getIsDiscarding(){
+        return this.discardingCards;
+    }
+
+    public void setIsDiscarding(boolean state){
+        this.discardingCards = state;
     }
 }

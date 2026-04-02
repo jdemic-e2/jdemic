@@ -91,7 +91,7 @@ public class CityNode {
         int currentCubes = diseaseCubes.get(color);
         diseaseCubes.put(color, Math.max(0, currentCubes - amount));
     }
-
+    
     public void clickEvent(){
         if(!connectedCities.isEmpty()){
             System.out.println("--- " + this.name + " ---");

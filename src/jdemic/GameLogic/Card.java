@@ -2,11 +2,11 @@ package jdemic.GameLogic;
 public class Card {
 
     public enum EventType {
-        AIRLIFT,
-        GOUVERNMENT_GRANT,
-        FORECAST,
-        ONE_QUIET_NIGHT,
-        RESILIENT_POPULATION
+        FIREWALL,
+        SATELLITE,
+        SERVER,
+        CONTROL,
+        THREAT
     }
     
     private String cardName;
@@ -26,15 +26,15 @@ public class Card {
                 return("You can use this card for any city-related action in " + this.getCardName());
             case EVENT:
                 switch(eventType){
-                    case AIRLIFT:
+                    case SATELLITE:
                         return("Move any 1 pawn to any city on the board.");
-                    case GOUVERNMENT_GRANT:
+                    case SERVER:
                         return("Place 1 Research Station in any city (no City card required).");
-                    case FORECAST:
+                    case THREAT:
                         return("Draw, examine, and rearrange the top 6 cards of the Infection Deck.");
-                    case ONE_QUIET_NIGHT:
+                    case FIREWALL:
                         return("Skip the \"Infect Cities\" step of the current turn.");
-                    case RESILIENT_POPULATION:
+                    case CONTROL:
                         return("Remove 1 card from the Infection Discard Pile from the game entirely.");
                 }
             case INFECTION:
