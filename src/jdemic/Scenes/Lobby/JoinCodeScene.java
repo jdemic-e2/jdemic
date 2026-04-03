@@ -55,9 +55,9 @@ public class JoinCodeScene {
 
         ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff", 2, 15, 15, 0.2, 0.1, 0.02, root);
         joinBtn.setOnMouseClicked(e -> {
-            String code = codeField.getText();
+            String code = codeField.getText().trim();
             if ("1234".equals(code)) {
-                System.out.println("Joining with valid code: " + code);
+                stage.getScene().setRoot(new WaitingRoomScene(stage, "GUEST", code).getRoot());
             } else {
                 errorLabel.setVisible(true);
             }

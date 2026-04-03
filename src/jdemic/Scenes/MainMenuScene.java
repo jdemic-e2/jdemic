@@ -14,6 +14,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
+import jdemic.Scenes.Lobby.LobbyScene;
 import jdemic.Scenes.Settings.SettingsScene;
 import jdemic.Scenes.Tutorial.TutorialRulesScene;
 import jdemic.ui.Animations;
@@ -188,13 +189,10 @@ public class MainMenuScene {
     
         playBtn.setPickOnBounds(true);
 
-playBtn.setOnMouseClicked(e -> {
-    System.out.println("[DEBUG] PLAY clicked");
-    PlayScene playScene = new PlayScene(stage);
-
-    Scene newScene = new Scene(playScene.getRoot(), stage.getWidth(), stage.getHeight());
-    stage.setScene(newScene);
-});
+        playBtn.setOnMouseClicked(e -> {
+            System.out.println("[DEBUG] PLAY clicked");
+            stage.getScene().setRoot(new LobbyScene(stage).getRoot());
+        });
 
         settingsBtn.setOnMouseClicked(e -> {
             SettingsScene settings = new SettingsScene(stage);
