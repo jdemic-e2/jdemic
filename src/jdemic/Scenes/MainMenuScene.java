@@ -185,6 +185,16 @@ public class MainMenuScene {
             Scene tutorialScene = new Scene(tutorial.getRoot(), stage.getWidth(), stage.getHeight());
             stage.setScene(tutorialScene);
         });
+    
+        playBtn.setPickOnBounds(true);
+
+playBtn.setOnMouseClicked(e -> {
+    System.out.println("[DEBUG] PLAY clicked");
+    PlayScene playScene = new PlayScene(stage);
+
+    Scene newScene = new Scene(playScene.getRoot(), stage.getWidth(), stage.getHeight());
+    stage.setScene(newScene);
+});
 
         settingsBtn.setOnMouseClicked(e -> {
             SettingsScene settings = new SettingsScene(stage);
