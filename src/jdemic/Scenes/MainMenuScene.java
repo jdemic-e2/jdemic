@@ -16,7 +16,13 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import jdemic.Scenes.Settings.SettingsScene;
 import jdemic.Scenes.Tutorial.TutorialRulesScene;
-import jdemic.ui.*;
+import jdemic.ui.Animations;
+import jdemic.ui.ButtonsUtil;
+import jdemic.ui.DotUtil;
+import jdemic.ui.GlowLineUtil;
+import jdemic.ui.GlowUtil;
+import jdemic.ui.PanelUtil;
+import jdemic.ui.TextUtil;
 
 public class MainMenuScene {
 
@@ -186,7 +192,48 @@ public class MainMenuScene {
         });
 
         exitBtn.setOnMouseClicked(e -> {
-            System.exit(0);
+            StackPane confirmOverlay = new StackPane();
+            confirmOverlay.setStyle("-fx-background-color: rgba(5, 10, 20, 0.7);");
+            confirmOverlay.prefWidthProperty().bind(root.widthProperty());
+            confirmOverlay.prefHeightProperty().bind(root.heightProperty());
+
+            VBox dialog = new VBox(16);
+            dialog.setAlignment(Pos.CENTER);
+            dialog.setMaxWidth(420);
+            dialog.setMaxHeight(240);
+            dialog.setMinHeight(220);
+            dialog.setStyle(
+                "-fx-background-color: rgba(10, 20, 40, 0.95);"
+                + "-fx-border-color: #00d4ff;"
+                + "-fx-border-width: 2;"
+                + "-fx-background-radius: 12;"
+                + "-fx-border-radius: 12;"
+                + "-fx-effect: dropshadow(gaussian, cyan, 20, 0, 0, 0);"
+            );
+            dialog.setPadding(new Insets(20));
+
+            Label warningTitle = TextUtil.createText("EXIT CONFIRMATION", "hkmodular", 0.03, "#00d4ff", root);
+            warningTitle.setTextAlignment(TextAlignment.CENTER);
+            Label warningText = TextUtil.createText("Do you really want to exit the game?", "hkmodular", 0.02, "#ffffff", root);
+            warningText.setTextAlignment(TextAlignment.CENTER);
+
+            ButtonsUtil yesBtn = new ButtonsUtil("YES", "#00d4ff", "black", "#00d4ff", "#00d4ff", 2, 12, 12, 0.22, 0.07, 0.02, root);
+            ButtonsUtil noBtn = new ButtonsUtil("NO", "#ff274c", "black", "#ff274c", "#ff274c", 2, 12, 12, 0.22, 0.07, 0.02, root);
+
+            yesBtn.setOnMouseClicked(ev -> {
+                System.exit(0);
+            });
+            noBtn.setOnMouseClicked(ev -> {
+                root.getChildren().remove(confirmOverlay);
+            });
+
+            HBox buttonRow = new HBox(12, yesBtn, noBtn);
+            buttonRow.setAlignment(Pos.CENTER);
+
+            dialog.getChildren().addAll(warningTitle, warningText, buttonRow);
+            confirmOverlay.getChildren().add(dialog);
+
+            root.getChildren().add(confirmOverlay);
         });
 
         VBox menuBox = new VBox();
