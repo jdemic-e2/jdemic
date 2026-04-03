@@ -3,33 +3,85 @@ package jdemic.GameLogic;
 public class DiseaseManager {
     private int outbreakScore;
     private int infectionCubesLeft;
-    private boolean cureStatus;
+
+
+    private boolean isBlueCured;
+    private boolean isYellowCured;
+    private boolean isBlackCured;
+    private boolean isRedCured;
+
+    private GameManager gameManager;
+
+    public DiseaseManager(GameManager manager) {
+        this.gameManager = manager;
+        this.outbreakScore = 0;
+        this.infectionCubesLeft = 96;
+
+        this.isBlueCured = false;
+        this.isYellowCured = false;
+        this.isBlackCured = false;
+        this.isRedCured = false;
+    }
 
     public int getOutbreakScore() {
-        
-
-        return 0;
+        return this.outbreakScore;
     }
 
     public void increaseOutbreakScore() {
+        this.outbreakScore++;
     }
 
     public int getInfectionCubesLeft() {
-        return 0;
+        return this.infectionCubesLeft;
     }
 
-    public void addInfectionCubes(int amount) {
+    public void addInfectionCubes(CityNode city, int amount) {
+        DiseaseColor color = city.getNativeColor();
+
+        boolean wasAdded = city.addDiseaseCube(color, amount);
+
+        if (!wasAdded) {
+            increaseOutbreakScore();
+        }
+
+        this.infectionCubesLeft -= amount;
+
+        if (this.infectionCubesLeft <= 0) {
+            this.infectionCubesLeft = 0;
+            gameManager.checkLoseCondition();
+        }
     }
 
-    public void removeInfectionCubes(int amount) {
+    public void removeInfectionCubes(CityNode city, int amount) {
+        DiseaseColor color = city.getNativeColor();
+        city.removeDiseaseCubes(color, amount);
+
+        this.infectionCubesLeft += amount;
+        if (this.infectionCubesLeft > 96) {
+            this.infectionCubesLeft = 96;
+        }
     }
 
-    public boolean isCured() {
-        return false;
+    public boolean isCured(DiseaseColor color) {
+        switch (color) {
+            case BLUE: return isBlueCured;
+            case YELLOW: return isYellowCured;
+            case BLACK: return isBlackCured;
+            case RED: return isRedCured;
+            default: return false;
+        }
     }
 
-    public void discoverCure() {
+    public void discoverCure(DiseaseColor color) {
+        switch (color) {
+            case BLUE: this.isBlueCured = true; break;
+            case YELLOW: this.isYellowCured = true; break;
+            case BLACK: this.isBlackCured = true; break;
+            case RED: this.isRedCured = true; break;
+        }
     }
 
-
+    public boolean areAllCured() {
+        return isBlueCured && isYellowCured && isBlackCured && isRedCured;
+    }
 }

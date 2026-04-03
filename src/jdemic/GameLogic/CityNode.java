@@ -8,12 +8,6 @@ import java.util.EnumMap;
 
 public class CityNode {
 
-    // Enums
-    public enum DiseaseColor 
-    {
-        BLUE, YELLOW, BLACK, RED
-    }
-
     // Static Board Data
     private final String name;
     private final DiseaseColor nativeColor;

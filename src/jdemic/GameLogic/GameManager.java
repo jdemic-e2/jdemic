@@ -26,7 +26,7 @@ public class GameManager {
     {
         this.state = new GameState(); 
         this.map = new PandemicMapGraph();
-        this.diseaseManager = new DiseaseManager();
+        this.diseaseManager = new DiseaseManager(this);
         this.players = players;
         this.cardDeck = new Deck(this);
         this.currentPlayerIndex = 0;
@@ -90,7 +90,7 @@ public class GameManager {
 
     public void checkWinCondition()
     {
-        if(diseaseManager.isCured())
+        if(diseaseManager.areAllCured())
         {
             gameOver = true;
             gameWon = true;
