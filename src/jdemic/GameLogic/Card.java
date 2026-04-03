@@ -27,4 +27,5 @@ public class Card {
     public CityNode getTargetCity() {
         return null;
     }
+    public String getName() { return this.cardName; } // Card name getter
 }
