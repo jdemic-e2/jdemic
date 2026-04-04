@@ -21,5 +21,13 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    - name: Build with Maven
-      run: mvn -B clean compile
+    # MODIFICADO: Cambiamos 'compile' por 'verify' para que ejecute los tests y genere el archivo
+    - name: Build and Test with Maven
+      run: mvn -B clean verify
+
+    # TU PARTE: Cogemos el archivo generado y lo subimos como artefacto
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pandemic-game-artifact
+        path: target/*.jar
