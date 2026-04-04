@@ -17,6 +17,7 @@ import javafx.stage.Stage;
 import jdemic.Scenes.Lobby.LobbyScene;
 import jdemic.Scenes.Settings.SettingsScene;
 import jdemic.Scenes.Tutorial.TutorialRulesScene;
+import jdemic.Scenes.MapTest.MapTestScene;
 import jdemic.ui.Animations;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.DotUtil;
@@ -29,6 +30,7 @@ public class MainMenuScene {
 
     private StackPane root;
     private Stage stage;
+
     public MainMenuScene(Stage stage) {
         this.stage = stage;
         root = new StackPane();
@@ -53,8 +55,8 @@ public class MainMenuScene {
         StackPane.setAlignment(title, Pos.CENTER);
         Animations.createPulseAnimation(title, 1.05, 2);
 
-
-        ImageView titleBox = new ImageView(new Image(getClass().getResource("/elements/glowTitleFrame.png").toExternalForm()));
+        ImageView titleBox = new ImageView(
+                new Image(getClass().getResource("/elements/glowTitleFrame.png").toExternalForm()));
         titleBox.setPreserveRatio(true);
         titleBox.fitWidthProperty().bind(root.widthProperty().multiply(0.45));
         titleBox.translateYProperty().bind(root.heightProperty().multiply(0.06));
@@ -62,10 +64,10 @@ public class MainMenuScene {
         GlowUtil.applyGlow(titleBox, "#000000", 110);
 
         String text = "S Y S T E M   O N L I N E   •   A W A I T I N G   C O M M A N D   •   P R E S S   P L A Y   T O   B E G I N   •";
-        Pane scrollingText = Animations.createScrollingText(root, text,60);
+        Pane scrollingText = Animations.createScrollingText(root, text, 60);
 
-       StackPane.setAlignment(scrollingText, Pos.BOTTOM_LEFT);
-       scrollingText.translateYProperty().bind(root.heightProperty().multiply(0.85));
+        StackPane.setAlignment(scrollingText, Pos.BOTTOM_LEFT);
+        scrollingText.translateYProperty().bind(root.heightProperty().multiply(0.85));
 
         root.getChildren().add(scrollingText);
 
@@ -77,10 +79,13 @@ public class MainMenuScene {
         map.translateYProperty().bind(root.heightProperty().multiply(0.03));
         map.translateXProperty().bind(root.widthProperty().multiply(-0.04));
 
-      //  Animations.createPulse(map, 1.05, 2);
+        // Animations.createPulse(map, 1.05, 2);
 
         VBox rightPanel = new VBox();
-        rightPanel.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.08, root.getWidth() * 0.02, 0, -root.getWidth() * 0.01), root.widthProperty(), root.heightProperty()));
+        rightPanel.paddingProperty()
+                .bind(Bindings.createObjectBinding(
+                        () -> new Insets(root.getHeight() * 0.08, root.getWidth() * 0.02, 0, -root.getWidth() * 0.01),
+                        root.widthProperty(), root.heightProperty()));
         rightPanel.setSpacing(0);
         rightPanel.spacingProperty().bind(root.heightProperty().multiply(0.01));
         rightPanel.maxWidthProperty().bind(root.widthProperty().multiply(0.25));
@@ -89,7 +94,12 @@ public class MainMenuScene {
         StackPane statusPanelBox = PanelUtil.createPanel(0.10, 0.20, "#00b5d4", 2, 15, 0, root);
         statusPanelBox.setStyle("-fx-background-color: black;" + "-fx-border-color: #ffffff;" + "-fx-border-width: 2;");
         GlowUtil.applyGlow(statusPanelBox, "#00b5d4", 20);
-        statusPanelBox.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.02, root.getWidth() * 0.015, root.getHeight() * 0.03, root.getWidth() * 0.02), root.widthProperty(), root.heightProperty()));
+        statusPanelBox.paddingProperty()
+                .bind(Bindings
+                        .createObjectBinding(
+                                () -> new Insets(root.getHeight() * 0.02, root.getWidth() * 0.015,
+                                        root.getHeight() * 0.03, root.getWidth() * 0.02),
+                                root.widthProperty(), root.heightProperty()));
         VBox.setMargin(statusPanelBox, new Insets(0, 0, -root.getHeight() * 0.015, 0));
 
         Label statusPanel = TextUtil.createText("NETWORK STATUS:", "hkmodular", 0.01, "#00b5d4", root);
@@ -100,7 +110,8 @@ public class MainMenuScene {
         GlowUtil.applyGlow(statusLine, "#00b5d4", 10);
         VBox lineBox = new VBox(statusLine);
         lineBox.setAlignment(Pos.CENTER);
-        lineBox.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(0, 0, root.getHeight() * 0.01, 0), root.heightProperty()));
+        lineBox.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(0, 0, root.getHeight() * 0.01, 0),
+                root.heightProperty()));
 
         Label threats = TextUtil.createText("ACTIVE THREATS:", "hkmodular", 0.01, "#00b5d4", root);
         Label threatsNumber = TextUtil.createText("4", "hkmodular", 0.015, "#ff0000", root);
@@ -129,7 +140,12 @@ public class MainMenuScene {
         StackPane virusPanelBox = PanelUtil.createPanel(0.10, 0.20, "#00b5d4", 2, 15, 0, root);
         virusPanelBox.setStyle("-fx-background-color: black;" + "-fx-border-color: #ffffff;" + "-fx-border-width: 2;");
         GlowUtil.applyGlow(virusPanelBox, "#00b5d4", 20);
-        virusPanelBox.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.02, root.getWidth() * 0.015, root.getHeight() * 0.02, root.getWidth() * 0.015), root.widthProperty(), root.heightProperty()));
+        virusPanelBox.paddingProperty()
+                .bind(Bindings
+                        .createObjectBinding(
+                                () -> new Insets(root.getHeight() * 0.02, root.getWidth() * 0.015,
+                                        root.getHeight() * 0.02, root.getWidth() * 0.015),
+                                root.widthProperty(), root.heightProperty()));
         virusPanelBox.translateYProperty().bind(root.heightProperty().multiply(-0.02));
 
         Label virusText = TextUtil.createText("VIRUSES DETECTED:", "hkmodular", 0.01, "#00b5d4", root);
@@ -138,18 +154,23 @@ public class MainMenuScene {
         GlowUtil.applyGlow(virusLine, "#00b5d4", 10);
         VBox virusLineBox = new VBox(virusLine);
         virusLineBox.setAlignment(Pos.CENTER);
-        virusLineBox.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.006, 0, 0, 0), root.heightProperty()));
+        virusLineBox.paddingProperty().bind(Bindings
+                .createObjectBinding(() -> new Insets(root.getHeight() * 0.006, 0, 0, 0), root.heightProperty()));
 
         VBox virusTextBox = new VBox(virusText, virusLineBox);
         virusTextBox.spacingProperty().bind(root.heightProperty().multiply(0.003));
         virusTextBox.setAlignment(Pos.CENTER);
 
-        HBox virusConficker = new HBox(DotUtil.createDot(0.010, "#ff0000", 24, root), TextUtil.createText("CONFICKER", "hkmodular", 0.01, "#00b5d4", root));
-        HBox virusWannacry = new HBox(DotUtil.createDot(0.010, "#ff0000", 24, root),TextUtil.createText("WANNACRY", "hkmodular", 0.01, "#00b5d4", root));
-        HBox virusStuxnet = new HBox( DotUtil.createDot(0.010, "#ff0000", 24, root),TextUtil.createText("STUXNET", "hkmodular", 0.01, "#00b5d4", root));
-        HBox virusZeus = new HBox(DotUtil.createDot(0.010, "#ff0000", 24, root), TextUtil.createText("ZEUS", "hkmodular", 0.01, "#00b5d4", root));
+        HBox virusConficker = new HBox(DotUtil.createDot(0.010, "#ff0000", 24, root),
+                TextUtil.createText("CONFICKER", "hkmodular", 0.01, "#00b5d4", root));
+        HBox virusWannacry = new HBox(DotUtil.createDot(0.010, "#ff0000", 24, root),
+                TextUtil.createText("WANNACRY", "hkmodular", 0.01, "#00b5d4", root));
+        HBox virusStuxnet = new HBox(DotUtil.createDot(0.010, "#ff0000", 24, root),
+                TextUtil.createText("STUXNET", "hkmodular", 0.01, "#00b5d4", root));
+        HBox virusZeus = new HBox(DotUtil.createDot(0.010, "#ff0000", 24, root),
+                TextUtil.createText("ZEUS", "hkmodular", 0.01, "#00b5d4", root));
 
-        for (HBox row : new HBox[]{virusConficker, virusWannacry, virusStuxnet, virusZeus}) {
+        for (HBox row : new HBox[] { virusConficker, virusWannacry, virusStuxnet, virusZeus }) {
             row.spacingProperty().bind(root.widthProperty().multiply(0.015));
             row.setAlignment(Pos.CENTER_LEFT);
         }
@@ -157,7 +178,10 @@ public class MainMenuScene {
         VBox virusGroup = new VBox(virusConficker, virusWannacry, virusStuxnet, virusZeus);
         virusGroup.spacingProperty().bind(root.heightProperty().multiply(0.008));
 
-        virusGroup.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.01, 0, 0, root.getWidth() * 0.03), root.widthProperty(), root.heightProperty()));
+        virusGroup.paddingProperty()
+                .bind(Bindings.createObjectBinding(
+                        () -> new Insets(root.getHeight() * 0.01, 0, 0, root.getWidth() * 0.03), root.widthProperty(),
+                        root.heightProperty()));
         virusGroup.setAlignment(Pos.TOP_LEFT);
 
         VBox virusContainer = new VBox(virusTextBox, virusGroup);
@@ -174,11 +198,21 @@ public class MainMenuScene {
         root.getChildren().add(title);
         root.getChildren().add(rightPanel);
 
-        ButtonsUtil playBtn = new ButtonsUtil("PLAY", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
-        ButtonsUtil tutorialBtn = new ButtonsUtil("TUTORIAL", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
-        ButtonsUtil settingsBtn = new ButtonsUtil("SETTINGS", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
-        ButtonsUtil exitBtn = new ButtonsUtil("EXIT", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
-
+        ButtonsUtil playBtn = new ButtonsUtil("PLAY", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08,
+                0.02, root);
+        ButtonsUtil tutorialBtn = new ButtonsUtil("TUTORIAL", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18,
+                0.08, 0.02, root);
+        ButtonsUtil settingsBtn = new ButtonsUtil("SETTINGS", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18,
+                0.08, 0.02, root);
+        ButtonsUtil exitBtn = new ButtonsUtil("EXIT", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08,
+                0.02, root);
+        ButtonsUtil mapTestBtn = new ButtonsUtil("MAP TEST", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18,
+                0.08, 0.02, root);
+        mapTestBtn.setOnMouseClicked(e -> {
+            System.out.println("[DEBUG] Navigare către Map Test...");
+            MapTestScene mapTest = new MapTestScene(stage);
+            stage.getScene().setRoot(mapTest.getRoot());
+        });
         tutorialBtn.setOnMouseClicked(e -> {
             System.out.println("CLICKED");
 
@@ -186,7 +220,7 @@ public class MainMenuScene {
             Scene tutorialScene = new Scene(tutorial.getRoot(), stage.getWidth(), stage.getHeight());
             stage.setScene(tutorialScene);
         });
-    
+
         playBtn.setPickOnBounds(true);
 
         playBtn.setOnMouseClicked(e -> {
@@ -211,22 +245,24 @@ public class MainMenuScene {
             dialog.setMaxHeight(240);
             dialog.setMinHeight(220);
             dialog.setStyle(
-                "-fx-background-color: rgba(10, 20, 40, 0.95);"
-                + "-fx-border-color: #00d4ff;"
-                + "-fx-border-width: 2;"
-                + "-fx-background-radius: 12;"
-                + "-fx-border-radius: 12;"
-                + "-fx-effect: dropshadow(gaussian, cyan, 20, 0, 0, 0);"
-            );
+                    "-fx-background-color: rgba(10, 20, 40, 0.95);"
+                            + "-fx-border-color: #00d4ff;"
+                            + "-fx-border-width: 2;"
+                            + "-fx-background-radius: 12;"
+                            + "-fx-border-radius: 12;"
+                            + "-fx-effect: dropshadow(gaussian, cyan, 20, 0, 0, 0);");
             dialog.setPadding(new Insets(20));
 
             Label warningTitle = TextUtil.createText("EXIT CONFIRMATION", "hkmodular", 0.03, "#00d4ff", root);
             warningTitle.setTextAlignment(TextAlignment.CENTER);
-            Label warningText = TextUtil.createText("Do you really want to exit the game?", "hkmodular", 0.02, "#ffffff", root);
+            Label warningText = TextUtil.createText("Do you really want to exit the game?", "hkmodular", 0.02,
+                    "#ffffff", root);
             warningText.setTextAlignment(TextAlignment.CENTER);
 
-            ButtonsUtil yesBtn = new ButtonsUtil("YES", "#00d4ff", "black", "#00d4ff", "#00d4ff", 2, 12, 12, 0.22, 0.07, 0.02, root);
-            ButtonsUtil noBtn = new ButtonsUtil("NO", "#ff274c", "black", "#ff274c", "#ff274c", 2, 12, 12, 0.22, 0.07, 0.02, root);
+            ButtonsUtil yesBtn = new ButtonsUtil("YES", "#00d4ff", "black", "#00d4ff", "#00d4ff", 2, 12, 12, 0.22, 0.07,
+                    0.02, root);
+            ButtonsUtil noBtn = new ButtonsUtil("NO", "#ff274c", "black", "#ff274c", "#ff274c", 2, 12, 12, 0.22, 0.07,
+                    0.02, root);
 
             yesBtn.setOnMouseClicked(ev -> {
                 System.exit(0);
@@ -248,11 +284,14 @@ public class MainMenuScene {
         menuBox.setFillWidth(false);
         menuBox.setAlignment(Pos.BOTTOM_CENTER);
         menuBox.spacingProperty().bind(root.heightProperty().multiply(0.025));
-        menuBox.getChildren().addAll(playBtn, tutorialBtn, settingsBtn, exitBtn);
+        menuBox.getChildren().addAll(playBtn, mapTestBtn, tutorialBtn, settingsBtn, exitBtn);
         menuBox.translateXProperty().bind(root.widthProperty().multiply(-0.35));
         menuBox.translateYProperty().bind(root.heightProperty().multiply(-0.25));
 
         root.getChildren().add(menuBox);
     }
-     public StackPane getRoot() {return root;}
+
+    public StackPane getRoot() {
+        return root;
+    }
 }
