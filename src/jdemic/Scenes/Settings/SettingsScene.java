@@ -111,10 +111,6 @@ public class SettingsScene {
         ButtonsUtil applyBtn = new ButtonsUtil("APPLY", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 10, 10, 0.12, 0.06, 0.01, root);
         ButtonsUtil exitBtn = new ButtonsUtil("EXIT", "#00b5d4", "black", "#00b5d4", "00b5d4", 2, 10, 10, 0.12, 0.06, 0.01, root);
 
-        //THIS IS FOR DEBUG ONLY
-        //REMOVE LATER WHEN ALL SETTINGS FUNCTION GOOD AND WELL
-        ButtonsUtil debugBtn = new ButtonsUtil("PRINT DEBUG", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2 , 10 , 10 , 0.15, 0.06, 0.01, root);
-
         backBtn.setOnMouseClicked(e -> {
             if (hasUnsavedChanges) showOverlay("DISCARD CHANGES?", this::returnToMainMenu);
             else returnToMainMenu();
@@ -141,14 +137,7 @@ public class SettingsScene {
             } else returnToMainMenu();
         });
 
-        //DEBUG ONLY
-        debugBtn.setOnMouseClicked(e -> {
-            System.out.println("==== DEBUG DATA ONLY ====");
-            SettingsManager.getInstance().printAll();
-            System.out.println("=========================\n");
-        });
-
-        footer.getChildren().addAll(backBtn, resetBtn, applyBtn, exitBtn, debugBtn);
+        footer.getChildren().addAll(backBtn, resetBtn, applyBtn, exitBtn);
 
         // Add the invisible top box and the footer to the root
         root.getChildren().addAll(transparentBox, footer);

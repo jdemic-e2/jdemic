@@ -1,10 +1,10 @@
 package jdemic.Scenes.Settings;
 
 import javafx.scene.Scene;
+import javafx.scene.media.AudioClip;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,15 +44,15 @@ public class AudioManager {
     // SFX LOGIC
     public void playSFX(String path) {
         try {
-            Media sound = new Media(getClass().getResource(path).toExternalForm());
-            MediaPlayer sfxPlayer = new MediaPlayer(sound);
-
             SettingsManager sm = SettingsManager.getInstance();
-            sfxPlayer.setVolume(sm.masterVolumeProperty().get());
-
-            sfxPlayer.play();
-
-            sfxPlayer.setOnEndOfMedia(sfxPlayer::dispose);
+            if (sm.isMutedProperty().get())
+            {
+                return;
+            }
+            AudioClip sfx = new AudioClip(getClass().getResource(path).toExternalForm());
+            double volume = sm.masterVolumeProperty().get() * sm.sfxVolumeProperty().get();
+            sfx.setVolume(volume);
+            sfx.play();
         } catch (Exception e) {
             System.out.println("Error playing SFX: " + e.getMessage());
         }
