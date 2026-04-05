@@ -1,14 +1,10 @@
 package jdemic.GameLogic;
 
-import java.util.Set;
-
-import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 public class Player {
     
     private PlayerState playerState;
-    private Set<GameAction> actions;
     public Deck deckReference;
 
     public Player(PlayerState state) {
@@ -25,12 +21,6 @@ public class Player {
         playerState.setIsDiscarding(false);
         deck.drawHand(this.playerState);
         
-    }
-
-    public void assignActions(){
-        switch(this.getState().getPlayerRole()){
-            
-        }
     }
 
     public PlayerState getState() {

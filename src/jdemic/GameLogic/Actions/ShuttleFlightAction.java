@@ -20,7 +20,7 @@ public class ShuttleFlightAction extends GameAction {
 
     public boolean isValid(PlayerState playerState) 
     {
-        // ambele orase trebuie sa aiba centre de cercetare
+        // both cities must have research stations.
         CityNode currentCity = playerState.getPlayerCurrentCity();
         return currentCity.hasResearchStation() && destination.hasResearchStation();
     }

@@ -7,7 +7,7 @@ import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CardType;
 
 public class CharterFlightAction extends GameAction {
-    //Charter Flight -> Verifică dacă ai în mână cartea orașului în care te afli.
+    //Charter Flight -> Verify if you have the required city.
     
     private CityNode destination;
     private Card cardToDiscard;

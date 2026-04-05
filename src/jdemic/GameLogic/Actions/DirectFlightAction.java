@@ -24,7 +24,7 @@ public class DirectFlightAction extends GameAction {
 
     public boolean isValid(PlayerState playerState) 
     {
-        // verificam daca playerul contine cartea matching cu cityul altfel nu se poate folosii de direct flight
+        // check if the player has the respective city card.
         return playerState.getHand().stream().anyMatch(c -> c.getType() == CardType.CITY && c.getTargetCity() == destination);
     }
 
