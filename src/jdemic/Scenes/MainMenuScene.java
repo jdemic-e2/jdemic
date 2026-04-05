@@ -72,10 +72,10 @@ public class MainMenuScene {
         Image mapImg = new Image(getClass().getResource("/backgroundMap.png").toExternalForm());
         ImageView map = new ImageView(mapImg);
         map.setPreserveRatio(true);
-        map.fitWidthProperty().bind(root.widthProperty().multiply(0.70));
+        map.fitWidthProperty().bind(root.widthProperty().multiply(0.8));
         StackPane.setAlignment(map, Pos.TOP_CENTER);
-        map.translateYProperty().bind(root.heightProperty().multiply(0.03));
-        map.translateXProperty().bind(root.widthProperty().multiply(-0.04));
+        map.translateYProperty().bind(root.heightProperty().multiply(0.05));
+        map.translateXProperty().bind(root.widthProperty().multiply(-0.05));
 
       //  Animations.createPulse(map, 1.05, 2);
 
@@ -183,8 +183,7 @@ public class MainMenuScene {
             System.out.println("CLICKED");
 
             TutorialRulesScene tutorial = new TutorialRulesScene(stage);
-            Scene tutorialScene = new Scene(tutorial.getRoot(), stage.getWidth(), stage.getHeight());
-            stage.setScene(tutorialScene);
+            stage.getScene().setRoot(new TutorialRulesScene(stage).getRoot());
         });
     
         playBtn.setPickOnBounds(true);
@@ -201,44 +200,46 @@ public class MainMenuScene {
 
         exitBtn.setOnMouseClicked(e -> {
             StackPane confirmOverlay = new StackPane();
-            confirmOverlay.setStyle("-fx-background-color: rgba(5, 10, 20, 0.7);");
+            confirmOverlay.setStyle("-fx-background-color: rgba(5, 10, 20, 0.8);");
             confirmOverlay.prefWidthProperty().bind(root.widthProperty());
             confirmOverlay.prefHeightProperty().bind(root.heightProperty());
 
-            VBox dialog = new VBox(16);
+            VBox dialog = new VBox(20); // 20px spacing between elements
             dialog.setAlignment(Pos.CENTER);
-            dialog.setMaxWidth(420);
-            dialog.setMaxHeight(240);
-            dialog.setMinHeight(220);
-            dialog.setStyle(
-                "-fx-background-color: rgba(10, 20, 40, 0.95);"
-                + "-fx-border-color: #00d4ff;"
-                + "-fx-border-width: 2;"
-                + "-fx-background-radius: 12;"
-                + "-fx-border-radius: 12;"
-                + "-fx-effect: dropshadow(gaussian, cyan, 20, 0, 0, 0);"
-            );
-            dialog.setPadding(new Insets(20));
 
-            Label warningTitle = TextUtil.createText("EXIT CONFIRMATION", "hkmodular", 0.03, "#00d4ff", root);
+            dialog.maxWidthProperty().bind(root.widthProperty().multiply(0.40));
+            dialog.maxHeightProperty().bind(root.heightProperty().multiply(0.30));
+
+            dialog.setStyle(
+                    "-fx-background-color: rgba(10, 20, 40, 0.95);" +
+                            "-fx-border-color: #00d4ff;" +
+                            "-fx-border-width: 2;" +
+                            "-fx-background-radius: 15;" +
+                            "-fx-border-radius: 15;" +
+                            "-fx-effect: dropshadow(gaussian, #00d4ff, 25, 0, 0, 0);"
+            );
+
+            dialog.paddingProperty().bind(Bindings.createObjectBinding(() ->
+                    new Insets(root.getHeight() * 0.04), root.heightProperty())
+            );
+
+            Label warningTitle = TextUtil.createText("EXIT CONFIRMATION", "hkmodular", 0.02, "#00d4ff", root);
             warningTitle.setTextAlignment(TextAlignment.CENTER);
-            Label warningText = TextUtil.createText("Do you really want to exit the game?", "hkmodular", 0.02, "#ffffff", root);
+
+            Label warningText = TextUtil.createText("Do you really want to exit the game?", "hkmodular", 0.01, "#ffffff", root);
             warningText.setTextAlignment(TextAlignment.CENTER);
 
-            ButtonsUtil yesBtn = new ButtonsUtil("YES", "#00d4ff", "black", "#00d4ff", "#00d4ff", 2, 12, 12, 0.22, 0.07, 0.02, root);
-            ButtonsUtil noBtn = new ButtonsUtil("NO", "#ff274c", "black", "#ff274c", "#ff274c", 2, 12, 12, 0.22, 0.07, 0.02, root);
+            ButtonsUtil yesBtn = new ButtonsUtil("YES", "#00d4ff", "black", "#00d4ff", "#00d4ff", 2, 12, 12, 0.14, 0.06, 0.015, root);
+            ButtonsUtil noBtn = new ButtonsUtil("NO", "#ff274c", "black", "#ff274c", "#ff274c", 2, 12, 12, 0.14, 0.06, 0.015, root);
 
-            yesBtn.setOnMouseClicked(ev -> {
-                System.exit(0);
-            });
-            noBtn.setOnMouseClicked(ev -> {
-                root.getChildren().remove(confirmOverlay);
-            });
+            yesBtn.setOnMouseClicked(ev -> System.exit(0));
+            noBtn.setOnMouseClicked(ev -> root.getChildren().remove(confirmOverlay));
 
-            HBox buttonRow = new HBox(12, yesBtn, noBtn);
-            buttonRow.setAlignment(Pos.CENTER);
+            HBox buttonContainer = new HBox(30); // 30px spacing between YES and NO
+            buttonContainer.setAlignment(Pos.CENTER);
+            buttonContainer.getChildren().addAll(yesBtn, noBtn);
 
-            dialog.getChildren().addAll(warningTitle, warningText, buttonRow);
+            dialog.getChildren().addAll(warningTitle, warningText, buttonContainer);
             confirmOverlay.getChildren().add(dialog);
 
             root.getChildren().add(confirmOverlay);

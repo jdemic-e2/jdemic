@@ -23,7 +23,7 @@ public class TutorialWinLoseScene {
     private void setupUI() {
 
         TutorialUtil.createTutorialTitle(root,"TUTORIAL",0.02,"#00b5d4",Pos.TOP_LEFT,0.03,0.03,null,0);
-        TutorialUtil.createTutorialTitle(root,"7. WIN / LOSE",0.05,"#cfc900",Pos.TOP_CENTER,0.14,0.08,"#cfc900",5);
+        TutorialUtil.createTutorialTitle(root,"8. WIN / LOSE",0.05,"#cfc900",Pos.TOP_CENTER,0.14,0.08,"#cfc900",5);
 
         HBox mainLayout = new HBox();
         mainLayout.setAlignment(Pos.CENTER);

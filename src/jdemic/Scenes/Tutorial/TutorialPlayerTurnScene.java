@@ -42,7 +42,7 @@ public class TutorialPlayerTurnScene {
     private void setupUI() {
 
         TutorialUtil.createTutorialTitle(root,"TUTORIAL",0.02,"#00b5d4", Pos.TOP_LEFT,0.03,0.03,null,0);
-        TutorialUtil.createTutorialTitle(root,"6. PLAYER TURNS",0.05,"#cfc900",Pos.TOP_CENTER,0.14,0.08,"#cfc900",5);
+        TutorialUtil.createTutorialTitle(root,"7. PLAYER TURNS",0.05,"#cfc900",Pos.TOP_CENTER,0.14,0.08,"#cfc900",5);
 
 
         Map<String, ActionInfo> actions = new LinkedHashMap<>();
