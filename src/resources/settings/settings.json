@@ -1,7 +1,7 @@
 {
   "playerName": "Newbie",
-  "resolution": "1920x1080",
-  "isFullScreen": true,
+  "resolution": "1280x720",
+  "isFullScreen": false,
   "masterVolume": 0.0,
   "musicVolume": 0.5,
   "animationSpeed": "FAST"
