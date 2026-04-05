@@ -19,6 +19,8 @@ public class PlayerState{
         this.discardingCards = false;
     }
 
+    // PlayerState must only have simple methods for changing variables, for easier serialization on the network.
+
     public PlayerRoles getPlayerRole(){
         return this.Role;
     }

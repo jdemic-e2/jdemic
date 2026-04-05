@@ -137,6 +137,7 @@ public final class PandemicMapGraph
         return this.cityList;
     }
 
+    //find a city and return its reference
     public CityNode getCity(String name){
         CityNode city = cityList
                 .stream()

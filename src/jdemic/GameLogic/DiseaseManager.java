@@ -1,5 +1,7 @@
 package jdemic.GameLogic;
 
+
+// Not important for the first sprint, will improve later with more correct gameplay options.
 public class DiseaseManager {
     private int outbreakScore;
     private int infectionCubesLeft;
@@ -12,6 +14,7 @@ public class DiseaseManager {
 
     private GameManager gameManager;
 
+    // Start with all 96 cubes and all cures set to false.
     public DiseaseManager(GameManager manager) {
         this.gameManager = manager;
         this.outbreakScore = 0;
@@ -35,6 +38,7 @@ public class DiseaseManager {
         return this.infectionCubesLeft;
     }
 
+    // Adds X amount of infection cubes to a certain city.
     public void addInfectionCubes(CityNode city, int amount) {
         DiseaseColor color = city.getNativeColor();
 

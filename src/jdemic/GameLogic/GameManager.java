@@ -39,19 +39,20 @@ public class GameManager {
         setupGame();
     }
 
+    // For each player, add their state to gamestate, give each one a reference to the deck and set their spawn in Atlanta.
     private void setupGame()
     {
-
-        CityNode atlanta = map.getCity("Atlanta");
-        atlanta.addResearchStation();
+        map.getCity("Atlanta").addResearchStation();
 
         for(Player player : players)
         {
             state.addPlayer(player.getState());
             player.deckReference = cardDeck;
+            player.getState().setCurrentCity(map.getCity("Atlanta"));
         }
     }
 
+    // Action execution in GameManager.java leads to simpler server sync and also lets the server authorize changes easier.
     public void performAction(Player player, GameAction action)
     {
         if(gameOver) return;
@@ -64,6 +65,7 @@ public class GameManager {
         }
     }
 
+    // 
     public void nextTurn()
     {
         if(gameOver) return;
@@ -90,6 +92,7 @@ public class GameManager {
 
     public void checkWinCondition()
     {
+        // If all diseases are cured, win the game.
         if(diseaseManager.areAllCured())
         {
             gameOver = true;
@@ -99,6 +102,7 @@ public class GameManager {
 
     public void checkLoseCondition(){
 
+        // If more than 8 outbreaks happened or if all player cards have been used up, fail the game.
         if(diseaseManager.getOutbreakScore() >= MAX_OUTBREAKS)
         {
             gameOver = true;
@@ -140,6 +144,6 @@ public class GameManager {
 
     public void syncState()
     {
-        // partea de networking
+        // networking side
     }
 }

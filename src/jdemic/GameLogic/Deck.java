@@ -21,6 +21,7 @@ public class Deck {
     private List<Card> infectionDiscardPile;
     private GameManager manager;
 
+    // constructor
     public Deck(GameManager manager) {
         this.playerCards = new ArrayList<>();
         this.infectionCards = new ArrayList<>();
@@ -69,22 +70,25 @@ public class Deck {
             playerCards.add(new Card("System Breach", CardType.EPIDEMIC, null));
         }
 
+        //initial shuffle of the cards
         initShuffle();
     }
 
     public void drawHand(PlayerState player) {
-        manager.checkWinCondition();
-        // send the 2 top cards from deck to player hand. too lazy to do this in a forloop.
+        manager.checkLoseCondition();
+        // send the 2 top cards from deck to player hand.
         player.addCard(playerCards.get(0));
         playerCards.remove(0);
         player.addCard(playerCards.get(0));
         playerCards.remove(0);
 
-        //TODO Epidemic Card Case
+        //TODO Epidemic Card Case, not relevant for first sprint.
 
     }
 
+    // Discard cards
     public void discard(Card card) {
+        // if the card is of type INFECTION, put it in the infection discard pile, which can be reshuffled.
         if(card.getType() == CardType.INFECTION){
             this.infectionDiscardPile.add(card);
         }
@@ -93,6 +97,7 @@ public class Deck {
         }
     }
 
+    //Initial shuffle for both piles at the start of the game
     public void initShuffle() {
         Collections.shuffle(playerCards);
         Collections.shuffle(infectionCards);
