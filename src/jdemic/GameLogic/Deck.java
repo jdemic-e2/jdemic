@@ -77,10 +77,21 @@ public class Deck {
     public void drawHand(PlayerState player) {
         manager.checkLoseCondition();
         // send the 2 top cards from deck to player hand.
-        player.addCard(playerCards.get(0));
-        playerCards.remove(0);
-        player.addCard(playerCards.get(0));
-        playerCards.remove(0);
+        if(!playerCards.isEmpty()){
+            player.addCard(playerCards.get(0));
+            playerCards.remove(0);
+        }
+        else{
+            manager.checkLoseCondition();
+        }
+
+        if(!playerCards.isEmpty()){
+            player.addCard(playerCards.get(0));
+            playerCards.remove(0);
+        }
+        else{
+            manager.checkLoseCondition();
+        }
 
         //TODO Epidemic Card Case, not relevant for first sprint.
 

@@ -58,7 +58,7 @@ public class GameManager {
         if(gameOver) return;
         if(actionsRemaining <= 0) return;
 
-        if(action.isValid(state))
+        if(action.isValid(state, player.getState()))
         {
             action.execute(state, player.getState());
             actionsRemaining--;

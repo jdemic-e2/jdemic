@@ -17,12 +17,7 @@ public class DirectFlightAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
-    @Override public boolean isValid(GameState state) 
-    {
-        return false;
-    }
-
-    public boolean isValid(PlayerState playerState) 
+    public boolean isValid(GameState state, PlayerState playerState) 
     {
         // check if the player has the respective city card.
         return playerState.getHand().stream().anyMatch(c -> c.getType() == CardType.CITY && c.getTargetCity() == destination);
@@ -30,7 +25,7 @@ public class DirectFlightAction extends GameAction {
 
     @Override public void execute(GameState state, PlayerState playerState) 
     {
-        if(isValid(playerState))
+        if(isValid(state, playerState))
         {
             playerState.getHand().remove(cardToDiscard);
             playerState.setCurrentCity(destination);
