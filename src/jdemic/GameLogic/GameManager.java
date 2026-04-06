@@ -9,6 +9,7 @@ public class GameManager {
     Deck cardDeck;
     List<Player> players;
     PandemicMapGraph map;
+    private int activePlayerIndex = 0; // Tracks whose turn it is
 
     public GameManager(List<Player> players) {
         this.state = new GameState(); 
@@ -18,6 +19,15 @@ public class GameManager {
         this.cardDeck = new Deck();
 
         setupGame();
+    }
+
+    public List<Player> getPlayers() {
+        return players;
+    }
+
+    public Player getCurrentPlayer() {
+        if (players == null || players.isEmpty()) return null;
+        return players.get(activePlayerIndex);
     }
 
     private void setupGame(){

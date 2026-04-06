@@ -18,7 +18,7 @@
         <lwjgl.version>3.3.4</lwjgl.version>
         <joml.version>1.10.7</joml.version>
         <!-- Change to "linux" or "macos" if not on Windows -->
-        <lwjgl.natives>natives-windows</lwjgl.natives>
+        <lwjgl.natives>natives-macos-arm64</lwjgl.natives>
     </properties>
 
     <!-- Tell Maven where your source files live -->
