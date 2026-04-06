@@ -4,10 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 public class GameState{
 
-    private List<PlayerState> playerArray = new ArrayList<>();
+    private List<PlayerState> playerArray;
 
     public GameState(){
-
+        this.playerArray = new ArrayList<>();
     }
 
     public void addPlayer(PlayerState s){

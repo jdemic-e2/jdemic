@@ -2,6 +2,7 @@ package jdemic.Rendering;
 
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.PandemicMapGraph;
+import jdemic.GameLogic.DiseaseColor;
 
 import org.joml.Vector2f;
 
@@ -207,16 +208,16 @@ public class MapRenderer
 
             Vector2f snapped = snapNodePosition(source, city.getNativeColor(), expectedX, expectedY, 18);
             alignedNodes.add(new AlignedCityNode(city,
-                                                 Math.round(snapped.x),
-                                                 Math.round(snapped.y),
-                                                 source.getWidth(),
-                                                 source.getHeight()));
+                    Math.round(snapped.x),
+                    Math.round(snapped.y),
+                    source.getWidth(),
+                    source.getHeight()));
         }
 
         return alignedNodes;
     }
 
-    private Vector2f snapNodePosition(BufferedImage image, CityNode.DiseaseColor diseaseColor, int expectedX, int expectedY, int radius)
+    private Vector2f snapNodePosition(BufferedImage image, DiseaseColor diseaseColor, int expectedX, int expectedY, int radius)
     {
         int width = image.getWidth();
         int height = image.getHeight();
@@ -254,7 +255,7 @@ public class MapRenderer
         return new Vector2f(bestX, bestY);
     }
 
-    private float colorMatchScore(CityNode.DiseaseColor diseaseColor, int red, int green, int blue)
+    private float colorMatchScore(DiseaseColor diseaseColor, int red, int green, int blue)
     {
         return switch (diseaseColor)
         {
@@ -284,7 +285,7 @@ public class MapRenderer
         return rgbaPixels;
     }
 
-    public static Color colorForDisease(CityNode.DiseaseColor diseaseColor)
+    public static Color colorForDisease(DiseaseColor diseaseColor)
     {
         return switch (diseaseColor)
         {
