@@ -5,21 +5,25 @@ import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
 
 public class DriveFerryAction extends GameAction {
-    //Drive / Ferry -> Verifică dacă orașele sunt vecine.
-    
+
     private CityNode destination;
 
-    public DriveFerryAction(CityNode destination) {
+    public DriveFerryAction(CityNode destination) 
+    {
         this.destination = destination;
     }
 
-    @Override
-    public boolean isValid(GameState state) {
-        return false; // TODO
+    public boolean isValid(GameState state, PlayerState playerState) 
+    {
+        CityNode currentCity = playerState.getPlayerCurrentCity();
+        return currentCity.getConnectedCities().contains(destination);
     }
 
-    @Override
-    public void execute(GameState state, PlayerState playerState) {
-        // TODO
+    @Override public void execute(GameState state, PlayerState playerState) 
+    {
+        if(isValid(state, playerState))
+        {
+            playerState.setCurrentCity(destination);
+        }
     }
 }

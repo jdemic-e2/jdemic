@@ -4,25 +4,31 @@ import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.CardType;
 
 public class DirectFlightAction extends GameAction {
-    //Direct Flight -> Verifică dacă ai în mână cartea orașului destinație.
 
     private CityNode destination;
     private Card cardToDiscard;
 
-    public DirectFlightAction(CityNode destination, Card cardToDiscard) {
+    public DirectFlightAction(CityNode destination, Card cardToDiscard) 
+    {
         this.destination = destination;
         this.cardToDiscard = cardToDiscard;
     }
 
-    @Override
-    public boolean isValid(GameState state) {
-        return false; // TODO
+    public boolean isValid(GameState state, PlayerState playerState) 
+    {
+        // check if the player has the respective city card.
+        return playerState.getHand().stream().anyMatch(c -> c.getType() == CardType.CITY && c.getTargetCity() == destination);
     }
 
-    @Override
-    public void execute(GameState state, PlayerState playerState) {
-        // TODO
+    @Override public void execute(GameState state, PlayerState playerState) 
+    {
+        if(isValid(state, playerState))
+        {
+            playerState.getHand().remove(cardToDiscard);
+            playerState.setCurrentCity(destination);
+        }
     }
 }

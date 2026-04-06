@@ -11,11 +11,15 @@ public class PlayerState{
     private PlayerRoles Role;
     private CityNode currentCity;
     private List<Card> hand = new ArrayList<>();
+    private boolean discardingCards;
 
     public PlayerState(String name, CityNode currentCity){
         this.playerName = name;
         this.currentCity = currentCity;
+        this.discardingCards = false;
     }
+
+    // PlayerState must only have simple methods for changing variables, for easier serialization on the network.
 
     public PlayerRoles getPlayerRole(){
         return this.Role;
@@ -23,6 +27,10 @@ public class PlayerState{
 
     public CityNode getPlayerCurrentCity() {
         return this.currentCity;
+    }
+
+    public void setCurrentCity(CityNode city){
+        this.currentCity = city;
     }
 
     public String getPlayerName(){
@@ -43,5 +51,13 @@ public class PlayerState{
 
     public void removeCard(int index){
         this.hand.remove(index);
+    }
+
+    public boolean getIsDiscarding(){
+        return this.discardingCards;
+    }
+
+    public void setIsDiscarding(boolean state){
+        this.discardingCards = state;
     }
 }
