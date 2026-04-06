@@ -15,6 +15,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import jdemic.Scenes.Lobby.LobbyScene;
+import jdemic.Scenes.MapTest.MapTestScene;
 import jdemic.Scenes.Settings.SettingsScene;
 import jdemic.Scenes.Tutorial.TutorialRulesScene;
 import jdemic.ui.Animations;
@@ -175,9 +176,15 @@ public class MainMenuScene {
         root.getChildren().add(rightPanel);
 
         ButtonsUtil playBtn = new ButtonsUtil("PLAY", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
+        ButtonsUtil maptestBtn = new ButtonsUtil("MAP TEST", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil tutorialBtn = new ButtonsUtil("TUTORIAL", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil settingsBtn = new ButtonsUtil("SETTINGS", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil exitBtn = new ButtonsUtil("EXIT", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
+
+        maptestBtn.setOnMouseClicked(e ->{
+            MapTestScene maptest = new MapTestScene(stage);
+            stage.getScene().setRoot(new MapTestScene(stage).getRoot());
+        });
 
         tutorialBtn.setOnMouseClicked(e -> {
             System.out.println("CLICKED");
@@ -249,7 +256,7 @@ public class MainMenuScene {
         menuBox.setFillWidth(false);
         menuBox.setAlignment(Pos.BOTTOM_CENTER);
         menuBox.spacingProperty().bind(root.heightProperty().multiply(0.025));
-        menuBox.getChildren().addAll(playBtn, tutorialBtn, settingsBtn, exitBtn);
+        menuBox.getChildren().addAll(playBtn, maptestBtn, tutorialBtn, settingsBtn, exitBtn);
         menuBox.translateXProperty().bind(root.widthProperty().multiply(-0.35));
         menuBox.translateYProperty().bind(root.heightProperty().multiply(-0.25));
 
