@@ -20,6 +20,7 @@ import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.PandemicMapGraph;
 import jdemic.Scenes.MainMenuScene;
 import jdemic.ui.ButtonsUtil;
+import jdemic.GameLogic.*;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -182,7 +183,7 @@ public class MapTestScene {
         root.getChildren().add(mapPane);
     }
 
-    private Color getFxColor(CityNode.DiseaseColor color) {
+    private Color getFxColor(DiseaseColor color) {
         return switch (color) {
             case BLUE -> Color.web("#00b5d4");
             case YELLOW -> Color.web("#cfc900");

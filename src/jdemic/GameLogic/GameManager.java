@@ -65,6 +65,11 @@ public class GameManager {
         }
     }
 
+    public List<Player> getPlayers() {
+        return players;
+    }
+
+
     // 
     public void nextTurn()
     {
