@@ -5,7 +5,7 @@ import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 public abstract class GameAction {
 
-    public abstract boolean isValid(GameState state);
+    public abstract boolean isValid(GameState state, PlayerState playerState);
 
     public abstract void execute(GameState state, PlayerState playerState);
     
