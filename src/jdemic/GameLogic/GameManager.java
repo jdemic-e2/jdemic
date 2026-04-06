@@ -1,0 +1,154 @@
+package jdemic.GameLogic;
+import java.util.List;
+
+import jdemic.GameLogic.Actions.GameAction;
+import jdemic.GameLogic.ServerRelatedClasses.GameState;
+
+public class GameManager {
+    GameState state;
+    DiseaseManager diseaseManager;
+    Deck cardDeck;
+    List<Player> players;
+    PandemicMapGraph map;
+
+    int currentPlayerIndex;
+    int actionsRemaining;
+    int infectionRate;
+    int epidemicCount;
+    boolean gameOver;
+    boolean gameWon;
+
+    private static final int ACTIONS_PER_TURN = 4;
+    private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
+    private static final int MAX_OUTBREAKS = 8;
+
+    public GameManager(List<Player> players) 
+    {
+        this.state = new GameState(); 
+        this.map = new PandemicMapGraph();
+        this.diseaseManager = new DiseaseManager(this);
+        this.players = players;
+        this.cardDeck = new Deck(this);
+        this.currentPlayerIndex = 0;
+        this.actionsRemaining = ACTIONS_PER_TURN;
+        this.infectionRate = 0;
+        this.epidemicCount = 0;
+        this.gameOver = false;
+        this.gameWon = false;
+
+        setupGame();
+    }
+
+    // For each player, add their state to gamestate, give each one a reference to the deck and set their spawn in Atlanta.
+    private void setupGame()
+    {
+        map.getCity("Atlanta").addResearchStation();
+
+        for(Player player : players)
+        {
+            state.addPlayer(player.getState());
+            player.deckReference = cardDeck;
+            player.getState().setCurrentCity(map.getCity("Atlanta"));
+        }
+    }
+
+    // Action execution in GameManager.java leads to simpler server sync and also lets the server authorize changes easier.
+    public void performAction(Player player, GameAction action)
+    {
+        if(gameOver) return;
+        if(actionsRemaining <= 0) return;
+
+        if(action.isValid(state, player.getState()))
+        {
+            action.execute(state, player.getState());
+            actionsRemaining--;
+        }
+    }
+
+    public List<Player> getPlayers() {
+        return players;
+    }
+
+
+    // 
+    public void nextTurn()
+    {
+        if(gameOver) return;
+
+        Player current = players.get(currentPlayerIndex);
+
+        current.drawCards(cardDeck);
+
+        if(cardDeck.getRemainingCardsCount() <= 0)
+        {
+            gameOver = true;
+            gameWon = false;
+            return;
+        }
+
+        checkWinCondition();
+        checkLoseCondition();
+
+        if(gameOver) return;
+
+        currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
+        actionsRemaining = ACTIONS_PER_TURN;
+    }
+
+    public void checkWinCondition()
+    {
+        // If all diseases are cured, win the game.
+        if(diseaseManager.areAllCured())
+        {
+            gameOver = true;
+            gameWon = true;
+        }
+    }
+
+    public void checkLoseCondition(){
+
+        // If more than 8 outbreaks happened or if all player cards have been used up, fail the game.
+        if(diseaseManager.getOutbreakScore() >= MAX_OUTBREAKS)
+        {
+            gameOver = true;
+            gameWon = false;
+        }
+
+        if(cardDeck.getRemainingCardsCount() <= 0)
+        {
+            gameOver = true;
+            gameWon = false;
+        }
+    }
+
+    public int getInfectionRate()
+    {
+        if(infectionRate >= INFECTION_RATE_TRACK.length) return INFECTION_RATE_TRACK[INFECTION_RATE_TRACK.length - 1];
+        return INFECTION_RATE_TRACK[infectionRate];
+    }
+
+    public void increaseInfectionRate()
+    {
+        infectionRate++;
+    }
+
+    public Player getCurrentPlayer()
+    {
+        return players.get(currentPlayerIndex);
+    }
+
+    public boolean isGameOver()
+    {
+        return gameOver;
+    }
+
+    public boolean isGameWon()
+    {
+        return gameWon;
+    }
+
+    public void syncState()
+    {
+        // networking side
+    }
+}
