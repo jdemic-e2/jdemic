@@ -1,0 +1,33 @@
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ "main" , "develop"]
+  pull_request:
+    branches: [ "main" , "develop"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    # MODIFICADO: Cambiamos 'compile' por 'verify' para que ejecute los tests y genere el archivo
+    - name: Build and Test with Maven
+      run: mvn -B clean verify
+
+    # TU PARTE: Cogemos el archivo generado y lo subimos como artefacto
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pandemic-game-artifact
+        path: target/*.jar
