@@ -94,6 +94,7 @@
             <artifactId>junit-jupiter-engine</artifactId>
             <version>5.10.2</version>
             <scope>test</scope>
+        </dependency>
         <!-- ===== GSON (Json) ===== -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
