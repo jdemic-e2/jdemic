@@ -73,7 +73,7 @@
                     <target>25</target>
                 </configuration>
             </plugin>
-            <plugin>
+            <plugin> <!-- Add surefire plugin for testing -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
@@ -83,6 +83,19 @@
 
     <dependencies>
 
+        <dependency>  <!-- Add JUnit for testing -->
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+      
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
         <!-- ===== GSON (Json) ===== -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
