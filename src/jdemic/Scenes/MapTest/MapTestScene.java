@@ -30,8 +30,6 @@ public class MapTestScene {
     private Stage stage;
     private StackPane root;
     private PandemicMapGraph mapGraph;
-
-    // Mapări pentru a găsi rapid cercul sau linia corespunzătoare unui nod logic
     private Map<CityNode, Circle> nodeVisuals = new HashMap<>();
     private Map<String, Line> edgeVisuals = new HashMap<>();
 
@@ -46,14 +44,11 @@ public class MapTestScene {
     }
 
     private void setupUI() {
-        // Creăm un HBox pentru a poziționa butonul în colțul din stânga sus (sau unde dorești)
         HBox header = new HBox();
         header.setPadding(new Insets(20));
         header.setAlignment(Pos.TOP_LEFT);
-        header.setPickOnBounds(false); // Permite click-urilor să treacă pe lângă buton către hartă
+        header.setPickOnBounds(false);
 
-        // Folosim clasa ta ButtonsUtil
-        // Parametrii (text, color, bg, border, hover, strokeWidth, arcW, arcH, scaleW, scaleH, fontScale, root)
         ButtonsUtil backBtn = new ButtonsUtil(
                 "BACK",
                 "#00b5d4", "black", "#00b5d4", "#00b5d4",
@@ -67,22 +62,16 @@ public class MapTestScene {
         });
 
         header.getChildren().add(backBtn);
-
-        // Adăugăm header-ul în root.
-        // Fiind un StackPane, se va pune automat peste gameContainer (harta).
         root.getChildren().add(header);
     }
 
     private void setupContent() {
-
-        // Pane-ul unde desenăm nodurile și liniile (peste fundal)
         Pane mapPane = new Pane();
         mapPane.prefWidthProperty().bind(root.widthProperty());
         mapPane.prefHeightProperty().bind(root.heightProperty());
 
-        // --- Configurare Culori și Efecte ---
-        Color defaultLineColor = Color.color(0, 0.7, 1, 0.3); // Cyan pal transparent
-        Color activeLineColor = Color.web("#00ffea");         // Cyan neon aprins
+        Color defaultLineColor = Color.color(0, 0.7, 1, 0.3);
+        Color activeLineColor = Color.web("#00ffea");
 
         DropShadow glowEffect = new DropShadow();
         glowEffect.setColor(Color.web("#00d4ff"));
@@ -91,7 +80,6 @@ public class MapTestScene {
 
         Set<String> processedEdges = new HashSet<>();
 
-        // 2. DESENARE LINII (MUCHII)
         for (CityNode city : mapGraph.getCityList()) {
             for (CityNode neighbor : city.getConnectedCities()) {
                 String id1 = city.getName() + "-" + neighbor.getName();
@@ -102,7 +90,6 @@ public class MapTestScene {
                     line.setStroke(defaultLineColor);
                     line.setStrokeWidth(2);
 
-                    // Bindings pentru scalare automată
                     line.startXProperty().bind(mapPane.widthProperty().multiply(city.getRenderX()));
                     line.startYProperty().bind(mapPane.heightProperty().multiply(city.getRenderY()));
                     line.endXProperty().bind(mapPane.widthProperty().multiply(neighbor.getRenderX()));
@@ -115,7 +102,6 @@ public class MapTestScene {
             }
         }
 
-        // 3. DESENARE NODURI (ORAȘE)
         for (CityNode city : mapGraph.getCityList()) {
             Circle node = new Circle();
             node.radiusProperty().bind(mapPane.heightProperty().multiply(0.012));
@@ -130,17 +116,13 @@ public class MapTestScene {
 
             nodeVisuals.put(city, node);
 
-            // --- LOGICA DE INTERACȚIUNE (HOVER & HIGHLIGHT) ---
             node.setOnMouseEntered(e -> {
-                // Highlight nodul curent
                 node.setFill(Color.WHITE);
                 node.setEffect(glowEffect);
                 node.setScaleX(1.5);
                 node.setScaleY(1.5);
 
-                // Highlight vecini și linii
                 for (CityNode neighbor : city.getConnectedCities()) {
-                    // Luminăm cercul vecinului
                     Circle neighborCircle = nodeVisuals.get(neighbor);
                     if (neighborCircle != null) {
                         neighborCircle.setStroke(Color.WHITE);
@@ -148,7 +130,6 @@ public class MapTestScene {
                         neighborCircle.setEffect(glowEffect);
                     }
 
-                    // Luminăm linia
                     Line connection = edgeVisuals.get(city.getName() + "-" + neighbor.getName());
                     if (connection == null) connection = edgeVisuals.get(neighbor.getName() + "-" + city.getName());
 
@@ -161,13 +142,11 @@ public class MapTestScene {
             });
 
             node.setOnMouseExited(e -> {
-                // Reset nod curent
                 node.setFill(nativeColor);
                 node.setEffect(null);
                 node.setScaleX(1);
                 node.setScaleY(1);
 
-                // Reset vecini și linii
                 for (CityNode neighbor : city.getConnectedCities()) {
                     Circle neighborCircle = nodeVisuals.get(neighbor);
                     if (neighborCircle != null) {
@@ -189,11 +168,10 @@ public class MapTestScene {
 
             node.setOnMouseClicked(ev -> city.clickEvent());
 
-            // Numele orașului (Text)
             Text label = new Text(city.getName());
             label.setFill(Color.WHITE);
             label.setFont(Font.font("hkmodular", FontWeight.BOLD, 10));
-            label.setMouseTransparent(true); // Nu blochează mouse-ul pentru cerc
+            label.setMouseTransparent(true);
 
             label.layoutXProperty().bind(node.centerXProperty().subtract(label.getLayoutBounds().getWidth() / 2));
             label.layoutYProperty().bind(node.centerYProperty().add(20));
