@@ -17,15 +17,14 @@ public class Card {
     }
 
     public String getCardName() {
-        return null;
+        return this.cardName;
     }
 
     public CardType getType() {
-        return null;
+        return this.type;
     }
 
     public CityNode getTargetCity() {
-        return null;
+        return this.targetCity;
     }
-    public String getName() { return this.cardName; } // Card name getter
 }

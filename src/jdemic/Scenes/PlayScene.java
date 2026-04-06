@@ -305,8 +305,8 @@ public class PlayScene {
         row.setCursor(javafx.scene.Cursor.HAND);
 
         String roleFileName = "player_placeholder.png";
-        if (player.getRole() != null) {
-            roleFileName = player.getRole().toString().toLowerCase() + ".png";
+        if (player.getState().getPlayerRole() != null) {
+            roleFileName = player.getState().getPlayerRole().toString().toLowerCase() + ".png";
         }
 
         Image img = null;
@@ -347,18 +347,18 @@ public class PlayScene {
         cardPanel.setStyle("-fx-background-color: rgba(13, 17, 23, 0.95); -fx-border-color: #00d9ff; -fx-border-width: 2; -fx-border-radius: 15; -fx-background-radius: 15;");
         GlowUtil.applyGlow(cardPanel, "#00d9ff", 15);
 
-        Label title = TextUtil.createText(player.getName() + "'S HAND", "hkmodular", 0.035, "#d1d412", root);
+        Label title = TextUtil.createText(player.getState().getPlayerName() + "'S HAND", "hkmodular", 0.035, "#d1d412", root);
         HBox cardList = new HBox(15);
         cardList.setAlignment(Pos.CENTER);
 
-        if (player.getHand() == null || player.getHand().isEmpty()) {
+        if (player.getState().getHand() == null || player.getState().getHand().isEmpty()) {
             cardList.getChildren().add(TextUtil.createText("NO CARDS IN HAND", "hkmodular", 0.020, "#ff2d2d", root));
         } else {
-            for (Card card : player.getHand()) {
+            for (Card card : player.getState().getHand()) {
                 VBox cardUI = new VBox(5);
                 cardUI.setAlignment(Pos.CENTER);
                 cardUI.setStyle("-fx-border-color: #00b5d4; -fx-padding: 10; -fx-border-radius: 5;");
-                Label cardName = TextUtil.createText(card.getName(), "hkmodular", 0.016, "#ffffff", root);
+                Label cardName = TextUtil.createText(card.getCardName(), "hkmodular", 0.016, "#ffffff", root);
                 cardUI.getChildren().add(cardName);
                 cardList.getChildren().add(cardUI);
             }
