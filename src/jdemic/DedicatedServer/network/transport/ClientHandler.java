@@ -1,11 +1,12 @@
 package jdemic.DedicatedServer.network.transport;
 
-import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+
+import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
+import jdemic.DedicatedServer.network.security.StateMasker;
 
 public class ClientHandler implements Runnable {
 
@@ -44,15 +45,21 @@ public class ClientHandler implements Runnable {
             
             while ((mesajCriptat = in.readLine()) != null) {
 
-               
                 String mesajDecriptat = secureSocket.decrypt(mesajCriptat);
                 System.out.println("[ClientHandler] Am primit (decriptat): " + mesajDecriptat);
 
-                
-                String raspunsServer = mesajDecriptat;
+                // --- 1. Here is where you get the response from the Backend Game Logic ---
+                // For now, it's just echoing the message back, but eventually this will be JSON.
+                String raspunsServer = mesajDecriptat; 
 
-               
-                String raspunsCriptat = secureSocket.encrypt(raspunsServer);
+                // --- 2. APPLY ZERO-KNOWLEDGE MASKING BEFORE ENCRYPTION ---
+                // (Assuming we somehow know this thread belongs to "player2". 
+                // In the future, ClientHandler should store the connected player's ID)
+                String targetPlayerId = "player2"; 
+                String maskedResponse = StateMasker.maskStateForPlayer(raspunsServer, targetPlayerId);
+
+                // --- 3. Encrypt the cleaned, masked data and send it ---
+                String raspunsCriptat = secureSocket.encrypt(maskedResponse);
                 out.println(raspunsCriptat);
             }
 
