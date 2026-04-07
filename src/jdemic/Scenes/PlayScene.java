@@ -293,7 +293,7 @@ public class PlayScene {
         StackPane.setAlignment(playerIconsContainer, Pos.TOP_LEFT);
         playerIconsContainer.setPickOnBounds(false);
 
-        for (Player p : gameManager.getPlayers()) {
+        for (Player p : gameManager.getState().getPlayers()) {
             playerIconsContainer.getChildren().add(createGameplayPlayerRow(p));
         }
         root.getChildren().add(playerIconsContainer);

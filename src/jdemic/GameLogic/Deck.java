@@ -35,12 +35,12 @@ public class Deck {
 
     private void createDecks(){
         // City Cards
-        manager.map.getCityList()
+        manager.getState().getMap().getCityList()
             .stream()
             .forEach(c->playerCards.add(new Card(c.getName(), CardType.CITY, c )));
 
         // Infection Cards
-        manager.map.getCityList()
+        manager.getState().getMap().getCityList()
             .stream()
             .forEach(c->infectionCards.add(new Card(c.getName(), CardType.INFECTION, c )));
         

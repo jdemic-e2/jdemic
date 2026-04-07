@@ -14,7 +14,7 @@ public class GameManager {
     public GameManager(List<Player> players) {
         this.state = new GameState(); 
         state.setMap(new PandemicMapGraph());
-        state.setDiseaseManager(new DiseaseManager());
+        state.setDiseaseManager(new DiseaseManager(this));
         state.setPlayers(players);
         state.setCardDeck(new Deck(this));
         state.setCurrentPlayerIndex(0);
@@ -45,7 +45,7 @@ public class GameManager {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
 
-        if(action.isValid(state))
+        if(action.isValid(state, player.getState()))
         {
             action.execute(state, player.getState());
             state.setActionsRemaining(state.getActionsRemaining() - 1);
@@ -78,7 +78,7 @@ public class GameManager {
 
     public void checkWinCondition()
     {
-        if(state.getDiseaseManager().isCured())
+        if(state.getDiseaseManager().areAllCured())
         {
             state.setGameOver(true);
             state.setGameWon(true);
@@ -114,6 +114,10 @@ public class GameManager {
     public Player getCurrentPlayer()
     {
         return state.getPlayers().get(state.getCurrentPlayerIndex());
+    }
+
+    public GameState getState(){
+        return this.state;
     }
 
     public boolean isGameOver()
