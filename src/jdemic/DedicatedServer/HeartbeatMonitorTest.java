@@ -8,11 +8,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
- * HeartbeatMonitorTest - Tests for the Zombie Connection Detector
- *
- * This test file verifies the core functionality of the HeartbeatMonitor module.
- * Each test method validates a specific behavior described in the comments.
- * Run this class directly (it has a main method) to execute all tests.
+ * Tests for HeartbeatMonitor - covers validation (null/blank/closed checks)
+ * and core features (register, unregister, pong, timeout, listener, lifecycle).
+ * Has its own main(), just run it directly.
  */
 public class HeartbeatMonitorTest {
 
@@ -22,9 +20,20 @@ public class HeartbeatMonitorTest {
     public static void main(String[] args) throws Exception {
         System.out.println("=== HeartbeatMonitor Test Suite ===\n");
 
-        testRegisterClient();
+        // validation tests (PR #27 fixes)
+        testRegisterClientWithValidParams();
+        testRejectNullPlayerId();
+        testRejectBlankPlayerId();
+        testRejectNullOutputStream();
+        testRejectNullSocket();
+        testRejectClosedSocket();
+
+        // functionality tests
         testUnregisterClient();
+        testUnregisterNullPlayerId();
         testReceivePongUpdatesTimestamp();
+        testReceivePongIgnoresNullPlayerId();
+        testReceivePongIgnoresUnknownPlayer();
         testTimeoutDetection();
         testDisconnectListenerNotification();
         testMultipleClientsRegistration();
@@ -33,193 +42,444 @@ public class HeartbeatMonitorTest {
         System.out.println("\n=== Results: " + testsPassed + " passed, "
                 + testsFailed + " failed out of "
                 + (testsPassed + testsFailed) + " tests ===");
+
+
+        if (testsFailed > 0) {
+            System.exit(1);
+        }
     }
 
-    /**
-     * TEST 1: Registering a client adds it to monitoring.
-     * After calling registerClient(), the monitor should report
-     * that the client is registered and the count should increase.
-     */
-    private static void testRegisterClient() {
+    // --- VALIDATION TESTS ---
+    // these cover the null/blank/closed bugs found in PR #27 review
+
+    // TEST 1: valid params -> should register fine
+    private static void testRegisterClientWithValidParams() throws Exception {
         HeartbeatMonitor monitor = new HeartbeatMonitor();
 
-        // Create a dummy output stream (we don't actually send data in this test)
-        PrintWriter dummyOut = new PrintWriter(new StringWriter());
-
-        monitor.registerClient("player_1", dummyOut, null);
-
-        boolean isRegistered = monitor.isClientRegistered("player_1");
-        boolean correctCount = monitor.getRegisteredClientCount() == 1;
-
-        assertTest("Client 'player_1' is registered after registerClient()",
-                isRegistered && correctCount);
-    }
-
-    /**
-     * TEST 2: Unregistering a client removes it from monitoring.
-     * After calling unregisterClient(), the monitor should no longer
-     * track that player.
-     */
-    private static void testUnregisterClient() {
-        HeartbeatMonitor monitor = new HeartbeatMonitor();
-        PrintWriter dummyOut = new PrintWriter(new StringWriter());
-
-        monitor.registerClient("player_2", dummyOut, null);
-        monitor.unregisterClient("player_2");
-
-        boolean isGone = !monitor.isClientRegistered("player_2");
-        boolean countZero = monitor.getRegisteredClientCount() == 0;
-
-        assertTest("Client 'player_2' is removed after unregisterClient()",
-                isGone && countZero);
-    }
-
-    /**
-     * TEST 3: Receiving a PONG updates the last timestamp.
-     * When receivePong() is called, the stored timestamp for that
-     * client should be updated to a more recent value.
-     */
-    private static void testReceivePongUpdatesTimestamp() throws InterruptedException {
-        HeartbeatMonitor monitor = new HeartbeatMonitor();
-        PrintWriter dummyOut = new PrintWriter(new StringWriter());
-
-        monitor.registerClient("player_3", dummyOut, null);
-
-        // Record the initial timestamp
-        Long initialTimestamp = monitor.getLastPongTimestamp("player_3");
-
-        // Wait a bit so the new timestamp will be different
-        Thread.sleep(100);
-
-        // Simulate receiving a PONG
-        monitor.receivePong("player_3");
-
-        Long updatedTimestamp = monitor.getLastPongTimestamp("player_3");
-
-        // The updated timestamp should be greater (more recent) than the initial
-        boolean timestampUpdated = updatedTimestamp != null
-                && initialTimestamp != null
-                && updatedTimestamp >= initialTimestamp;
-
-        assertTest("receivePong() updates the last PONG timestamp", timestampUpdated);
-    }
-
-    /**
-     * TEST 4: Timeout detection works correctly.
-     * If a client's last PONG timestamp is older than the timeout
-     * threshold (10 seconds), the monitor should detect it as timed out.
-     * We test this by checking the timestamp age logic directly.
-     */
-    private static void testTimeoutDetection() {
-        HeartbeatMonitor monitor = new HeartbeatMonitor();
-        PrintWriter dummyOut = new PrintWriter(new StringWriter());
-
-        monitor.registerClient("player_4", dummyOut, null);
-
-        // Get the stored timestamp
-        Long lastPong = monitor.getLastPongTimestamp("player_4");
-        long now = System.currentTimeMillis();
-
-        // A freshly registered client should NOT be timed out
-        // (timeSinceLastPong should be < 10000ms)
-        boolean notTimedOut = (now - lastPong) < 10_000;
-
-        assertTest("Freshly registered client is NOT in timeout state", notTimedOut);
-    }
-
-    /**
-     * TEST 5: DisconnectListener is notified on forced disconnect.
-     * When a client is forcefully disconnected, the registered
-     * listener should receive a callback with the player's ID.
-     */
-    private static void testDisconnectListenerNotification() throws Exception {
-        HeartbeatMonitor monitor = new HeartbeatMonitor();
-
-        // Track whether the listener was called and with what ID
-        final String[] disconnectedPlayerId = {null};
-        monitor.setDisconnectListener(playerId -> {
-            disconnectedPlayerId[0] = playerId;
-        });
-
-        // Create a real server socket and connect a client to get a real Socket
-        ServerSocket serverSocket = new ServerSocket(0); // random available port
+        // need a real socket pair since registerClient checks isConnected()
+        ServerSocket serverSocket = new ServerSocket(0);
         int port = serverSocket.getLocalPort();
 
-        // Client connects in a separate thread
         Thread clientThread = new Thread(() -> {
             try {
-                Socket clientSocket = new Socket("127.0.0.1", port);
-                // Keep it open briefly
+                Socket client = new Socket("127.0.0.1", port);
                 Thread.sleep(2000);
-                clientSocket.close();
+                client.close();
             } catch (Exception e) {
-                // Expected when server closes the connection
+                // Expected
             }
         });
         clientThread.start();
 
         Socket serverSideSocket = serverSocket.accept();
-        PrintWriter out = new PrintWriter(serverSideSocket.getOutputStream(), true);
+        PrintWriter outStream = new PrintWriter(serverSideSocket.getOutputStream(), true);
 
-        monitor.registerClient("player_5", out, serverSideSocket);
 
-        // Manually trigger a disconnect (simulating what heartbeatCycle would do)
-        // We access the forceDisconnect logic indirectly through unregister
-        // and manual listener call for testing purposes
-        monitor.unregisterClient("player_5");
-        monitor.setDisconnectListener(playerId -> {
-            disconnectedPlayerId[0] = playerId;
-        });
+        boolean registered = monitor.registerClient("player_1", outStream, serverSideSocket);
 
-        // For this test, we verify the listener mechanism works
-        // by invoking the listener directly
-        DisconnectListenerTestHelper helper = new DisconnectListenerTestHelper();
-        monitor.setDisconnectListener(helper);
-        helper.onPlayerDisconnected("player_5");
+        boolean isRegistered = monitor.isClientRegistered("player_1");
+        boolean correctCount = monitor.getRegisteredClientCount() == 1;
 
-        boolean listenerCalled = "player_5".equals(helper.getLastDisconnectedId());
 
-        // Cleanup
         serverSideSocket.close();
         serverSocket.close();
         clientThread.join(3000);
 
-        assertTest("DisconnectListener receives correct player ID on disconnect",
-                listenerCalled);
+        assertTest("registerClient() returns true and client is tracked with valid params",
+                registered && isRegistered && correctCount);
     }
 
-    /**
-     * TEST 6: Multiple clients can be registered simultaneously.
-     * The monitor should correctly track multiple players at once.
-     */
-    private static void testMultipleClientsRegistration() {
+    // TEST 2: null playerId -> must reject (ConcurrentHashMap.put(null,...) = NPE)
+    private static void testRejectNullPlayerId() throws Exception {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+
+        ServerSocket serverSocket = new ServerSocket(0);
+        int port = serverSocket.getLocalPort();
+
+        Thread clientThread = new Thread(() -> {
+            try {
+                Socket client = new Socket("127.0.0.1", port);
+                Thread.sleep(1000);
+                client.close();
+            } catch (Exception e) {
+                // Expected
+            }
+        });
+        clientThread.start();
+
+        Socket serverSideSocket = serverSocket.accept();
+        PrintWriter outStream = new PrintWriter(serverSideSocket.getOutputStream(), true);
+
+        // try registering with null - should fail
+        boolean registered = monitor.registerClient(null, outStream, serverSideSocket);
+
+
+        boolean emptyMonitor = monitor.getRegisteredClientCount() == 0;
+
+
+        serverSideSocket.close();
+        serverSocket.close();
+        clientThread.join(3000);
+
+        assertTest("Null playerId is rejected (prevents NullPointerException crash)",
+                !registered && emptyMonitor);
+    }
+
+    // TEST 3: empty/whitespace playerId -> rejected too
+    private static void testRejectBlankPlayerId() throws Exception {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        ServerSocket serverSocket = new ServerSocket(0);
+        int port = serverSocket.getLocalPort();
+
+        Thread clientThread = new Thread(() -> {
+            try {
+                Socket client = new Socket("127.0.0.1", port);
+                Thread.sleep(1000);
+                client.close();
+            } catch (Exception e) {
+                // Expected
+            }
+        });
+        clientThread.start();
+
+        Socket serverSideSocket = serverSocket.accept();
+        PrintWriter outStream = new PrintWriter(serverSideSocket.getOutputStream(), true);
+
+        // empty string
+        boolean registeredEmpty = monitor.registerClient("", outStream, serverSideSocket);
+        // just spaces
+        boolean registeredBlank = monitor.registerClient("   ", outStream, serverSideSocket);
+
+        boolean emptyMonitor = monitor.getRegisteredClientCount() == 0;
+
+
+        serverSideSocket.close();
+        serverSocket.close();
+        clientThread.join(3000);
+
+        assertTest("Blank/empty playerId is rejected",
+                !registeredEmpty && !registeredBlank && emptyMonitor);
+    }
+
+    // TEST 4: null outStream -> rejected (no stream = can't send PINGs = always timeout)
+    private static void testRejectNullOutputStream() throws Exception {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        ServerSocket serverSocket = new ServerSocket(0);
+        int port = serverSocket.getLocalPort();
+
+        Thread clientThread = new Thread(() -> {
+            try {
+                Socket client = new Socket("127.0.0.1", port);
+                Thread.sleep(1000);
+                client.close();
+            } catch (Exception e) {
+                // Expected
+            }
+        });
+        clientThread.start();
+
+        Socket serverSideSocket = serverSocket.accept();
+
+        // valid socket but no output stream
+        boolean registered = monitor.registerClient("player_null_stream", null, serverSideSocket);
+        boolean emptyMonitor = monitor.getRegisteredClientCount() == 0;
+
+
+        serverSideSocket.close();
+        serverSocket.close();
+        clientThread.join(3000);
+
+        assertTest("Null outStream is rejected (cannot send PINGs without output stream)",
+                !registered && emptyMonitor);
+    }
+
+    // TEST 5: null socket -> rejected (can't force-close without it)
+    private static void testRejectNullSocket() {
         HeartbeatMonitor monitor = new HeartbeatMonitor();
         PrintWriter dummyOut = new PrintWriter(new StringWriter());
 
-        monitor.registerClient("player_A", dummyOut, null);
-        monitor.registerClient("player_B", dummyOut, null);
-        monitor.registerClient("player_C", dummyOut, null);
+
+        boolean registered = monitor.registerClient("player_null_socket", dummyOut, null);
+        boolean emptyMonitor = monitor.getRegisteredClientCount() == 0;
+
+        assertTest("Null rawSocket is rejected (cannot force disconnect without socket)",
+                !registered && emptyMonitor);
+    }
+
+    // TEST 6: closed socket -> rejected (dead on arrival)
+    private static void testRejectClosedSocket() throws Exception {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        ServerSocket serverSocket = new ServerSocket(0);
+        int port = serverSocket.getLocalPort();
+
+        Thread clientThread = new Thread(() -> {
+            try {
+                Socket client = new Socket("127.0.0.1", port);
+                client.close();
+            } catch (Exception e) {
+                // Expected
+            }
+        });
+        clientThread.start();
+
+        Socket serverSideSocket = serverSocket.accept();
+        PrintWriter outStream = new PrintWriter(serverSideSocket.getOutputStream(), true);
+
+        // kill the socket first, then try to register
+        serverSideSocket.close();
+
+        boolean registered = monitor.registerClient("player_closed_socket", outStream, serverSideSocket);
+        boolean emptyMonitor = monitor.getRegisteredClientCount() == 0;
+
+
+        serverSocket.close();
+        clientThread.join(3000);
+
+        assertTest("Closed socket is rejected (socket.isClosed() check)",
+                !registered && emptyMonitor);
+    }
+
+    // --- CORE FUNCTIONALITY TESTS ---
+
+    // TEST 7: unregister removes the client
+    private static void testUnregisterClient() throws Exception {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+
+        ServerSocket serverSocket = new ServerSocket(0);
+        int port = serverSocket.getLocalPort();
+
+        Thread clientThread = new Thread(() -> {
+            try {
+                Socket client = new Socket("127.0.0.1", port);
+                Thread.sleep(2000);
+                client.close();
+            } catch (Exception e) {
+                // Expected
+            }
+        });
+        clientThread.start();
+
+        Socket serverSideSocket = serverSocket.accept();
+        PrintWriter outStream = new PrintWriter(serverSideSocket.getOutputStream(), true);
+
+        monitor.registerClient("player_unreg", outStream, serverSideSocket);
+        monitor.unregisterClient("player_unreg");
+
+        boolean isGone = !monitor.isClientRegistered("player_unreg");
+        boolean countZero = monitor.getRegisteredClientCount() == 0;
+
+
+        serverSideSocket.close();
+        serverSocket.close();
+        clientThread.join(3000);
+
+        assertTest("Client removed after unregisterClient()", isGone && countZero);
+    }
+
+    // TEST 8: unregisterClient(null) shouldn't crash (NPE guard)
+    private static void testUnregisterNullPlayerId() {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        boolean noCrash = true;
+        try {
+
+            monitor.unregisterClient(null);
+        } catch (Exception e) {
+            noCrash = false;
+        }
+
+        assertTest("unregisterClient(null) does not crash", noCrash);
+    }
+
+    // TEST 9: receivePong should update the timestamp
+    private static void testReceivePongUpdatesTimestamp() throws Exception {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        ServerSocket serverSocket = new ServerSocket(0);
+        int port = serverSocket.getLocalPort();
+
+        Thread clientThread = new Thread(() -> {
+            try {
+                Socket client = new Socket("127.0.0.1", port);
+                Thread.sleep(2000);
+                client.close();
+            } catch (Exception e) {
+                // Expected
+            }
+        });
+        clientThread.start();
+
+        Socket serverSideSocket = serverSocket.accept();
+        PrintWriter outStream = new PrintWriter(serverSideSocket.getOutputStream(), true);
+
+        monitor.registerClient("player_pong", outStream, serverSideSocket);
+
+        // save initial timestamp
+        Long initialTimestamp = monitor.getLastPongTimestamp("player_pong");
+
+        // small delay so timestamps differ
+        Thread.sleep(100);
+
+        // simulate PONG
+        monitor.receivePong("player_pong");
+
+        Long updatedTimestamp = monitor.getLastPongTimestamp("player_pong");
+
+        boolean timestampUpdated = updatedTimestamp != null
+                && initialTimestamp != null
+                && updatedTimestamp >= initialTimestamp;
+
+
+        serverSideSocket.close();
+        serverSocket.close();
+        clientThread.join(3000);
+
+        assertTest("receivePong() updates the last PONG timestamp", timestampUpdated);
+    }
+
+    // TEST 10: receivePong(null) shouldn't crash (NPE guard)
+    private static void testReceivePongIgnoresNullPlayerId() {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        boolean noCrash = true;
+        try {
+            monitor.receivePong(null);
+        } catch (Exception e) {
+            noCrash = false;
+        }
+
+        assertTest("receivePong(null) does not crash", noCrash);
+    }
+
+    // TEST 11: receivePong for unknown player shouldn't add them
+    private static void testReceivePongIgnoresUnknownPlayer() {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        // pong for a player we never registered
+        monitor.receivePong("unknown_player");
+
+        boolean notAdded = !monitor.isClientRegistered("unknown_player");
+
+        assertTest("receivePong() for unregistered player does not create entry", notAdded);
+    }
+
+    // TEST 12: fresh client shouldn't be timed out
+    private static void testTimeoutDetection() throws Exception {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        ServerSocket serverSocket = new ServerSocket(0);
+        int port = serverSocket.getLocalPort();
+
+        Thread clientThread = new Thread(() -> {
+            try {
+                Socket client = new Socket("127.0.0.1", port);
+                Thread.sleep(2000);
+                client.close();
+            } catch (Exception e) {
+                // Expected
+            }
+        });
+        clientThread.start();
+
+        Socket serverSideSocket = serverSocket.accept();
+        PrintWriter outStream = new PrintWriter(serverSideSocket.getOutputStream(), true);
+
+        monitor.registerClient("player_timeout", outStream, serverSideSocket);
+
+        // check timestamp right after registration
+        Long lastPong = monitor.getLastPongTimestamp("player_timeout");
+        long now = System.currentTimeMillis();
+
+        // just registered, should NOT be timed out
+        boolean notTimedOut = lastPong != null && (now - lastPong) < 10_000;
+
+
+        serverSideSocket.close();
+        serverSocket.close();
+        clientThread.join(3000);
+
+        assertTest("Freshly registered client is NOT in timeout state", notTimedOut);
+    }
+
+    // TEST 13: listener gets called with the right player ID
+    private static void testDisconnectListenerNotification() throws Exception {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+
+        DisconnectListenerTestHelper helper = new DisconnectListenerTestHelper();
+        monitor.setDisconnectListener(helper);
+
+        // fire it manually to check the mechanism works
+        helper.onPlayerDisconnected("player_disconnect");
+
+        boolean listenerCalled = "player_disconnect".equals(helper.getLastDisconnectedId());
+
+        assertTest("DisconnectListener receives correct player ID on disconnect", listenerCalled);
+    }
+
+    // TEST 14: tracking multiple clients at once
+    private static void testMultipleClientsRegistration() throws Exception {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        // spin up 3 real socket connections
+        ServerSocket serverSocket = new ServerSocket(0);
+        int port = serverSocket.getLocalPort();
+
+        Socket[] serverSockets = new Socket[3];
+        Thread[] clientThreads = new Thread[3];
+
+        for (int i = 0; i < 3; i++) {
+            clientThreads[i] = new Thread(() -> {
+                try {
+                    Socket client = new Socket("127.0.0.1", port);
+                    Thread.sleep(3000);
+                    client.close();
+                } catch (Exception e) {
+                    // Expected
+                }
+            });
+            clientThreads[i].start();
+            serverSockets[i] = serverSocket.accept();
+        }
+
+
+        String[] ids = { "player_A", "player_B", "player_C" };
+        for (int i = 0; i < 3; i++) {
+            PrintWriter out = new PrintWriter(serverSockets[i].getOutputStream(), true);
+            monitor.registerClient(ids[i], out, serverSockets[i]);
+        }
 
         boolean allRegistered = monitor.isClientRegistered("player_A")
                 && monitor.isClientRegistered("player_B")
                 && monitor.isClientRegistered("player_C");
         boolean correctCount = monitor.getRegisteredClientCount() == 3;
 
-        assertTest("3 clients registered simultaneously, all tracked", allRegistered && correctCount);
+
+        for (Socket s : serverSockets) {
+            s.close();
+        }
+        serverSocket.close();
+        for (Thread t : clientThreads) {
+            t.join(3000);
+        }
+
+        assertTest("3 clients registered simultaneously, all tracked",
+                allRegistered && correctCount);
     }
 
-    /**
-     * TEST 7: Start and Stop lifecycle works without errors.
-     * The monitor should start its scheduler and stop it
-     * gracefully without throwing exceptions.
-     */
+    // TEST 15: start/stop lifecycle shouldn't throw
     private static void testStartAndStop() {
         HeartbeatMonitor monitor = new HeartbeatMonitor();
 
         boolean noError = true;
         try {
             monitor.start();
-            // Let it run briefly
+            // let it run a bit
             Thread.sleep(500);
             monitor.stop();
         } catch (Exception e) {
@@ -230,12 +490,9 @@ public class HeartbeatMonitorTest {
         assertTest("start() and stop() complete without exceptions", noError);
     }
 
-    // --- Helper class for testing the DisconnectListener ---
+    // --- helpers ---
 
-    /**
-     * Simple implementation of DisconnectListener that records
-     * the last disconnected player ID for assertion purposes.
-     */
+    // records the last disconnected ID for assertions
     private static class DisconnectListenerTestHelper implements HeartbeatMonitor.DisconnectListener {
         private String lastDisconnectedId = null;
 
@@ -249,7 +506,7 @@ public class HeartbeatMonitorTest {
         }
     }
 
-    // --- Utility method for assertion ---
+
 
     private static void assertTest(String testName, boolean condition) {
         if (condition) {

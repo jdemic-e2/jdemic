@@ -9,66 +9,43 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * HeartbeatMonitor - Zombie Connection Detector
+ * Monitors client connections and detects zombies (dead/unresponsive ones).
  *
- * Runs as an asynchronous background service that monitors all active
- * client connections registered in the SessionRegistry.
+ * Sends PING every 3s, expects PONG back. If no PONG within 10s,
+ * force-closes the connection and notifies the backend.
  *
- * Mechanism:
- * - Every 3 seconds, sends a PING packet to all connected clients
- *   through their respective ClientHandler output streams.
- * - Waits for a PONG response (which arrives back via PacketProcessor).
- * - If no PONG is received within 10 seconds (Timeout), the connection
- *   is considered dead ("zombie") and is forcefully closed.
- * - Upon timeout, the backend is notified that the player has left the match.
- *
- * Integration with other modules:
- * - The playerId parameter used in registerClient() corresponds to
- *   ClientHandler.getPlayerId() (e.g. "Player_a3f2b").
- * - On timeout, the DisconnectListener should call
- *   SessionRegistry.removePlayer(playerId) to keep the registry in sync.
- * - ClientHandler should call registerClient() in its run() method,
- *   right after SessionRegistry.registerPlayer() succeeds.
+ * playerId = ClientHandler.getPlayerId() (e.g. "Player_a3f2b").
+ * On timeout, DisconnectListener calls SessionRegistry.removePlayer().
  */
 public class HeartbeatMonitor {
 
-    // Interval between PING signals (in seconds)
+    // how often we ping (seconds)
     private static final int PING_INTERVAL_SECONDS = 3;
 
-    // Maximum time to wait for a PONG before declaring a connection dead (in ms)
+    // if no pong after this many ms, connection is dead
     private static final long TIMEOUT_MS = 10_000;
 
-    // The PING packet string sent to clients
     private static final String PING_PACKET = "PING";
 
-    // Maps a player identifier (e.g. socket address or player ID) to the
-    // timestamp of the last received PONG response
+    // playerId -> when we last got a PONG from them
     private final ConcurrentHashMap<String, Long> lastPongTimestamps;
 
-    // Maps a player identifier to their output stream (for sending PINGs)
+    // playerId -> output stream (we send PINGs through this)
     private final ConcurrentHashMap<String, PrintWriter> clientOutputStreams;
 
-    // Maps a player identifier to their raw socket (for forced disconnection)
+    // playerId -> raw socket (need this to force-close on timeout)
     private final ConcurrentHashMap<String, Socket> clientSockets;
 
-    // Background scheduler for periodic PING tasks
     private final ScheduledExecutorService scheduler;
 
-    // Listener interface for notifying the backend about disconnections
     private DisconnectListener disconnectListener;
 
-    /**
-     * Callback interface used to notify the game backend
-     * when a player is disconnected due to heartbeat timeout.
-     */
+    // callback for when we kick someone due to timeout
     public interface DisconnectListener {
         void onPlayerDisconnected(String playerId);
     }
 
-    /**
-     * Creates a new HeartbeatMonitor instance.
-     * Does not start monitoring until start() is called.
-     */
+
     public HeartbeatMonitor() {
         this.lastPongTimestamps = new ConcurrentHashMap<>();
         this.clientOutputStreams = new ConcurrentHashMap<>();
@@ -80,43 +57,63 @@ public class HeartbeatMonitor {
         });
     }
 
-    /**
-     * Sets the listener that will be notified when a player
-     * is forcefully disconnected due to heartbeat timeout.
-     *
-     * @param listener the callback to invoke on disconnect
-     */
+
     public void setDisconnectListener(DisconnectListener listener) {
         this.disconnectListener = listener;
     }
 
     /**
-     * Registers a new client for heartbeat monitoring.
-     * Called after the connection has been secured and the client
-     * has been added to the SessionRegistry.
+     * Registers a client for monitoring. Call this after SessionRegistry.registerPlayer().
+     * All 3 params must be non-null and socket must be open - ConcurrentHashMap
+     * throws NPE on null keys/values so we validate everything upfront.
      *
-     * @param playerId   unique identifier for the player (e.g. socket address)
-     * @param outStream  the PrintWriter to the client's output stream
-     * @param rawSocket  the client's raw Socket for forced close
+     * @return true if registered, false if something was invalid
      */
-    public void registerClient(String playerId, PrintWriter outStream, Socket rawSocket) {
+    public boolean registerClient(String playerId, PrintWriter outStream, Socket rawSocket) {
+        // null key = NPE in ConcurrentHashMap
+        if (playerId == null || playerId.isBlank()) {
+            System.err.println("[HeartbeatMonitor] Registration rejected: playerId is null or blank.");
+            return false;
+        }
+
+        // no stream = can't send PINGs
+        if (outStream == null) {
+            System.err.println("[HeartbeatMonitor] Registration rejected for " + playerId
+                    + ": outStream is null. Cannot send PING without output stream.");
+            return false;
+        }
+
+        // no socket = can't force-close on timeout
+        if (rawSocket == null) {
+            System.err.println("[HeartbeatMonitor] Registration rejected for " + playerId
+                    + ": rawSocket is null. Cannot monitor a client without a socket.");
+            return false;
+        }
+
+        // already dead socket, don't bother
+        if (rawSocket.isClosed() || !rawSocket.isConnected()) {
+            System.err.println("[HeartbeatMonitor] Registration rejected for " + playerId
+                    + ": socket is closed or not connected.");
+            return false;
+        }
+
+        // all good, add to maps
         lastPongTimestamps.put(playerId, System.currentTimeMillis());
-        if (outStream != null) {
-            clientOutputStreams.put(playerId, outStream);
-        }
-        if (rawSocket != null) {
-            clientSockets.put(playerId, rawSocket);
-        }
+        clientOutputStreams.put(playerId, outStream);
+        clientSockets.put(playerId, rawSocket);
         System.out.println("[HeartbeatMonitor] Registered client: " + playerId);
+        return true;
     }
 
     /**
-     * Removes a client from heartbeat monitoring.
-     * Called when a client disconnects normally or is removed from SessionRegistry.
-     *
-     * @param playerId the identifier of the player to unregister
+     * Removes a client from monitoring (normal disconnect or SessionRegistry removal).
      */
     public void unregisterClient(String playerId) {
+        // ConcurrentHashMap.remove(null) throws NPE
+        if (playerId == null) {
+            System.err.println("[HeartbeatMonitor] Cannot unregister: playerId is null.");
+            return;
+        }
         lastPongTimestamps.remove(playerId);
         clientOutputStreams.remove(playerId);
         clientSockets.remove(playerId);
@@ -124,22 +121,20 @@ public class HeartbeatMonitor {
     }
 
     /**
-     * Called by the PacketProcessor when a PONG response is received
-     * from a client. Updates the timestamp of the last valid heartbeat.
-     *
-     * @param playerId the identifier of the client who responded
+     * Called by PacketProcessor when we get a PONG back.
      */
     public void receivePong(String playerId) {
+        // containsKey(null) throws NPE
+        if (playerId == null) {
+            return;
+        }
         if (lastPongTimestamps.containsKey(playerId)) {
             lastPongTimestamps.put(playerId, System.currentTimeMillis());
         }
     }
 
     /**
-     * Starts the heartbeat monitoring service.
-     * Schedules a periodic task every PING_INTERVAL_SECONDS that:
-     * 1. Sends PING to all registered clients
-     * 2. Checks for timed-out clients and disconnects them
+     * Starts the background loop (ping everyone, check for timeouts).
      */
     public void start() {
         scheduler.scheduleAtFixedRate(this::heartbeatCycle,
@@ -151,8 +146,7 @@ public class HeartbeatMonitor {
     }
 
     /**
-     * Stops the heartbeat monitoring service gracefully.
-     * Waits up to 5 seconds for pending tasks to complete.
+     * Shuts down the scheduler, waits up to 5s for it to finish.
      */
     public void stop() {
         scheduler.shutdown();
@@ -167,26 +161,23 @@ public class HeartbeatMonitor {
         System.out.println("[HeartbeatMonitor] Stopped.");
     }
 
-    /**
-     * The core heartbeat cycle executed periodically.
-     * Sends PINGs and checks for timeouts.
-     */
+    // runs every PING_INTERVAL_SECONDS - sends PINGs and kicks timed-out clients
     private void heartbeatCycle() {
         long now = System.currentTimeMillis();
 
-        // Iterate over all registered clients
+
         for (Map.Entry<String, Long> entry : lastPongTimestamps.entrySet()) {
             String playerId = entry.getKey();
             long lastPong = entry.getValue();
 
-            // Step 1: Send a PING to the client
+            // send PING
             PrintWriter out = clientOutputStreams.get(playerId);
             if (out != null && !out.checkError()) {
                 out.println(PING_PACKET);
                 out.flush();
             }
 
-            // Step 2: Check if the client has timed out
+            // check if they timed out
             long timeSinceLastPong = now - lastPong;
             if (timeSinceLastPong > TIMEOUT_MS) {
                 System.out.println("[HeartbeatMonitor] TIMEOUT for client: " + playerId
@@ -196,23 +187,9 @@ public class HeartbeatMonitor {
         }
     }
 
-    /**
-     * Forcefully closes a client's connection and notifies the backend.
-     *
-     * Integration with SessionRegistry:
-     * The DisconnectListener callback is designed so that the server wiring code
-     * can call SessionRegistry.removePlayer(playerId) when a timeout occurs.
-     *
-     * Example wiring (done in JdemicNetworkServer or main server setup):
-     *   heartbeatMonitor.setDisconnectListener(playerId -> {
-     *       SessionRegistry.removePlayer(playerId);
-     *       System.out.println("Player " + playerId + " removed after heartbeat timeout.");
-     *   });
-     *
-     * @param playerId the identifier of the timed-out player
-     */
+    // force-closes a timed out client: close socket -> unregister -> notify listener
     private void forceDisconnect(String playerId) {
-        // Close the socket
+
         Socket socket = clientSockets.get(playerId);
         if (socket != null && !socket.isClosed()) {
             try {
@@ -222,16 +199,16 @@ public class HeartbeatMonitor {
             }
         }
 
-        // Remove from heartbeat monitoring maps
+
         unregisterClient(playerId);
 
-        // Notify the game backend (triggers SessionRegistry.removePlayer via listener)
+        // tell the backend (they should call SessionRegistry.removePlayer)
         if (disconnectListener != null) {
             disconnectListener.onPlayerDisconnected(playerId);
         }
     }
 
-    // --- Getters for testing and monitoring ---
+    // --- getters (mostly for tests) ---
 
     public int getRegisteredClientCount() {
         return lastPongTimestamps.size();
