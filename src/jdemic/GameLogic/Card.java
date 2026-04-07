@@ -1,87 +1,65 @@
 package jdemic.GameLogic;
-
-import org.joml.Vector2f;
-
-import java.awt.*;
-
 public class Card {
-    
-    //Info related variables
-    private final int id;
-    private final String name;
-    private final CardType cardType;
-    private final Color cityColor;
-    private String description;
-    
-    //Position related variables
-    private Vector2f position;     // Base position
-    private float currentYOffset;  // Animation offset
-    private float targetYOffset;   // Target offset
 
-    private final float MOVE_SPEED = 0.1f;
-    private final float HOVER_DIST = 50.0f;
-
-    private final float CARD_WIDTH = 0.05f;
-    private final float CARD_HEIGHT = 0.18f;
-
-    public Card(int id, String name, CardType type, Color color, float x, float y) {
-        this.id = id;
-        this.name = name;
-        this.cardType = type;
-        this.cityColor = color;
-        this.position = new Vector2f(x, y);
-        this.description = "";
+    public enum EventType {
+        FIREWALL,
+        SATELLITE,
+        SERVER,
+        CONTROL,
+        THREAT
     }
     
-    public void setDescription(String description) {
-        this.description = description;
+    private String cardName;
+    private CardType type;
+    private CityNode targetCity;
+    private EventType eventType;
+
+    public Card(String cardName, CardType type, CityNode targetCity) {
+        this.cardName = cardName;
+        this.type = type;
+        this.targetCity = targetCity;
     }
 
-    //idk if this is how it should be but meh
-    public void update(double mouseX, double mouseY) {
-        boolean hovered = (mouseX >= position.x && mouseX <= position.x + CARD_WIDTH &&
-                mouseY >= position.y + currentYOffset && mouseY <= position.y + CARD_HEIGHT + currentYOffset);
-
-        if (hovered)
-        {
-            targetYOffset = -HOVER_DIST;
+    // Return the description on the card, used as a helper function for Front-end
+    public String getEffectDescription() {
+        switch(type){
+            case CITY:
+                return("You can use this card for any city-related action in " + this.getCardName());
+            case EVENT:
+                switch(eventType){
+                    case SATELLITE:
+                        return("Move any 1 pawn to any city on the board.");
+                    case SERVER:
+                        return("Place 1 Research Station in any city (no City card required).");
+                    case THREAT:
+                        return("Draw, examine, and rearrange the top 6 cards of the Infection Deck.");
+                    case FIREWALL:
+                        return("Skip the \"Infect Cities\" step of the current turn.");
+                    case CONTROL:
+                        return("Remove 1 card from the Infection Discard Pile from the game entirely.");
+                }
+            case INFECTION:
+                return("Use this card to infect " + this.getCardName());
+            case EPIDEMIC:
+                return("Start an epidemic in the next location.");
         }
-        else
-        {
-            targetYOffset = 0.0f;
-        }
-
-        currentYOffset += (targetYOffset - currentYOffset) * MOVE_SPEED;
+        return "error";
     }
 
-    //Getters
-    
-    public int getId()
-    {
-        return id;
-    }
-    
-    public String getName()
-    {
-        return name;
-    }
-    
-    public CardType getCardType()
-    {
-        return cardType;
-    }
-    
-    public Color getCityColor()
-    {
-        return cityColor;
-    }
-    
-    public Vector2f getPosition()
-    {
-        return position;
+    // Set Event type to one of the 5 event cards. This is added outside constructor as this is a specialized variable that isn't needed for the rest of the cards.
+    public void setEventType(EventType type){
+        this.eventType = type;
     }
 
-    public String getDescription() {
-        return this.description;
+    public String getCardName() {
+        return this.cardName;
+    }
+
+    public CardType getType() {
+        return this.type;
+    }
+
+    public CityNode getTargetCity() {
+        return this.targetCity;
     }
 }
