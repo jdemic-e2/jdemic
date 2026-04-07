@@ -15,61 +15,61 @@ public final class PandemicMapGraph
     public static List<CityNode> createNodes()
     {
         return List.of(
-            // Blue cities
-            new CityNode("San Francisco", CityNode.DiseaseColor.BLUE, 0.14f, 0.34f), //
-            new CityNode("Chicago", CityNode.DiseaseColor.BLUE, 0.24f, 0.30f), // 
-            new CityNode("Montreal", CityNode.DiseaseColor.BLUE, 0.30f, 0.26f), // 
-            new CityNode("New York", CityNode.DiseaseColor.BLUE, 0.30f, 0.32f), //
-            new CityNode("Washington", CityNode.DiseaseColor.BLUE, 0.28f, 0.35f),  //
-            new CityNode("Atlanta", CityNode.DiseaseColor.BLUE, 0.25f, 0.39f), //
-            new CityNode("London", CityNode.DiseaseColor.BLUE, 0.48f, 0.25f), //
-            new CityNode("Madrid", CityNode.DiseaseColor.BLUE, 0.475f, 0.335f), //
-            new CityNode("Paris", CityNode.DiseaseColor.BLUE, 0.49f, 0.28f), //
-            new CityNode("Essen", CityNode.DiseaseColor.BLUE, 0.50f, 0.22f), //
-            new CityNode("Milan", CityNode.DiseaseColor.BLUE, 0.52f, 0.32f), //
-            new CityNode("St. Petersburg", CityNode.DiseaseColor.BLUE, 0.57f, 0.21f), //
+                // Blue cities
+                new CityNode("San Francisco", DiseaseColor.BLUE, 0.14f, 0.34f), //
+                new CityNode("Chicago", DiseaseColor.BLUE, 0.24f, 0.30f), //
+                new CityNode("Montreal", DiseaseColor.BLUE, 0.30f, 0.26f), //
+                new CityNode("New York", DiseaseColor.BLUE, 0.30f, 0.32f), //
+                new CityNode("Washington", DiseaseColor.BLUE, 0.28f, 0.35f),  //
+                new CityNode("Atlanta", DiseaseColor.BLUE, 0.25f, 0.39f), //
+                new CityNode("London", DiseaseColor.BLUE, 0.48f, 0.25f), //
+                new CityNode("Madrid", DiseaseColor.BLUE, 0.475f, 0.335f), //
+                new CityNode("Paris", DiseaseColor.BLUE, 0.49f, 0.28f), //
+                new CityNode("Essen", DiseaseColor.BLUE, 0.50f, 0.22f), //
+                new CityNode("Milan", DiseaseColor.BLUE, 0.52f, 0.32f), //
+                new CityNode("St. Petersburg", DiseaseColor.BLUE, 0.57f, 0.21f), //
 
-            // Yellow cities
-            new CityNode("Los Angeles", CityNode.DiseaseColor.YELLOW, 0.16f, 0.40f), // 
-            new CityNode("Mexico City", CityNode.DiseaseColor.YELLOW, 0.21f, 0.49f), //
-            new CityNode("Miami", CityNode.DiseaseColor.YELLOW, 0.26f, 0.45f), //
-            new CityNode("Bogota", CityNode.DiseaseColor.YELLOW, 0.27f, 0.58f), //
-            new CityNode("Lima", CityNode.DiseaseColor.YELLOW, 0.27f, 0.71f), //
-            new CityNode("Santiago", CityNode.DiseaseColor.YELLOW, 0.28f, 0.88f), //
-            new CityNode("Sao Paulo", CityNode.DiseaseColor.YELLOW, 0.35f, 0.78f), //
-            new CityNode("Buenos Aires", CityNode.DiseaseColor.YELLOW, 0.32f, 0.88f), //
-            new CityNode("Lagos", CityNode.DiseaseColor.YELLOW, 0.50f, 0.57f), //
-            new CityNode("Khartoum", CityNode.DiseaseColor.YELLOW, 0.57f, 0.52f), //
-            new CityNode("Kinshasa", CityNode.DiseaseColor.YELLOW, 0.53f, 0.64f), //
-            new CityNode("Johannesburg", CityNode.DiseaseColor.YELLOW, 0.56f, 0.80f), //
+                // Yellow cities
+                new CityNode("Los Angeles", DiseaseColor.YELLOW, 0.16f, 0.40f), //
+                new CityNode("Mexico City", DiseaseColor.YELLOW, 0.21f, 0.49f), //
+                new CityNode("Miami", DiseaseColor.YELLOW, 0.26f, 0.45f), //
+                new CityNode("Bogota", DiseaseColor.YELLOW, 0.27f, 0.58f), //
+                new CityNode("Lima", DiseaseColor.YELLOW, 0.27f, 0.71f), //
+                new CityNode("Santiago", DiseaseColor.YELLOW, 0.28f, 0.88f), //
+                new CityNode("Sao Paulo", DiseaseColor.YELLOW, 0.35f, 0.78f), //
+                new CityNode("Buenos Aires", DiseaseColor.YELLOW, 0.32f, 0.88f), //
+                new CityNode("Lagos", DiseaseColor.YELLOW, 0.50f, 0.57f), //
+                new CityNode("Khartoum", DiseaseColor.YELLOW, 0.57f, 0.52f), //
+                new CityNode("Kinshasa", DiseaseColor.YELLOW, 0.53f, 0.64f), //
+                new CityNode("Johannesburg", DiseaseColor.YELLOW, 0.56f, 0.80f), //
 
-            // Black cities
-            new CityNode("Algiers", CityNode.DiseaseColor.BLACK, 0.50f, 0.38f), //
-            new CityNode("Cairo", CityNode.DiseaseColor.BLACK, 0.57f, 0.42f), // 
-            new CityNode("Istanbul", CityNode.DiseaseColor.BLACK, 0.57f, 0.34f), //
-            new CityNode("Moscow", CityNode.DiseaseColor.BLACK, 0.60f, 0.25f), //
-            new CityNode("Baghdad", CityNode.DiseaseColor.BLACK, 0.62f, 0.40f), //
-            new CityNode("Riyadh", CityNode.DiseaseColor.BLACK, 0.63f, 0.47f), //
-            new CityNode("Tehran", CityNode.DiseaseColor.BLACK, 0.64f, 0.36f), //
-            new CityNode("Karachi", CityNode.DiseaseColor.BLACK, 0.68f, 0.45f), //
-            new CityNode("Mumbai", CityNode.DiseaseColor.BLACK, 0.69f, 0.50f), //
-            new CityNode("Delhi", CityNode.DiseaseColor.BLACK, 0.72f, 0.42f), //
-            new CityNode("Chennai", CityNode.DiseaseColor.BLACK, 0.70f, 0.56f), //
-            new CityNode("Kolkata", CityNode.DiseaseColor.BLACK, 0.74f, 0.47f), //
+                // Black cities
+                new CityNode("Algiers", DiseaseColor.BLACK, 0.50f, 0.38f), //
+                new CityNode("Cairo", DiseaseColor.BLACK, 0.57f, 0.42f), //
+                new CityNode("Istanbul", DiseaseColor.BLACK, 0.57f, 0.34f), //
+                new CityNode("Moscow", DiseaseColor.BLACK, 0.60f, 0.25f), //
+                new CityNode("Baghdad", DiseaseColor.BLACK, 0.62f, 0.40f), //
+                new CityNode("Riyadh", DiseaseColor.BLACK, 0.63f, 0.47f), //
+                new CityNode("Tehran", DiseaseColor.BLACK, 0.64f, 0.36f), //
+                new CityNode("Karachi", DiseaseColor.BLACK, 0.68f, 0.45f), //
+                new CityNode("Mumbai", DiseaseColor.BLACK, 0.69f, 0.50f), //
+                new CityNode("Delhi", DiseaseColor.BLACK, 0.72f, 0.42f), //
+                new CityNode("Chennai", DiseaseColor.BLACK, 0.70f, 0.56f), //
+                new CityNode("Kolkata", DiseaseColor.BLACK, 0.74f, 0.47f), //
 
-            // Red cities
-            new CityNode("Beijing", CityNode.DiseaseColor.RED, 0.81f, 0.33f), //
-            new CityNode("Seoul", CityNode.DiseaseColor.RED, 0.84f, 0.36f), //
-            new CityNode("Tokyo", CityNode.DiseaseColor.RED, 0.88f, 0.38f), //
-            new CityNode("Shanghai", CityNode.DiseaseColor.RED, 0.83f, 0.41f), //
-            new CityNode("Hong Kong", CityNode.DiseaseColor.RED, 0.795f, 0.48f), //
-            new CityNode("Taipei", CityNode.DiseaseColor.RED, 0.83f, 0.47f), //
-            new CityNode("Osaka", CityNode.DiseaseColor.RED, 0.86f, 0.39f), //
-            new CityNode("Bangkok", CityNode.DiseaseColor.RED, 0.765f, 0.53f), //
-            new CityNode("Ho Chi Minh City", CityNode.DiseaseColor.RED, 0.79f, 0.55f), //
-            new CityNode("Manila", CityNode.DiseaseColor.RED, 0.83f, 0.51f), //
-            new CityNode("Jakarta", CityNode.DiseaseColor.RED, 0.78f, 0.65f), //
-            new CityNode("Sydney", CityNode.DiseaseColor.RED, 0.90f, 0.86f) //
+                // Red cities
+                new CityNode("Beijing", DiseaseColor.RED, 0.81f, 0.33f), //
+                new CityNode("Seoul", DiseaseColor.RED, 0.84f, 0.36f), //
+                new CityNode("Tokyo", DiseaseColor.RED, 0.88f, 0.38f), //
+                new CityNode("Shanghai", DiseaseColor.RED, 0.83f, 0.41f), //
+                new CityNode("Hong Kong", DiseaseColor.RED, 0.795f, 0.48f), //
+                new CityNode("Taipei", DiseaseColor.RED, 0.83f, 0.47f), //
+                new CityNode("Osaka", DiseaseColor.RED, 0.86f, 0.39f), //
+                new CityNode("Bangkok", DiseaseColor.RED, 0.765f, 0.53f), //
+                new CityNode("Ho Chi Minh City", DiseaseColor.RED, 0.79f, 0.55f), //
+                new CityNode("Manila", DiseaseColor.RED, 0.83f, 0.51f), //
+                new CityNode("Jakarta", DiseaseColor.RED, 0.78f, 0.65f), //
+                new CityNode("Sydney", DiseaseColor.RED, 0.90f, 0.86f) //
         );
     }
     
@@ -131,18 +131,19 @@ public final class PandemicMapGraph
         getCity("Seoul").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Beijing"), getCity("Shanghai"), getCity("Tokyo"))));
         getCity("Sydney").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Los Angeles"), getCity("Manila"), getCity("Jakarta"))));
 
-    }   
+    }
 
     public List<CityNode> getCityList(){
         return this.cityList;
     }
 
+    //find a city and return its reference
     public CityNode getCity(String name){
         CityNode city = cityList
-                            .stream()
-                            .filter(e -> name.equals(e.getName()))
-                            .findAny()
-                            .orElse(null);
+                .stream()
+                .filter(e -> name.equals(e.getName()))
+                .findAny()
+                .orElse(null);
         return city;
     }
 }

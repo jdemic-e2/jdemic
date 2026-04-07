@@ -8,12 +8,6 @@ import java.util.EnumMap;
 
 public class CityNode {
 
-    // Enums
-    public enum DiseaseColor 
-    {
-        BLUE, YELLOW, BLACK, RED
-    }
-
     // Static Board Data
     private final String name;
     private final DiseaseColor nativeColor;
@@ -70,6 +64,7 @@ public class CityNode {
 
     // Gameplay Mechanics Methods
 
+    
     public boolean addDiseaseCube(DiseaseColor color, int amount) 
     {
         int currentCubes = diseaseCubes.get(color);

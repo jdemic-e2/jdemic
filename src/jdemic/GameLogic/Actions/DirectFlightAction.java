@@ -17,20 +17,15 @@ public class DirectFlightAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
-    @Override public boolean isValid(GameState state) 
+    public boolean isValid(GameState state, PlayerState playerState) 
     {
-        return false;
-    }
-
-    public boolean isValid(PlayerState playerState) 
-    {
-        // verificam daca playerul contine cartea matching cu cityul altfel nu se poate folosii de direct flight
+        // check if the player has the respective city card.
         return playerState.getHand().stream().anyMatch(c -> c.getType() == CardType.CITY && c.getTargetCity() == destination);
     }
 
     @Override public void execute(GameState state, PlayerState playerState) 
     {
-        if(isValid(playerState))
+        if(isValid(state, playerState))
         {
             playerState.getHand().remove(cardToDiscard);
             playerState.setCurrentCity(destination);

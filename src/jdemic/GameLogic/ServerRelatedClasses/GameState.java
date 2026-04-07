@@ -32,7 +32,7 @@ public class GameState{
     private boolean gameWon;
 
     public GameState(){
-
+        this.playerArray = new ArrayList<>();
     }
 
     public void addPlayer(PlayerState s){

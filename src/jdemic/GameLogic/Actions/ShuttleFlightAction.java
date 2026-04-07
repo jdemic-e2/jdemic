@@ -13,21 +13,16 @@ public class ShuttleFlightAction extends GameAction {
         this.destination = destination;
     }
 
-    @Override public boolean isValid(GameState state) 
+    public boolean isValid(GameState state, PlayerState playerState) 
     {
-        return false;
-    }
-
-    public boolean isValid(PlayerState playerState) 
-    {
-        // ambele orase trebuie sa aiba centre de cercetare
+        // both cities must have research stations.
         CityNode currentCity = playerState.getPlayerCurrentCity();
         return currentCity.hasResearchStation() && destination.hasResearchStation();
     }
 
     @Override public void execute(GameState state, PlayerState playerState) 
     {
-        if(isValid(playerState))
+        if(isValid(state, playerState))
         {
             playerState.setCurrentCity(destination);
         }

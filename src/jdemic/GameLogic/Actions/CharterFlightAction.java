@@ -7,7 +7,7 @@ import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CardType;
 
 public class CharterFlightAction extends GameAction {
-    //Charter Flight -> Verifică dacă ai în mână cartea orașului în care te afli.
+    //Charter Flight -> Verify if you have the required city.
     
     private CityNode destination;
     private Card cardToDiscard;
@@ -17,13 +17,7 @@ public class CharterFlightAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
-    @Override 
-    public boolean isValid(GameState state) 
-    {
-        return false;
-    }
-
-    public boolean isValid(PlayerState playerState) 
+    public boolean isValid(GameState gameState, PlayerState playerState) 
     {
         // Player must have the card matching their CURRENT city
         CityNode currentCity = playerState.getPlayerCurrentCity();
@@ -34,7 +28,7 @@ public class CharterFlightAction extends GameAction {
     @Override 
     public void execute(GameState state, PlayerState playerState) 
     {
-        if(isValid(playerState))
+        if(isValid(state, playerState))
         {
             playerState.getHand().remove(cardToDiscard);
             playerState.setCurrentCity(destination);

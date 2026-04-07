@@ -20,6 +20,7 @@ public class Card {
         this.targetCity = targetCity;
     }
 
+    // Return the description on the card, used as a helper function for Front-end
     public String getEffectDescription() {
         switch(type){
             case CITY:
@@ -45,6 +46,7 @@ public class Card {
         return "error";
     }
 
+    // Set Event type to one of the 5 event cards. This is added outside constructor as this is a specialized variable that isn't needed for the rest of the cards.
     public void setEventType(EventType type){
         this.eventType = type;
     }

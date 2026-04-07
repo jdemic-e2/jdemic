@@ -1,8 +1,8 @@
 package jdemic.GameLogic;
 import java.util.List;
 
-import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
+import jdemic.GameLogic.Actions.GameAction;
 
 public class GameManager {
     GameState state;
@@ -11,8 +11,7 @@ public class GameManager {
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
     private static final int MAX_OUTBREAKS = 8;
 
-    public GameManager(List<Player> players) 
-    {
+    public GameManager(List<Player> players) {
         this.state = new GameState(); 
         state.setMap(new PandemicMapGraph());
         state.setDiseaseManager(new DiseaseManager());
