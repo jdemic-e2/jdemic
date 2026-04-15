@@ -3,6 +3,7 @@ package jdemic.DedicatedServer.network.session;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import jdemic.DedicatedServer.network.transport.ClientHandler;
 
@@ -15,16 +16,37 @@ public class SessionRegistry {
 
     // The thread-safe ledger mapping Player IDs to their specific network handler
     private static final Map<String, ClientHandler> activeSessions = new ConcurrentHashMap<>();
+    
+    // Strict Regex to validate the Player ID format (e.g., "Player_12345")
+    // Prevents injection of invalid characters like newlines (\n) or spaces.
+    private static final Pattern PLAYER_ID_PATTERN = Pattern.compile("^Player_[a-zA-Z0-9-]{5,36}$");
+
+    /**
+     * Internal security check to ensure the ID format is completely valid
+     * before it touches the server's memory.
+     */
+    private static boolean isValidPlayerId(String playerId) {
+        if (playerId == null || playerId.trim().isEmpty()) {
+            return false;
+        }
+        return PLAYER_ID_PATTERN.matcher(playerId).matches();
+    }
 
     /**
      * Registers a new player in the system after a successful secure handshake.
      * @param playerId The unique identifier of the player.
      * @param handler The ClientHandler thread managing their socket.
-     * @return true if registered successfully, false if the player is already logged in.
+     * @return true if registered successfully, false if the player is already logged in or ID is invalid.
      */
     public static boolean registerPlayer(String playerId, ClientHandler handler) {
-        if (playerId == null || handler == null) {
-            System.err.println("[SessionRegistry] Failed to register: Invalid player data.");
+        // Validation check based on Discord PR review
+        if (!isValidPlayerId(playerId)) {
+            System.err.println("[SessionRegistry] Failed to register: Invalid playerId format ('" + playerId + "')");
+            return false;
+        }
+
+        if (handler == null) {
+            System.err.println("[SessionRegistry] Failed to register: Handler is null.");
             return false;
         }
 
@@ -32,10 +54,10 @@ public class SessionRegistry {
         ClientHandler existingSession = activeSessions.putIfAbsent(playerId, handler);
         
         if (existingSession == null) {
-            System.out.println("[SessionRegistry] ✅ Player registered: " + playerId + " | Total active: " + activeSessions.size());
+            System.out.println("[SessionRegistry] Player registered: " + playerId + " | Total active: " + activeSessions.size());
             return true;
         } else {
-            System.err.println("[SessionRegistry] ⚠️ Connection rejected: Player " + playerId + " is already online.");
+            System.err.println("[SessionRegistry] Connection rejected: Player " + playerId + " is already online.");
             return false;
         }
     }
@@ -45,10 +67,10 @@ public class SessionRegistry {
      * @param playerId The unique identifier of the player.
      */
     public static void removePlayer(String playerId) {
-        if (playerId != null) {
+        if (isValidPlayerId(playerId)) {
             ClientHandler removed = activeSessions.remove(playerId);
             if (removed != null) {
-                System.out.println("[SessionRegistry] ❌ Player disconnected: " + playerId + " | Remaining: " + activeSessions.size());
+                System.out.println("[SessionRegistry] Player disconnected: " + playerId + " | Remaining: " + activeSessions.size());
             }
         }
     }
@@ -59,6 +81,7 @@ public class SessionRegistry {
      * @return The ClientHandler, or null if the player is offline.
      */
     public static ClientHandler getPlayerSession(String playerId) {
+        if (!isValidPlayerId(playerId)) return null;
         return activeSessions.get(playerId);
     }
 
@@ -66,6 +89,7 @@ public class SessionRegistry {
      * Checks if a specific player is currently online.
      */
     public static boolean isPlayerOnline(String playerId) {
+        if (!isValidPlayerId(playerId)) return false;
         return activeSessions.containsKey(playerId);
     }
 
@@ -81,7 +105,7 @@ public class SessionRegistry {
      * Disconnects all players and clears the registry (useful for server shutdown).
      */
     public static void clearAllSessions() {
-        System.out.println("[SessionRegistry] ⚠️ CLEARING ALL SESSIONS...");
+        System.out.println("[SessionRegistry] CLEARING ALL SESSIONS...");
         activeSessions.clear();
     }
 }
