@@ -162,28 +162,32 @@ public class HeartbeatMonitor {
     }
 
     // runs every PING_INTERVAL_SECONDS - sends PINGs and kicks timed-out clients
+    // wrapped in try-catch so a bad listener/disconnect doesn't crash the scheduler
     private void heartbeatCycle() {
-        long now = System.currentTimeMillis();
+        try {
+            long now = System.currentTimeMillis();
 
+            for (Map.Entry<String, Long> entry : lastPongTimestamps.entrySet()) {
+                String playerId = entry.getKey();
+                long lastPong = entry.getValue();
 
-        for (Map.Entry<String, Long> entry : lastPongTimestamps.entrySet()) {
-            String playerId = entry.getKey();
-            long lastPong = entry.getValue();
+                // send PING
+                PrintWriter out = clientOutputStreams.get(playerId);
+                if (out != null && !out.checkError()) {
+                    out.println(PING_PACKET);
+                    out.flush();
+                }
 
-            // send PING
-            PrintWriter out = clientOutputStreams.get(playerId);
-            if (out != null && !out.checkError()) {
-                out.println(PING_PACKET);
-                out.flush();
+                // check if they timed out
+                long timeSinceLastPong = now - lastPong;
+                if (timeSinceLastPong > TIMEOUT_MS) {
+                    System.out.println("[HeartbeatMonitor] TIMEOUT for client: " + playerId
+                            + " (no PONG for " + timeSinceLastPong + "ms). Forcing disconnect.");
+                    forceDisconnect(playerId);
+                }
             }
-
-            // check if they timed out
-            long timeSinceLastPong = now - lastPong;
-            if (timeSinceLastPong > TIMEOUT_MS) {
-                System.out.println("[HeartbeatMonitor] TIMEOUT for client: " + playerId
-                        + " (no PONG for " + timeSinceLastPong + "ms). Forcing disconnect.");
-                forceDisconnect(playerId);
-            }
+        } catch (Exception e) {
+            System.err.println("[HeartbeatMonitor] Error in heartbeat cycle: " + e.getMessage());
         }
     }
 
