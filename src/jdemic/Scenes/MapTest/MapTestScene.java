@@ -19,6 +19,7 @@ import javafx.stage.Stage;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.PandemicMapGraph;
 import jdemic.Scenes.MainMenuScene;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.GameLogic.*;
 
@@ -197,7 +198,7 @@ public class MapTestScene {
     }
 
     private void returnToMainMenu() {
-        stage.getScene().setRoot(new MainMenuScene(stage).getRoot());
+        SceneManager.switchScene("MAIN_MENU");
     }
 
     private void setupBackground() {

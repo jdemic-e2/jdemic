@@ -181,28 +181,20 @@ public class MainMenuScene {
         ButtonsUtil settingsBtn = new ButtonsUtil("SETTINGS", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil exitBtn = new ButtonsUtil("EXIT", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
 
-        maptestBtn.setOnMouseClicked(e ->{
-            MapTestScene maptest = new MapTestScene(stage);
-            stage.getScene().setRoot(new MapTestScene(stage).getRoot());
+        maptestBtn.setOnMouseClicked(e -> {
+            SceneManager.switchScene("MAP_TEST");
         });
 
         tutorialBtn.setOnMouseClicked(e -> {
-            System.out.println("CLICKED");
-
-            TutorialRulesScene tutorial = new TutorialRulesScene(stage);
-            stage.getScene().setRoot(new TutorialRulesScene(stage).getRoot());
+            SceneManager.switchScene("TUTORIAL");
         });
-    
-        playBtn.setPickOnBounds(true);
 
         playBtn.setOnMouseClicked(e -> {
-            System.out.println("[DEBUG] PLAY clicked");
-            stage.getScene().setRoot(new LobbyScene(stage).getRoot());
+            SceneManager.switchScene("LOBBY");
         });
 
         settingsBtn.setOnMouseClicked(e -> {
-            SettingsScene settings = new SettingsScene(stage);
-            stage.getScene().setRoot(settings.getRoot());
+            SceneManager.switchScene("SETTINGS");
         });
 
         exitBtn.setOnMouseClicked(e -> {

@@ -5,6 +5,7 @@ import javafx.geometry.*;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.*;
 
 import java.util.LinkedHashMap;
@@ -154,7 +155,7 @@ public class TutorialPlayerTurnScene {
         mainLayout.getChildren().addAll(leftArea, rightArea);
         root.getChildren().add(mainLayout);
 
-        TutorialUtil.addBottomButtons(root,tutorialPanel,stage, () -> stage.getScene().setRoot(new TutorialEpidemicScene(stage).getRoot()), () -> stage.getScene().setRoot(new TutorialWinLoseScene(stage).getRoot()));
+        TutorialUtil.addBottomButtons(root, tutorialPanel, stage, () -> SceneManager.switchScene("TUT_EPIDEMIC"), () -> SceneManager.switchScene("TUT_WINLOSE"));
     }
     public StackPane getRoot() {
         return root;

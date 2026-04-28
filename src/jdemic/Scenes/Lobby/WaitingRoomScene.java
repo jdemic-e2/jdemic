@@ -14,6 +14,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
@@ -144,7 +145,7 @@ public class WaitingRoomScene {
             }
         });
 
-        cancelBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new LobbyScene(stage).getRoot()));
+        cancelBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
 
         HBox bottom = new HBox(cancelBtn, readyBtn);
         bottom.setAlignment(Pos.CENTER);

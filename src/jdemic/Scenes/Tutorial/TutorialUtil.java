@@ -10,6 +10,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import jdemic.Scenes.MainMenuScene;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.*;
 
 public class TutorialUtil {
@@ -67,18 +68,17 @@ public class TutorialUtil {
                     "ARE YOU SURE YOU WANT TO EXIT?",
                     "YES",
                     "NO",
-                    () -> stage.getScene().setRoot(new MainMenuScene(stage).getRoot()),
+                    () -> {
+                        SceneManager.clearCache();
+                        SceneManager.switchScene("MAIN_MENU");
+                    },
                     null
             );
             root.getChildren().add(overlay.getRoot());
         });
 
-        nextBtn.setOnMouseClicked(e -> {
-            if (onNext != null) onNext.run();
-        });
-        backBtn.setOnMouseClicked(e -> {
-            if (onBack != null) onBack.run();
-        });
+        backBtn.setOnMouseClicked(e -> onBack.run());
+        nextBtn.setOnMouseClicked(e -> onNext.run());
 
         root.getChildren().addAll(exitBtn, nextBtn, backBtn);
     }

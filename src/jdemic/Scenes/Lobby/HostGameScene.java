@@ -14,6 +14,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
@@ -86,7 +87,7 @@ public class HostGameScene {
             Clipboard.getSystemClipboard().setContent(cc);
         });
 
-        backBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new LobbyScene(stage).getRoot()));
+        backBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
         hostBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode).getRoot()));
 
         HBox bottomRow = new HBox(backBtn, hostBtn);

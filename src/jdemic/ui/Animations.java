@@ -59,10 +59,17 @@ public class Animations {
                 subTitle2.setLayoutX(s2X);
             }
         };
-        scrollTimer.start();
-
+        marqueePane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                scrollTimer.start();
+            }
+            else {
+                scrollTimer.stop();
+            }
+        });
         return marqueePane;
     }
+
     public static ScaleTransition createPulseAnimation(Node node, double scale, double durationSeconds) {
         ScaleTransition pulse = new ScaleTransition(Duration.seconds(durationSeconds), node);
         pulse.setFromX(1);

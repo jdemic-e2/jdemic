@@ -6,6 +6,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import jdemic.Scenes.MainMenuScene;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.*;
 
 public class TutorialWinLoseScene {
@@ -92,7 +93,13 @@ public class TutorialWinLoseScene {
         mainLayout.getChildren().addAll(winPanel, losePanel);
         root.getChildren().add(mainLayout);
 
-        TutorialUtil.addBottomButtons(root, root,stage,() -> stage.getScene().setRoot(new TutorialPlayerTurnScene(stage).getRoot()),() -> stage.getScene().setRoot(new MainMenuScene(stage).getRoot()));
+        TutorialUtil.addBottomButtons(root, root, stage,
+                () -> SceneManager.switchScene("TUT_TURN"),
+                () -> {
+                    SceneManager.clearCache();
+                    SceneManager.switchScene("MAIN_MENU");
+                }
+        );
         for (var node : root.getChildren()) {
             if (node instanceof ButtonsUtil btn) {
                 for (var child : btn.getChildren()) {

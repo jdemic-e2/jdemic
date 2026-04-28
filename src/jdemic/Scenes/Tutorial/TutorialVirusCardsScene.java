@@ -14,6 +14,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.*;
 
 public class TutorialVirusCardsScene {
@@ -222,7 +223,7 @@ public class TutorialVirusCardsScene {
 
         root.getChildren().add(mainLayout);
 
-        TutorialUtil.addBottomButtons(root,root, stage,() -> stage.getScene().setRoot(new TutorialEventCardsScene(stage).getRoot()), () -> stage.getScene().setRoot(new TutorialEpidemicScene(stage).getRoot()));
+        TutorialUtil.addBottomButtons(root, root, stage, () -> SceneManager.switchScene("TUT_EVENTS"), () -> SceneManager.switchScene("TUT_EPIDEMIC"));
     }
 
     public StackPane getRoot() {

@@ -10,6 +10,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
@@ -51,7 +52,7 @@ public class JoinCodeScene {
         codeField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
 
         ButtonsUtil cancelBtn = new ButtonsUtil("CANCEL", "#ff0000", "black", "#ff0000", "#ff0000", 2, 15, 15, 0.2, 0.1, 0.02, root);
-        cancelBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new LobbyScene(stage).getRoot()));
+        cancelBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
 
         ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff", 2, 15, 15, 0.2, 0.1, 0.02, root);
         joinBtn.setOnMouseClicked(e -> {

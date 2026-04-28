@@ -19,6 +19,7 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.PandemicMapGraph;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.*;
 
 public class TutorialCitiesScene {
@@ -206,7 +207,7 @@ public class TutorialCitiesScene {
             pin.setOnMouseClicked(e -> openCityCard(city));
             root.getChildren().add(pin);
         }
-        TutorialUtil.addBottomButtons(root,root,stage,() -> stage.getScene().setRoot(new TutorialMapScene(stage).getRoot()),() -> stage.getScene().setRoot(new TutorialCardRolesScene(stage).getRoot()));
+        TutorialUtil.addBottomButtons(root, root, stage, () -> SceneManager.switchScene("TUT_MAP"), () -> SceneManager.switchScene("TUT_ROLES"));
     }
 
     public StackPane getRoot() {
