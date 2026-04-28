@@ -9,6 +9,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import jdemic.Scenes.MainMenuScene;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
@@ -220,7 +221,7 @@ public class SettingsScene {
     }
 
     private void returnToMainMenu() {
-        stage.getScene().setRoot(new MainMenuScene(stage).getRoot());
+        SceneManager.switchScene("MAIN_MENU");
     }
 
     private void markDirty() {

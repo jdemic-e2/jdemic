@@ -10,6 +10,7 @@ import javafx.scene.layout.*;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import jdemic.Scenes.MainMenuScene;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.*;
 
 public class TutorialMapScene {
@@ -66,7 +67,7 @@ public class TutorialMapScene {
         leftPanel.getChildren().add(panelContent);
         root.getChildren().addAll(map, leftPanel);
 
-        TutorialUtil.addBottomButtons(root,root,stage,() -> stage.getScene().setRoot(new MainMenuScene(stage).getRoot()), () -> stage.getScene().setRoot(new TutorialCitiesScene(stage).getRoot()));
+        TutorialUtil.addBottomButtons(root, root, stage, () -> SceneManager.switchScene("MAIN_MENU"), () -> SceneManager.switchScene("TUT_CITIES"));
     }
     public StackPane getRoot() {
         return root;

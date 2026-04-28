@@ -14,6 +14,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.*;
 
 public class TutorialCardRolesScene {
@@ -224,7 +225,7 @@ public class TutorialCardRolesScene {
 
         root.getChildren().add(mainLayout);
 
-        TutorialUtil.addBottomButtons(root,root,stage, () -> stage.getScene().setRoot(new TutorialCitiesScene(stage).getRoot()),() -> stage.getScene().setRoot(new TutorialEventCardsScene(stage).getRoot()));
+        TutorialUtil.addBottomButtons(root, root, stage, () -> SceneManager.switchScene("TUT_CITIES"), () -> SceneManager.switchScene("TUT_EVENTS"));
     }
 
     public StackPane getRoot() {

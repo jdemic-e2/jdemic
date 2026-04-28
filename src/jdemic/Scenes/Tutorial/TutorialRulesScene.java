@@ -9,6 +9,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import jdemic.Scenes.MainMenuScene;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.*;
 
 public class TutorialRulesScene {
@@ -121,7 +122,7 @@ public class TutorialRulesScene {
         contentWrapper.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         tutorialPanel.getChildren().add(contentWrapper);
 
-        TutorialUtil.addBottomButtons(root,tutorialPanel,stage,() -> stage.getScene().setRoot(new MainMenuScene(stage).getRoot()), () -> stage.getScene().setRoot(new TutorialMapScene(stage).getRoot()));
+        TutorialUtil.addBottomButtons(root,tutorialPanel,stage,() -> SceneManager.switchScene("MAIN_MENU"), () -> SceneManager.switchScene("TUT_MAP"));
     }
     public StackPane getRoot() {return root;}
 }

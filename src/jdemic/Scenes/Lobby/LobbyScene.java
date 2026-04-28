@@ -9,6 +9,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import jdemic.Scenes.MainMenuScene;
+import jdemic.Scenes.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
@@ -64,7 +65,7 @@ public class LobbyScene {
         });
 
         ButtonsUtil joinBtn = new ButtonsUtil("JOIN BY CODE", "#00d1ff", "black", "#00d4ff", "#00d4ff", 2, 15, 15, 0.40, 0.10, 0.03, root);
-        joinBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new JoinCodeScene(stage).getRoot()));
+        joinBtn.setOnMouseClicked(e -> SceneManager.switchScene("JOIN_CODE"));
 
         VBox centerBox = new VBox(18, nameLabel, nicknameField, errorLabel, hostBtn, joinBtn);
         centerBox.setAlignment(javafx.geometry.Pos.TOP_CENTER);
@@ -74,7 +75,7 @@ public class LobbyScene {
         ButtonsUtil backBtn = new ButtonsUtil("BACK", "#ff0000", "black", "#ff0000", "#ff0000", 2, 12, 12, 0.15, 0.06, 0.02, root);
         StackPane.setAlignment(backBtn, javafx.geometry.Pos.BOTTOM_CENTER);
         backBtn.translateYProperty().bind(root.heightProperty().multiply(-0.08));
-        backBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new MainMenuScene(stage).getRoot()));
+        backBtn.setOnMouseClicked(e -> SceneManager.switchScene("MAIN_MENU"));
 
         root.getChildren().addAll(title, centerBox, backBtn);
     }
