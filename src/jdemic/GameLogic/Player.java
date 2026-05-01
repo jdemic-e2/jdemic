@@ -1,40 +1,42 @@
 package jdemic.GameLogic;
 
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+import jdemic.GameLogic.Actions.GameAction;
 
 public class Player {
     
-    private PlayerState playerState;
-    public Deck deckReference;
+    private PlayerState state;
+    private GameClient gameClient; // Class that sends packages to the server
 
-    public Player(PlayerState state) {
-        this.playerState = state;
+    public Player(PlayerState state, GameClient gameClient) {
+        this.state = state;
+        this.gameClient = gameClient;
     }
 
-    // Players can have maximum 7 cards. If player has 6/7 cards, enter discard mode. In discard mode, select cards to discard until you have 5 cards or below. Then you can draw.
-    public void drawCards(Deck deck) {
-        while(playerState.getHand().size() > 5){
-            if(playerState.getIsDiscarding() == false){
-                playerState.setIsDiscarding(true);
-            }
-        }
-        playerState.setIsDiscarding(false);
-        deck.drawHand(this.playerState);
-        
+    /**
+     * Method called by GUI
+     */
+    public void executeAction(GameAction action) {
+        // Action name, ex: "DriveAction", "ShuttleFlightAction"
+        String actionName = action.getClass().getSimpleName();
+        String playerId = state.getPlayerName();
+
+        String jsonPacket = String.format(
+            "{\"type\":\"GAME_DATA\", \"playerId\":\"%s\", \"payload\":\"{\\\"action\\\":\\\"%s\\\"}\"}",
+            playerId, 
+            actionName
+        );
+
+        System.out.println("[Player] Executing action: " + actionName + ". Sending to server...");
+
+        gameClient.sendPacket(jsonPacket);
     }
 
     public PlayerState getState() {
-        return this.playerState;
+        return state;
     }
 
-    // make a new object to add to the discard pile, then remove the card from the player deck.
-    public void discardCard(int index) {
-        Card c = playerState.getCard(index);
-        playerState.removeCard(index);
-        deckReference.discard(c);
-    }
-
-    public void syncStateFromServer(PlayerState newState) {
-        this.playerState = newState;
+    public void updateState(PlayerState newState) {
+        this.state = newState;
     }
 }
