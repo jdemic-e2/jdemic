@@ -13,9 +13,6 @@ public class GameState{
     // player info
     private List<PlayerState> playerArray = new ArrayList<>();
 
-    // player actions
-    private List<Player> players;
-
     private DiseaseManager diseaseManager;
     private Deck cardDeck;
 
@@ -43,7 +40,7 @@ public class GameState{
         this.playerArray.remove(s);
     }
 
-    public List<PlayerState> getPlayerStates(){
+    public List<PlayerState> getPlayers(){
         return this.playerArray;
     }
 
@@ -61,14 +58,6 @@ public class GameState{
 
     public void setCardDeck(Deck cardDeck){
         this.cardDeck = cardDeck;
-    }
-
-    public List<Player> getPlayers(){
-        return this.players;
-    }
-
-    public void setPlayers(List<Player> players){
-        this.players = players;
     }
 
     public PandemicMapGraph getMap(){

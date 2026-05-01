@@ -2,6 +2,7 @@ package jdemic.GameLogic;
 import java.util.List;
 
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.Actions.GameAction;
 
 public class GameManager {
@@ -11,11 +12,10 @@ public class GameManager {
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
     private static final int MAX_OUTBREAKS = 8;
 
-    public GameManager(List<Player> players) {
+    public GameManager(List<PlayerState> players) {
         this.state = new GameState(); 
         state.setMap(new PandemicMapGraph());
         state.setDiseaseManager(new DiseaseManager(this));
-        state.setPlayers(players);
         state.setCardDeck(new Deck(this));
         state.setCurrentPlayerIndex(0);
         state.setActionsRemaining(ACTIONS_PER_TURN);
@@ -23,7 +23,10 @@ public class GameManager {
         state.setEpidemicCount(0);
         state.setGameOver(false);
         state.setGameWon(false);
-
+        for(PlayerState player : players)
+        {
+            state.addPlayer(player);
+        }
         setupGame();
     }
 
@@ -32,11 +35,8 @@ public class GameManager {
 
         CityNode atlanta = state.getMap().getCity("Atlanta");
         atlanta.addResearchStation();
-
-        for(Player player : state.getPlayers())
-        {
-            state.addPlayer(player.getState());
-            player.deckReference = state.getCardDeck();
+        for(PlayerState player : state.getPlayers()){
+            player.setCurrentCity(atlanta);
         }
     }
 
@@ -55,10 +55,6 @@ public class GameManager {
     public void nextTurn()
     {
         if(state.isGameOver()) return;
-
-        Player current = state.getPlayers().get(state.getCurrentPlayerIndex());
-
-        current.drawCards(state.getCardDeck());
 
         if(state.getCardDeck().getRemainingCardsCount() <= 0)
         {
@@ -111,7 +107,7 @@ public class GameManager {
         state.setInfectionRate(state.getInfectionRate() + 1);
     }
 
-    public Player getCurrentPlayer()
+    public PlayerState getCurrentPlayer()
     {
         return state.getPlayers().get(state.getCurrentPlayerIndex());
     }
@@ -128,10 +124,5 @@ public class GameManager {
     public boolean isGameWon()
     {
         return state.isGameWon();
-    }
-
-    public void syncState()
-    {
-        // partea de networking
     }
 }

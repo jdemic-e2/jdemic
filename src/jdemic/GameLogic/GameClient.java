@@ -2,16 +2,23 @@ package jdemic.GameLogic;
 
 import jdemic.DedicatedServer.network.security.SecureConnectionManager;
 import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class GameClient {
 
     private SecureSocket secureSocket;
     private PrintWriter out;
     private BufferedReader in;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     //Connecting happens only once
     public void connectToServer(String host, int port) {
@@ -96,9 +103,15 @@ public class GameClient {
         GameClient client = new GameClient();
         
         client.connectToServer("localhost", 9000);
+
+        //create packet
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("PlayerID", "regin_77");
+        payload.put("GameAction", "MOVE_NORTH");
+        Packet p = new Packet(PacketType.GAME_DATA, System.currentTimeMillis(), payload);
+        String json = p.toJson();
         
-        String testJson = "{\"type\":\"GAME_DATA\", \"playerId\":\"TestPlayer1\", \"payload\":\"{\\\"action\\\":\\\"DriveAction\\\"}\"}";
-        client.sendPacket(testJson);
+        client.sendPacket(json);
         
         try {
             Thread.sleep(3000);

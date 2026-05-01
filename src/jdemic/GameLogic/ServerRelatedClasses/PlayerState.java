@@ -4,22 +4,27 @@ import jdemic.GameLogic.CityNode;
 import java.util.ArrayList;
 import java.util.List;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.Player;
 
 public class PlayerState{
 
-    private final String playerName;
+    private String playerName;
     private PlayerRoles Role;
     private CityNode currentCity;
     private List<Card> hand = new ArrayList<>();
     private boolean discardingCards;
+    private Player playerReference;
 
-    public PlayerState(String name, CityNode currentCity){
-        this.playerName = name;
-        this.currentCity = currentCity;
+    public PlayerState(String name){
         this.discardingCards = false;
+        this.playerName = name;
     }
 
     // PlayerState must only have simple methods for changing variables, for easier serialization on the network.
+
+    public Player getPlayer(){
+        return this.playerReference;
+    }
 
     public PlayerRoles getPlayerRole(){
         return this.Role;

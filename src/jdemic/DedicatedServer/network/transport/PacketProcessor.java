@@ -42,8 +42,11 @@ public class PacketProcessor {
         System.out.println("[PacketProcessor] Received PONG packet: " + packet);
     }
 
+    // here we do our code
     private void handleGameData(Packet packet) {
-        System.out.println("[PacketProcessor] Received GAME_DATA packet: " + packet);
+        System.out.println("[PacketProcessor] Received GAME_DATA packet: ");
+        System.out.println(packet.getPayload().get("PlayerID").asText());
+        System.out.println(packet.getPayload().get("GameAction").asText());
     }
 
     private void handleConnect(Packet packet) {

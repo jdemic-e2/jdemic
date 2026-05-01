@@ -15,11 +15,12 @@ public class ClientHandler implements Runnable {
     private final Socket rawSocket;
     private BufferedReader in;
     private PrintWriter out;
+    private PacketProcessor packetProcessor;
 
     public ClientHandler(SecureSocket secureSocket) {
         this.secureSocket = secureSocket;
-        
         this.rawSocket = secureSocket.getRawSocket();
+        packetProcessor = new PacketProcessor();
 
         try {
             this.in = new BufferedReader(new InputStreamReader(rawSocket.getInputStream()));
@@ -39,18 +40,19 @@ public class ClientHandler implements Runnable {
         }
 
         try {
-            String mesajCriptat;
+            String encryptedMessage;
             System.out.println("[ClientHandler] Astept mesaje criptate de la client...");
 
             
-            while ((mesajCriptat = in.readLine()) != null) {
+            while ((encryptedMessage = in.readLine()) != null) {
 
-                String mesajDecriptat = secureSocket.decrypt(mesajCriptat);
-                System.out.println("[ClientHandler] Am primit (decriptat): " + mesajDecriptat);
-
+                String decryptedMessage = secureSocket.decrypt(encryptedMessage);
+                System.out.println("[ClientHandler] Am primit (decriptat): " + decryptedMessage);
+                Packet packetMessage = Packet.fromJson(decryptedMessage);
+                packetProcessor.process(packetMessage);
                 // --- 1. Here is where you get the response from the Backend Game Logic ---
                 // For now, it's just echoing the message back, but eventually this will be JSON.
-                String raspunsServer = mesajDecriptat; 
+                String raspunsServer = decryptedMessage; 
 
                 // --- 2. APPLY ZERO-KNOWLEDGE MASKING BEFORE ENCRYPTION ---
                 // (Assuming we somehow know this thread belongs to "player2". 
@@ -59,8 +61,8 @@ public class ClientHandler implements Runnable {
                 String maskedResponse = StateMasker.maskStateForPlayer(raspunsServer, targetPlayerId);
 
                 // --- 3. Encrypt the cleaned, masked data and send it ---
-                String raspunsCriptat = secureSocket.encrypt(maskedResponse);
-                out.println(raspunsCriptat);
+                String encryptedResponse = secureSocket.encrypt(maskedResponse);
+                out.println(encryptedResponse);
             }
 
         } catch (Exception e) {

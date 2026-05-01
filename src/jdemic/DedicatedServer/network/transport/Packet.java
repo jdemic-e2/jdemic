@@ -101,4 +101,17 @@ public class Packet {
             throw new RuntimeException("[packet] Error converting packet to JSON: " + e.getMessage(), e);
         }
     }
+
+    public static Packet fromJson(String jsonString)
+    {
+        try {
+            JsonNode rootNode = objectMapper.readTree(jsonString);
+            PacketType type = PacketType.valueOf(rootNode.get("type").asText());
+            long timestamp = rootNode.get("timestamp").asLong();
+            JsonNode payload = rootNode.get("payload");
+            return new Packet(type, timestamp, payload);
+        } catch (Exception e) {
+            throw new RuntimeException("[packet] Error parsing JSON to Packet: " + e.getMessage(), e);
+        }
+    }
 }
