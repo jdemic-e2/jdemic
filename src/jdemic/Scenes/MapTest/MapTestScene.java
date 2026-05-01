@@ -2,7 +2,6 @@ package jdemic.Scenes.MapTest;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -18,15 +17,15 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.PandemicMapGraph;
-import jdemic.Scenes.MainMenuScene;
-import jdemic.Scenes.SceneManager;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.GameLogic.*;
+import javafx.scene.layout.VBox;
+import jdemic.ui.GameplayUI.ActionMenuManager;
+import jdemic.ui.GameplayUI.NotificationManager;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class MapTestScene {
     private Stage stage;
@@ -35,14 +34,34 @@ public class MapTestScene {
     private Map<CityNode, Circle> nodeVisuals = new HashMap<>();
     private Map<String, Line> edgeVisuals = new HashMap<>();
 
+    //Variables for notifications
+    private NotificationManager notificationManager;
+    private VBox notificationContainer;
+
+    //Variable for ActionMenu
+    private ActionMenuManager actionMenuManager;
+
+    //Variable for game manager (temp)
+    private GameManager gameManager;
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
         this.mapGraph = new PandemicMapGraph();
+
+        //This is a test player because I needed to test certain features
+        List<Player> players = new ArrayList<>();
+        CityNode startingCity = mapGraph.getCity("Atlanta");
+        players.add(new Player(new PlayerState("Tester", startingCity)));
+
+        this.gameManager = new GameManager(players); //[cite: 16]
+
         this.root.setStyle("-fx-background-color: #050a14;");
         setupBackground();
         setupContent();
         setupUI();
+        setupNotifications();
+        setupActionMenu();
     }
 
     private void setupUI() {
@@ -60,11 +79,36 @@ public class MapTestScene {
         );
 
         backBtn.setOnMouseClicked(e -> {
+            //added this for debugging
+            if (gameManager != null && gameManager.getState() != null)
+            {
+                gameManager.getState().setActionsRemaining(4);
+            }
+            actionMenuManager.updateMenuState();
             returnToMainMenu();
         });
 
         header.getChildren().add(backBtn);
         root.getChildren().add(header);
+    }
+
+    private void setupNotifications()
+    {
+        notificationContainer = new VBox(10);
+        notificationContainer.prefWidthProperty().bind(root.widthProperty());
+        notificationContainer.prefHeightProperty().bind(root.heightProperty());
+
+        notificationContainer.setPadding(new Insets(20));
+        notificationContainer.setAlignment(Pos.TOP_RIGHT);
+        notificationContainer.setMouseTransparent(true);
+
+        notificationManager = new NotificationManager(notificationContainer);
+        root.getChildren().add(notificationContainer);
+    }
+
+    private void setupActionMenu()
+    {
+        this.actionMenuManager = new ActionMenuManager(root, notificationManager, gameManager);
     }
 
     private void setupContent() {
@@ -168,7 +212,9 @@ public class MapTestScene {
                 }
             });
 
-            node.setOnMouseClicked(ev -> city.clickEvent());
+            node.setOnMouseClicked(ev -> {city.clickEvent();
+                notificationManager.showNotification("Selected City: " + city.getName());
+            });
 
             Text label = new Text(city.getName());
             label.setFill(Color.WHITE);
