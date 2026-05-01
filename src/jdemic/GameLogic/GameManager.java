@@ -1,154 +1,137 @@
 package jdemic.GameLogic;
 import java.util.List;
 
-import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
+import jdemic.GameLogic.Actions.GameAction;
 
 public class GameManager {
     GameState state;
-    DiseaseManager diseaseManager;
-    Deck cardDeck;
-    List<Player> players;
-    PandemicMapGraph map;
-
-    int currentPlayerIndex;
-    int actionsRemaining;
-    int infectionRate;
-    int epidemicCount;
-    boolean gameOver;
-    boolean gameWon;
 
     private static final int ACTIONS_PER_TURN = 4;
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
     private static final int MAX_OUTBREAKS = 8;
 
-    public GameManager(List<Player> players) 
-    {
+    public GameManager(List<Player> players) {
         this.state = new GameState(); 
-        this.map = new PandemicMapGraph();
-        this.diseaseManager = new DiseaseManager(this);
-        this.players = players;
-        this.cardDeck = new Deck(this);
-        this.currentPlayerIndex = 0;
-        this.actionsRemaining = ACTIONS_PER_TURN;
-        this.infectionRate = 0;
-        this.epidemicCount = 0;
-        this.gameOver = false;
-        this.gameWon = false;
+        state.setMap(new PandemicMapGraph());
+        state.setDiseaseManager(new DiseaseManager(this));
+        state.setPlayers(players);
+        state.setCardDeck(new Deck(this));
+        state.setCurrentPlayerIndex(0);
+        state.setActionsRemaining(ACTIONS_PER_TURN);
+        state.setInfectionRate(0);
+        state.setEpidemicCount(0);
+        state.setGameOver(false);
+        state.setGameWon(false);
 
         setupGame();
     }
 
-    // For each player, add their state to gamestate, give each one a reference to the deck and set their spawn in Atlanta.
     private void setupGame()
     {
-        map.getCity("Atlanta").addResearchStation();
 
-        for(Player player : players)
+        CityNode atlanta = state.getMap().getCity("Atlanta");
+        atlanta.addResearchStation();
+
+        for(Player player : state.getPlayers())
         {
             state.addPlayer(player.getState());
-            player.deckReference = cardDeck;
-            player.getState().setCurrentCity(map.getCity("Atlanta"));
+            player.deckReference = state.getCardDeck();
         }
     }
 
-    // Action execution in GameManager.java leads to simpler server sync and also lets the server authorize changes easier.
     public void performAction(Player player, GameAction action)
     {
-        if(gameOver) return;
-        if(actionsRemaining <= 0) return;
+        if(state.isGameOver()) return;
+        if(state.getActionsRemaining() <= 0) return;
 
         if(action.isValid(state, player.getState()))
         {
             action.execute(state, player.getState());
-            actionsRemaining--;
+            state.setActionsRemaining(state.getActionsRemaining() - 1);
         }
     }
 
-    public List<Player> getPlayers() {
-        return players;
-    }
-
-
-    // 
     public void nextTurn()
     {
-        if(gameOver) return;
+        if(state.isGameOver()) return;
 
-        Player current = players.get(currentPlayerIndex);
+        Player current = state.getPlayers().get(state.getCurrentPlayerIndex());
 
-        current.drawCards(cardDeck);
+        current.drawCards(state.getCardDeck());
 
-        if(cardDeck.getRemainingCardsCount() <= 0)
+        if(state.getCardDeck().getRemainingCardsCount() <= 0)
         {
-            gameOver = true;
-            gameWon = false;
+            state.setGameOver(true);
+            state.setGameWon(false);
             return;
         }
 
         checkWinCondition();
         checkLoseCondition();
 
-        if(gameOver) return;
+        if(state.isGameOver()) return;
 
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
-        actionsRemaining = ACTIONS_PER_TURN;
+        state.setCurrentPlayerIndex((state.getCurrentPlayerIndex() + 1) % state.getPlayers().size());
+        state.setActionsRemaining(ACTIONS_PER_TURN);
     }
 
     public void checkWinCondition()
     {
-        // If all diseases are cured, win the game.
-        if(diseaseManager.areAllCured())
+        if(state.getDiseaseManager().areAllCured())
         {
-            gameOver = true;
-            gameWon = true;
+            state.setGameOver(true);
+            state.setGameWon(true);
         }
     }
 
     public void checkLoseCondition(){
 
-        // If more than 8 outbreaks happened or if all player cards have been used up, fail the game.
-        if(diseaseManager.getOutbreakScore() >= MAX_OUTBREAKS)
+        if(state.getDiseaseManager().getOutbreakScore() >= MAX_OUTBREAKS)
         {
-            gameOver = true;
-            gameWon = false;
+            state.setGameOver(true);
+            state.setGameWon(false);
         }
 
-        if(cardDeck.getRemainingCardsCount() <= 0)
+        if(state.getCardDeck().getRemainingCardsCount() <= 0)
         {
-            gameOver = true;
-            gameWon = false;
+            state.setGameOver(true);
+            state.setGameWon(false);
         }
     }
 
     public int getInfectionRate()
     {
-        if(infectionRate >= INFECTION_RATE_TRACK.length) return INFECTION_RATE_TRACK[INFECTION_RATE_TRACK.length - 1];
-        return INFECTION_RATE_TRACK[infectionRate];
+        if(state.getInfectionRate() >= INFECTION_RATE_TRACK.length) return INFECTION_RATE_TRACK[INFECTION_RATE_TRACK.length - 1];
+        return INFECTION_RATE_TRACK[state.getInfectionRate()];
     }
 
     public void increaseInfectionRate()
     {
-        infectionRate++;
+        state.setInfectionRate(state.getInfectionRate() + 1);
     }
 
     public Player getCurrentPlayer()
     {
-        return players.get(currentPlayerIndex);
+        return state.getPlayers().get(state.getCurrentPlayerIndex());
+    }
+
+    public GameState getState(){
+        return this.state;
     }
 
     public boolean isGameOver()
     {
-        return gameOver;
+        return state.isGameOver();
     }
 
     public boolean isGameWon()
     {
-        return gameWon;
+        return state.isGameWon();
     }
 
     public void syncState()
     {
-        // networking side
+        // partea de networking
     }
 }

@@ -72,7 +72,7 @@ public final class PandemicMapGraph
                 new CityNode("Sydney", DiseaseColor.RED, 0.90f, 0.86f) //
         );
     }
-
+    
     private void createNeighbours(){
         // Blue Cities
         getCity("San Francisco").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Chicago"), getCity("Tokyo"), getCity("Manila"), getCity("Los Angeles"))));
