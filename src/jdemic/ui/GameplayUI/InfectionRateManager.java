@@ -39,19 +39,25 @@ public class InfectionRateManager {
         StackPane.setAlignment(trackBox, Pos.TOP_CENTER);
 
         trackBox.paddingProperty().bind(javafx.beans.binding.Bindings.createObjectBinding(
-                () -> new Insets(root.getHeight() * 0.01, 0, 0, 0), root.heightProperty()
+                () -> new Insets(root.getHeight() * 0.02, 0, 0, 0), root.heightProperty()
         ));
 
         slots = new StackPane[rates.length];
         for (int i = 0 ; i < rates.length ; i++)
         {
             StackPane slot = new StackPane();
-            Rectangle bg = new Rectangle(45,40);
+            Rectangle bg = new Rectangle(40,40);
+            bg.widthProperty().bind(root.widthProperty().multiply(0.03));
+            bg.heightProperty().bind(root.heightProperty().multiply(0.04));
             bg.setStroke(Color.web("#333333"));
             bg.setStrokeWidth(1);
             bg.setFill(Color.rgb(20,20,20));
 
             Label label = new Label(String.valueOf(rates[i]));
+            label.fontProperty().bind(javafx.beans.binding.Bindings.createObjectBinding(
+                    () -> javafx.scene.text.Font.font("hkmodular", root.getHeight() * 0.02),
+                    root.heightProperty()
+            ));
             label.setStyle("-fx-text-fill: #555555; -fx-font-family: 'hkmodular'; -fx-font-size: 18px;");
 
             slot.getChildren().addAll(bg, label);
