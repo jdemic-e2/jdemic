@@ -23,6 +23,7 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.GameLogic.*;
 import javafx.scene.layout.VBox;
 import jdemic.ui.GameplayUI.ActionMenuManager;
+import jdemic.ui.GameplayUI.InfectionRateManager;
 import jdemic.ui.GameplayUI.NotificationManager;
 
 import java.util.*;
@@ -44,6 +45,9 @@ public class MapTestScene {
     //Variable for game manager (temp)
     private GameManager gameManager;
 
+    //Variables for InfectionManager
+    private InfectionRateManager infectionRateManager;
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
@@ -62,6 +66,24 @@ public class MapTestScene {
         setupUI();
         setupNotifications();
         setupActionMenu();
+        setupInfectionManager();
+
+        root.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.setOnKeyPressed(event -> {
+                    if (event.getCode() == javafx.scene.input.KeyCode.I) {
+                        // Verificăm dacă mai avem unde să creștem (indexul pleacă de la 0 la 6)
+                        if (gameManager.getState().getInfectionRate() < gameManager.getInfectionRateTrack().length - 1) {
+                            gameManager.increaseInfectionRate();
+                            infectionRateManager.updateTrack();
+                            notificationManager.showNotification("DEBUG: Infection Rate Increased!");
+                        } else {
+                            notificationManager.showNotification("DEBUG: Infection Rate is maxed");
+                        }
+                    }
+                });
+            }
+        });
     }
 
     private void setupUI() {
@@ -84,12 +106,19 @@ public class MapTestScene {
             {
                 gameManager.getState().setActionsRemaining(4);
             }
-            actionMenuManager.updateMenuState();
+            if (actionMenuManager != null) actionMenuManager.updateMenuState();
+            if (infectionRateManager != null) infectionRateManager.updateTrack();
+
             returnToMainMenu();
         });
 
         header.getChildren().add(backBtn);
         root.getChildren().add(header);
+    }
+
+    private void setupInfectionManager()
+    {
+        this.infectionRateManager = new InfectionRateManager(root,gameManager);
     }
 
     private void setupNotifications()

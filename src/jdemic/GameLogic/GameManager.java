@@ -106,6 +106,11 @@ public class GameManager {
         return INFECTION_RATE_TRACK[state.getInfectionRate()];
     }
 
+    public int[] getInfectionRateTrack()
+    {
+        return INFECTION_RATE_TRACK;
+    }
+
     public void increaseInfectionRate()
     {
         state.setInfectionRate(state.getInfectionRate() + 1);
