@@ -107,7 +107,8 @@ public class GameClient {
         //create packet
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("PlayerID", "regin_77");
-        payload.put("GameAction", "MOVE_NORTH");
+        payload.put("GameAction", "DRIVE_FERRY");
+        payload.put("destination", "Atlanta");
         Packet p = new Packet(PacketType.GAME_DATA, System.currentTimeMillis(), payload);
         String json = p.toJson();
         

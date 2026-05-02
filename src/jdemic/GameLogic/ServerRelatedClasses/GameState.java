@@ -3,6 +3,7 @@ package jdemic.GameLogic.ServerRelatedClasses;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jdemic.GameLogic.Deck;
 import jdemic.GameLogic.DiseaseManager;
 import jdemic.GameLogic.PandemicMapGraph;
@@ -16,7 +17,8 @@ public class GameState{
     private DiseaseManager diseaseManager;
     private Deck cardDeck;
 
-    private PandemicMapGraph map;
+    @JsonIgnore // pentru erori
+    private transient PandemicMapGraph map; // adaugat transient pentru evitare serializare
 
     private int currentPlayerIndex;
     private int actionsRemaining;

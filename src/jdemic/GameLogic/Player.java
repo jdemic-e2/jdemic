@@ -29,7 +29,9 @@ public class Player {
 
         System.out.println("[Player] Executing action: " + actionName + ". Sending to server...");
 
-        gameClient.sendPacket(jsonPacket);
+        if (gameClient != null) {
+            gameClient.sendPacket(jsonPacket);
+        }
     }
 
     public PlayerState getState() {

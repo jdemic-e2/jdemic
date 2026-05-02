@@ -7,6 +7,9 @@ import java.net.Socket;
 
 import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
 import jdemic.DedicatedServer.network.security.StateMasker;
+import jdemic.GameLogic.GameManager;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 public class ClientHandler implements Runnable {
 
@@ -16,11 +19,14 @@ public class ClientHandler implements Runnable {
     private BufferedReader in;
     private PrintWriter out;
     private PacketProcessor packetProcessor;
+    private GameManager gameManager;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ClientHandler(SecureSocket secureSocket) {
+    public ClientHandler(SecureSocket secureSocket, GameManager gameManager) {
         this.secureSocket = secureSocket;
         this.rawSocket = secureSocket.getRawSocket();
-        packetProcessor = new PacketProcessor();
+        this.gameManager = gameManager;
+        packetProcessor = new PacketProcessor(gameManager);
 
         try {
             this.in = new BufferedReader(new InputStreamReader(rawSocket.getInputStream()));
@@ -51,14 +57,20 @@ public class ClientHandler implements Runnable {
                 Packet packetMessage = Packet.fromJson(decryptedMessage);
                 packetProcessor.process(packetMessage);
                 // --- 1. Here is where you get the response from the Backend Game Logic ---
-                // For now, it's just echoing the message back, but eventually this will be JSON.
-                String raspunsServer = decryptedMessage; 
+                // Send updated GameState as JSON
+                String gameStateJson;
+                try {
+                    gameStateJson = objectMapper.writeValueAsString(gameManager.getState());
+                } catch (JsonProcessingException e) {
+                    System.err.println("[ClientHandler] Error serializing GameState: " + e.getMessage());
+                    gameStateJson = "{}"; // Fallback
+                }
 
                 // --- 2. APPLY ZERO-KNOWLEDGE MASKING BEFORE ENCRYPTION ---
                 // (Assuming we somehow know this thread belongs to "player2". 
                 // In the future, ClientHandler should store the connected player's ID)
                 String targetPlayerId = "player2"; 
-                String maskedResponse = StateMasker.maskStateForPlayer(raspunsServer, targetPlayerId);
+                String maskedResponse = StateMasker.maskStateForPlayer(gameStateJson, targetPlayerId);
 
                 // --- 3. Encrypt the cleaned, masked data and send it ---
                 String encryptedResponse = secureSocket.encrypt(maskedResponse);
@@ -79,7 +91,7 @@ public class ClientHandler implements Runnable {
             if (rawSocket != null && !rawSocket.isClosed()) {
                 rawSocket.close();
             }
-            System.out.println("[ClientHandler] Resurse eliberate și conexiune închisă.");
+            System.out.println("[ClientHandler] Resurse eliberate si conexiune inchisa.");
         } catch (Exception e) {
             System.err.println("[ClientHandler] Eroare la închiderea resurselor.");
         }

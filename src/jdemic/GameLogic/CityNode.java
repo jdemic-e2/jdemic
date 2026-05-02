@@ -6,11 +6,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.EnumMap;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // erori
+
 public class CityNode {
 
     // Static Board Data
     private final String name;
     private final DiseaseColor nativeColor;
+    @JsonIgnore // erori
     private final Set<CityNode> connectedCities; // Represents graph edges
     
     // Rendering coordinates for Vulkan
