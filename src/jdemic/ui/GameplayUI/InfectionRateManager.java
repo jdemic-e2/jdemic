@@ -35,13 +35,6 @@ public class InfectionRateManager {
         trackBox.setPickOnBounds(false);
         trackBox.setMouseTransparent(true);
 
-        trackBox.setMaxHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
-        StackPane.setAlignment(trackBox, Pos.TOP_CENTER);
-
-        trackBox.paddingProperty().bind(javafx.beans.binding.Bindings.createObjectBinding(
-                () -> new Insets(root.getHeight() * 0.02, 0, 0, 0), root.heightProperty()
-        ));
-
         slots = new StackPane[rates.length];
         for (int i = 0 ; i < rates.length ; i++)
         {
@@ -80,7 +73,7 @@ public class InfectionRateManager {
 
             if (i == currentIndex) {
                 //Active
-                bg.setFill(Color.web("#ff0000")); // Roșu pur
+                bg.setFill(Color.web("#ff0000"));
                 bg.setStroke(Color.WHITE);
                 label.setStyle("-fx-text-fill: black; -fx-font-family: 'hkmodular'; -fx-font-weight: bold;");
 
@@ -107,5 +100,10 @@ public class InfectionRateManager {
     public int getInfection_stage()
     {
         return infection_stage;
+    }
+
+    public HBox getContainer()
+    {
+        return trackBox;
     }
 }

@@ -1,5 +1,6 @@
 package jdemic.Scenes.MapTest;
 
+import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.effect.DropShadow;
@@ -22,9 +23,7 @@ import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.GameLogic.*;
 import javafx.scene.layout.VBox;
-import jdemic.ui.GameplayUI.ActionMenuManager;
-import jdemic.ui.GameplayUI.InfectionRateManager;
-import jdemic.ui.GameplayUI.NotificationManager;
+import jdemic.ui.GameplayUI.*;
 
 import java.util.*;
 
@@ -48,6 +47,12 @@ public class MapTestScene {
     //Variables for InfectionManager
     private InfectionRateManager infectionRateManager;
 
+    //Variables for OutbreakManager
+    private OutbreakManager outbreakManager;
+
+    //Variables for CureManager
+    private CureManager cureManager;
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
@@ -66,20 +71,22 @@ public class MapTestScene {
         setupUI();
         setupNotifications();
         setupActionMenu();
-        setupInfectionManager();
+        setupGlobalHUD();
 
         root.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 newScene.setOnKeyPressed(event -> {
                     if (event.getCode() == javafx.scene.input.KeyCode.I) {
-                        // Verificăm dacă mai avem unde să creștem (indexul pleacă de la 0 la 6)
                         if (gameManager.getState().getInfectionRate() < gameManager.getInfectionRateTrack().length - 1) {
                             gameManager.increaseInfectionRate();
-                            infectionRateManager.updateTrack();
+                            infectionRateManager.updateTrack(); // Actualizăm doar ce s-a schimbat
                             notificationManager.showNotification("DEBUG: Infection Rate Increased!");
-                        } else {
-                            notificationManager.showNotification("DEBUG: Infection Rate is maxed");
                         }
+                    }
+                    if (event.getCode() == javafx.scene.input.KeyCode.O) {
+                        gameManager.getState().getDiseaseManager().increaseOutbreakScore();
+                        outbreakManager.updateTrack();
+                        notificationManager.showNotification("DEBUG: Outbreak Occurred!");
                     }
                 });
             }
@@ -101,13 +108,13 @@ public class MapTestScene {
         );
 
         backBtn.setOnMouseClicked(e -> {
-            //added this for debugging
-            if (gameManager != null && gameManager.getState() != null)
-            {
+            if (gameManager != null && gameManager.getState() != null) {
                 gameManager.getState().setActionsRemaining(4);
             }
             if (actionMenuManager != null) actionMenuManager.updateMenuState();
             if (infectionRateManager != null) infectionRateManager.updateTrack();
+            if (outbreakManager != null) outbreakManager.updateTrack();
+            if (cureManager != null) cureManager.updateUI();
 
             returnToMainMenu();
         });
@@ -116,9 +123,40 @@ public class MapTestScene {
         root.getChildren().add(header);
     }
 
-    private void setupInfectionManager()
-    {
-        this.infectionRateManager = new InfectionRateManager(root,gameManager);
+    private void setupGlobalHUD() {
+        HBox mainHUD = new HBox();
+        mainHUD.setAlignment(Pos.TOP_CENTER);
+        mainHUD.setPickOnBounds(false);
+
+        mainHUD.setStyle(
+                "-fx-background-color: rgba(0, 0, 0, 0.8); " +
+                        "-fx-background-radius: 15px; " +
+                        "-fx-padding: 10px;"
+        );
+
+        mainHUD.setMaxHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
+
+        mainHUD.maxWidthProperty().bind(root.widthProperty().multiply(0.6));
+        StackPane.setAlignment(mainHUD, Pos.TOP_CENTER);
+        mainHUD.paddingProperty().bind(Bindings.createObjectBinding(() ->
+                        new Insets(root.getHeight() * 0.04, 10, 10, 10),
+                root.heightProperty()
+        ));
+
+        mainHUD.translateXProperty().bind(root.widthProperty().multiply(0.05));
+        mainHUD.spacingProperty().bind(root.widthProperty().multiply(0.03));
+
+        this.outbreakManager = new OutbreakManager(root, gameManager);
+        this.infectionRateManager = new InfectionRateManager(root, gameManager);
+        this.cureManager = new CureManager(root, gameManager);
+
+        mainHUD.getChildren().addAll(
+                outbreakManager.getContainer(),
+                infectionRateManager.getContainer(),
+                cureManager.getContainer()
+        );
+
+        root.getChildren().add(mainHUD);
     }
 
     private void setupNotifications()
@@ -127,7 +165,10 @@ public class MapTestScene {
         notificationContainer.prefWidthProperty().bind(root.widthProperty());
         notificationContainer.prefHeightProperty().bind(root.heightProperty());
 
-        notificationContainer.setPadding(new Insets(20));
+        notificationContainer.paddingProperty().bind(Bindings.createObjectBinding(() ->
+                        new Insets(root.getHeight() * 0.15, 20, 0, 0),
+                root.heightProperty()
+        ));
         notificationContainer.setAlignment(Pos.TOP_RIGHT);
         notificationContainer.setMouseTransparent(true);
 

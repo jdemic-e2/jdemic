@@ -18,7 +18,7 @@ public class NotificationManager {
     public NotificationManager(VBox container)
     {
         this.container = container;
-        this.container.setMouseTransparent(true); // so it doesn't block other UI elements, like the map
+        this.container.setMouseTransparent(true);
     }
 
     public void showNotification(String message)
@@ -38,8 +38,8 @@ public class NotificationManager {
                 double borderWidth = 2 * scale;
 
                 toast.setStyle(String.format(
-                        "-fx-background-color: rgba(0, 181, 212, 0.2); " +
-                                "-fx-text-fill: #00ffea; " +
+                        "-fx-background-color: rgba(0, 181, 212, 0.5); " +
+                                "-fx-text-fill: black; " +
                                 "-fx-padding: %.1fpx %.1fpx; " +
                                 "-fx-border-color: #00b5d4; " +
                                 "-fx-border-width: %.1fpx; " +
@@ -74,8 +74,8 @@ public class NotificationManager {
     private void updateToastStyle(Label toast, double height) {
         double scale = Math.max(0.5, height / 1000.0);
         toast.setStyle(String.format(
-                "-fx-background-color: rgba(0, 181, 212, 0.2); " +
-                        "-fx-text-fill: #00ffea; " +
+                "-fx-background-color: rgba(0, 181, 212, 0.5); " +
+                        "-fx-text-fill: black; " +
                         "-fx-padding: %.1fpx %.1fpx; " +
                         "-fx-border-color: #00b5d4; " +
                         "-fx-border-width: %.1fpx; " +
