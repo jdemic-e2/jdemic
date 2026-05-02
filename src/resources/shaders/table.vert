@@ -8,6 +8,12 @@ layout(binding = 0) uniform UniformBufferObject {
     float time;
 } ubo;
 
+// Screen-space overlay (card deck): local positions are already in clip space when screenSpace != 0.
+layout(push_constant) uniform Push {
+    int screenSpace;
+    mat4 clipFromLocal;
+} pc;
+
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec2 inTexCoord;
@@ -17,7 +23,11 @@ layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out float fragTime;
 
 void main() {
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
+    if (pc.screenSpace != 0) {
+        gl_Position = pc.clipFromLocal * vec4(inPosition, 1.0);
+    } else {
+        gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
+    }
     fragColor = inColor;
     fragTexCoord = inTexCoord;
     fragTime = ubo.time;

@@ -1,7 +1,34 @@
-import jdemic.VulkanModules.Frame;
-import jdemic.VulkanModules.ShaderSPIRVUtils.SPIRV;
-import jdemic.GameLogic.CityNode;
-import jdemic.GameLogic.PandemicMapGraph;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.DoubleBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import static java.util.stream.Collectors.toSet;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import javax.imageio.ImageIO;
+
+import jdemic.GameLogic.CardDeckUI;
 
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
@@ -10,50 +37,358 @@ import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.joml.Vector4f;
 import org.lwjgl.PointerBuffer;
-import org.lwjgl.system.MemoryStack;
-import org.lwjgl.system.Pointer;
-import org.lwjgl.vulkan.*;
-
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
-import java.awt.geom.RoundRectangle2D;
-import javax.imageio.ImageIO;
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
-import java.util.*;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toSet;
-import static jdemic.VulkanModules.AlignmentUtils.alignas;
-import static jdemic.VulkanModules.AlignmentUtils.alignof;
-import static jdemic.VulkanModules.ShaderSPIRVUtils.compileShaderFile;
-import static jdemic.VulkanModules.ShaderSPIRVUtils.ShaderKind.FRAGMENT_SHADER;
-import static jdemic.VulkanModules.ShaderSPIRVUtils.ShaderKind.VERTEX_SHADER;
-import static org.lwjgl.glfw.GLFW.*;
+import static org.lwjgl.glfw.GLFW.GLFW_CLIENT_API;
+import static org.lwjgl.glfw.GLFW.GLFW_KEY_TAB;
+import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT;
+import static org.lwjgl.glfw.GLFW.GLFW_NO_API;
+import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
+import static org.lwjgl.glfw.GLFW.glfwCreateWindow;
+import static org.lwjgl.glfw.GLFW.glfwDestroyWindow;
+import static org.lwjgl.glfw.GLFW.glfwGetCursorPos;
+import static org.lwjgl.glfw.GLFW.glfwGetFramebufferSize;
+import static org.lwjgl.glfw.GLFW.glfwGetKey;
+import static org.lwjgl.glfw.GLFW.glfwGetMouseButton;
+import static org.lwjgl.glfw.GLFW.glfwGetTime;
+import static org.lwjgl.glfw.GLFW.glfwGetWindowSize;
+import static org.lwjgl.glfw.GLFW.glfwInit;
+import static org.lwjgl.glfw.GLFW.glfwPollEvents;
+import static org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback;
+import static org.lwjgl.glfw.GLFW.glfwTerminate;
+import static org.lwjgl.glfw.GLFW.glfwWaitEvents;
+import static org.lwjgl.glfw.GLFW.glfwWindowHint;
+import static org.lwjgl.glfw.GLFW.glfwWindowShouldClose;
 import static org.lwjgl.glfw.GLFWVulkan.glfwCreateWindowSurface;
 import static org.lwjgl.glfw.GLFWVulkan.glfwGetRequiredInstanceExtensions;
-import static org.lwjgl.stb.STBImage.*;
+import static org.lwjgl.stb.STBImage.STBI_rgb_alpha;
+import static org.lwjgl.stb.STBImage.stbi_image_free;
+import static org.lwjgl.stb.STBImage.stbi_load;
 import static org.lwjgl.system.Configuration.DEBUG;
+import org.lwjgl.system.MemoryStack;
 import static org.lwjgl.system.MemoryStack.stackGet;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 import static org.lwjgl.system.MemoryUtil.memAlloc;
 import static org.lwjgl.system.MemoryUtil.memFree;
-import static org.lwjgl.vulkan.EXTDebugUtils.*;
-import static org.lwjgl.vulkan.KHRSurface.*;
-import static org.lwjgl.vulkan.KHRSwapchain.*;
-import static org.lwjgl.vulkan.VK10.*;
+import org.lwjgl.system.Pointer;
+import static org.lwjgl.vulkan.EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+import static org.lwjgl.vulkan.EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+import static org.lwjgl.vulkan.EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+import static org.lwjgl.vulkan.EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+import static org.lwjgl.vulkan.EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+import static org.lwjgl.vulkan.EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+import static org.lwjgl.vulkan.EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+import static org.lwjgl.vulkan.EXTDebugUtils.vkCreateDebugUtilsMessengerEXT;
+import static org.lwjgl.vulkan.EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT;
+import static org.lwjgl.vulkan.KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+import static org.lwjgl.vulkan.KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+import static org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_FIFO_KHR;
+import static org.lwjgl.vulkan.KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR;
+import static org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR;
+import static org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
+import static org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR;
+import static org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR;
+import static org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR;
+import static org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR;
+import static org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+import static org.lwjgl.vulkan.KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+import static org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+import static org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+import static org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR;
+import static org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR;
+import static org.lwjgl.vulkan.KHRSwapchain.vkCreateSwapchainKHR;
+import static org.lwjgl.vulkan.KHRSwapchain.vkDestroySwapchainKHR;
+import static org.lwjgl.vulkan.KHRSwapchain.vkGetSwapchainImagesKHR;
+import static org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR;
+import static org.lwjgl.vulkan.VK10.VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+import static org.lwjgl.vulkan.VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+import static org.lwjgl.vulkan.VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+import static org.lwjgl.vulkan.VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+import static org.lwjgl.vulkan.VK10.VK_ACCESS_SHADER_READ_BIT;
+import static org.lwjgl.vulkan.VK10.VK_ACCESS_TRANSFER_READ_BIT;
+import static org.lwjgl.vulkan.VK10.VK_ACCESS_TRANSFER_WRITE_BIT;
+import static org.lwjgl.vulkan.VK10.VK_API_VERSION_1_0;
+import static org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_CLEAR;
+import static org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+import static org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE;
+import static org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_STORE;
+import static org.lwjgl.vulkan.VK10.VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+import static org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_A_BIT;
+import static org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_B_BIT;
+import static org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_G_BIT;
+import static org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_R_BIT;
+import static org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+import static org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+import static org.lwjgl.vulkan.VK10.VK_COMPARE_OP_ALWAYS;
+import static org.lwjgl.vulkan.VK10.VK_COMPARE_OP_LESS;
+import static org.lwjgl.vulkan.VK10.VK_CULL_MODE_BACK_BIT;
+import static org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+import static org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+import static org.lwjgl.vulkan.VK10.VK_ERROR_EXTENSION_NOT_PRESENT;
+import static org.lwjgl.vulkan.VK10.VK_FALSE;
+import static org.lwjgl.vulkan.VK10.VK_FENCE_CREATE_SIGNALED_BIT;
+import static org.lwjgl.vulkan.VK10.VK_FILTER_LINEAR;
+import static org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8_SRGB;
+import static org.lwjgl.vulkan.VK10.VK_FORMAT_D24_UNORM_S8_UINT;
+import static org.lwjgl.vulkan.VK10.VK_FORMAT_D32_SFLOAT;
+import static org.lwjgl.vulkan.VK10.VK_FORMAT_D32_SFLOAT_S8_UINT;
+import static org.lwjgl.vulkan.VK10.VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+import static org.lwjgl.vulkan.VK10.VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+import static org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32_SFLOAT;
+import static org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32_SFLOAT;
+import static org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB;
+import static org.lwjgl.vulkan.VK10.VK_FRONT_FACE_COUNTER_CLOCKWISE;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_DEPTH_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_STENCIL_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_TILING_LINEAR;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_TILING_OPTIMAL;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_TYPE_2D;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_SAMPLED_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D;
+import static org.lwjgl.vulkan.VK10.VK_INDEX_TYPE_UINT32;
+import static org.lwjgl.vulkan.VK10.VK_LOGIC_OP_COPY;
+import static org.lwjgl.vulkan.VK10.VK_MAKE_VERSION;
+import static org.lwjgl.vulkan.VK10.VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+import static org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+import static org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+import static org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+import static org.lwjgl.vulkan.VK10.VK_NULL_HANDLE;
+import static org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS;
+import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+import static org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_TRANSFER_BIT;
+import static org.lwjgl.vulkan.VK10.VK_POLYGON_MODE_FILL;
+import static org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+import static org.lwjgl.vulkan.VK10.VK_QUEUE_FAMILY_IGNORED;
+import static org.lwjgl.vulkan.VK10.VK_QUEUE_GRAPHICS_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_16_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_2_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_32_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_4_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_64_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_8_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_FRAGMENT_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_VERTEX_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SHARING_MODE_CONCURRENT;
+import static org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_APPLICATION_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+import static org.lwjgl.vulkan.VK10.VK_SUBPASS_CONTENTS_INLINE;
+import static org.lwjgl.vulkan.VK10.VK_SUBPASS_EXTERNAL;
+import static org.lwjgl.vulkan.VK10.VK_SUCCESS;
+import static org.lwjgl.vulkan.VK10.VK_TRUE;
+import static org.lwjgl.vulkan.VK10.VK_VERTEX_INPUT_RATE_VERTEX;
+import static org.lwjgl.vulkan.VK10.vkAllocateCommandBuffers;
+import static org.lwjgl.vulkan.VK10.vkAllocateDescriptorSets;
+import static org.lwjgl.vulkan.VK10.vkAllocateMemory;
+import static org.lwjgl.vulkan.VK10.vkBeginCommandBuffer;
+import static org.lwjgl.vulkan.VK10.vkBindBufferMemory;
+import static org.lwjgl.vulkan.VK10.vkBindImageMemory;
+import static org.lwjgl.vulkan.VK10.vkCmdBeginRenderPass;
+import static org.lwjgl.vulkan.VK10.vkCmdBindDescriptorSets;
+import static org.lwjgl.vulkan.VK10.vkCmdBindIndexBuffer;
+import static org.lwjgl.vulkan.VK10.vkCmdBindPipeline;
+import static org.lwjgl.vulkan.VK10.vkCmdBindVertexBuffers;
+import static org.lwjgl.vulkan.VK10.vkCmdBlitImage;
+import static org.lwjgl.vulkan.VK10.vkCmdCopyBuffer;
+import static org.lwjgl.vulkan.VK10.vkCmdCopyBufferToImage;
+import static org.lwjgl.vulkan.VK10.vkCmdDrawIndexed;
+import static org.lwjgl.vulkan.VK10.vkCmdEndRenderPass;
+import static org.lwjgl.vulkan.VK10.vkCmdPipelineBarrier;
+import static org.lwjgl.vulkan.VK10.vkCmdPushConstants;
+import static org.lwjgl.vulkan.VK10.vkCreateBuffer;
+import static org.lwjgl.vulkan.VK10.vkCreateCommandPool;
+import static org.lwjgl.vulkan.VK10.vkCreateDescriptorPool;
+import static org.lwjgl.vulkan.VK10.vkCreateDescriptorSetLayout;
+import static org.lwjgl.vulkan.VK10.vkCreateDevice;
+import static org.lwjgl.vulkan.VK10.vkCreateFence;
+import static org.lwjgl.vulkan.VK10.vkCreateFramebuffer;
+import static org.lwjgl.vulkan.VK10.vkCreateGraphicsPipelines;
+import static org.lwjgl.vulkan.VK10.vkCreateImage;
+import static org.lwjgl.vulkan.VK10.vkCreateImageView;
+import static org.lwjgl.vulkan.VK10.vkCreateInstance;
+import static org.lwjgl.vulkan.VK10.vkCreatePipelineLayout;
+import static org.lwjgl.vulkan.VK10.vkCreateRenderPass;
+import static org.lwjgl.vulkan.VK10.vkCreateSampler;
+import static org.lwjgl.vulkan.VK10.vkCreateSemaphore;
+import static org.lwjgl.vulkan.VK10.vkCreateShaderModule;
+import static org.lwjgl.vulkan.VK10.vkDestroyBuffer;
+import static org.lwjgl.vulkan.VK10.vkDestroyCommandPool;
+import static org.lwjgl.vulkan.VK10.vkDestroyDescriptorPool;
+import static org.lwjgl.vulkan.VK10.vkDestroyDescriptorSetLayout;
+import static org.lwjgl.vulkan.VK10.vkDestroyDevice;
+import static org.lwjgl.vulkan.VK10.vkDestroyFence;
+import static org.lwjgl.vulkan.VK10.vkDestroyFramebuffer;
+import static org.lwjgl.vulkan.VK10.vkDestroyImage;
+import static org.lwjgl.vulkan.VK10.vkDestroyImageView;
+import static org.lwjgl.vulkan.VK10.vkDestroyInstance;
+import static org.lwjgl.vulkan.VK10.vkDestroyPipeline;
+import static org.lwjgl.vulkan.VK10.vkDestroyPipelineLayout;
+import static org.lwjgl.vulkan.VK10.vkDestroyRenderPass;
+import static org.lwjgl.vulkan.VK10.vkDestroySampler;
+import static org.lwjgl.vulkan.VK10.vkDestroySemaphore;
+import static org.lwjgl.vulkan.VK10.vkDestroyShaderModule;
+import static org.lwjgl.vulkan.VK10.vkDeviceWaitIdle;
+import static org.lwjgl.vulkan.VK10.vkEndCommandBuffer;
+import static org.lwjgl.vulkan.VK10.vkEnumerateDeviceExtensionProperties;
+import static org.lwjgl.vulkan.VK10.vkEnumerateInstanceLayerProperties;
+import static org.lwjgl.vulkan.VK10.vkEnumeratePhysicalDevices;
+import static org.lwjgl.vulkan.VK10.vkFreeCommandBuffers;
+import static org.lwjgl.vulkan.VK10.vkFreeMemory;
+import static org.lwjgl.vulkan.VK10.vkGetBufferMemoryRequirements;
+import static org.lwjgl.vulkan.VK10.vkGetDeviceQueue;
+import static org.lwjgl.vulkan.VK10.vkGetImageMemoryRequirements;
+import static org.lwjgl.vulkan.VK10.vkGetInstanceProcAddr;
+import static org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceFeatures;
+import static org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceFormatProperties;
+import static org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties;
+import static org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceProperties;
+import static org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceQueueFamilyProperties;
+import static org.lwjgl.vulkan.VK10.vkMapMemory;
+import static org.lwjgl.vulkan.VK10.vkQueueSubmit;
+import static org.lwjgl.vulkan.VK10.vkQueueWaitIdle;
+import static org.lwjgl.vulkan.VK10.vkResetFences;
+import static org.lwjgl.vulkan.VK10.vkUnmapMemory;
+import static org.lwjgl.vulkan.VK10.vkUpdateDescriptorSets;
+import static org.lwjgl.vulkan.VK10.vkWaitForFences;
+import org.lwjgl.vulkan.VkAllocationCallbacks;
+import org.lwjgl.vulkan.VkApplicationInfo;
+import org.lwjgl.vulkan.VkAttachmentDescription;
+import org.lwjgl.vulkan.VkAttachmentReference;
+import org.lwjgl.vulkan.VkBufferCopy;
+import org.lwjgl.vulkan.VkBufferCreateInfo;
+import org.lwjgl.vulkan.VkBufferImageCopy;
+import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkCommandBuffer;
+import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
+import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
+import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
+import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
+import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
+import org.lwjgl.vulkan.VkDescriptorBufferInfo;
+import org.lwjgl.vulkan.VkDescriptorImageInfo;
+import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
+import org.lwjgl.vulkan.VkDescriptorPoolSize;
+import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
+import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
+import org.lwjgl.vulkan.VkDevice;
+import org.lwjgl.vulkan.VkDeviceCreateInfo;
+import org.lwjgl.vulkan.VkDeviceQueueCreateInfo;
+import org.lwjgl.vulkan.VkExtensionProperties;
+import org.lwjgl.vulkan.VkExtent2D;
+import org.lwjgl.vulkan.VkExtent3D;
+import org.lwjgl.vulkan.VkFenceCreateInfo;
+import org.lwjgl.vulkan.VkFormatProperties;
+import org.lwjgl.vulkan.VkFramebufferCreateInfo;
+import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
+import org.lwjgl.vulkan.VkImageBlit;
+import org.lwjgl.vulkan.VkImageCreateInfo;
+import org.lwjgl.vulkan.VkImageMemoryBarrier;
+import org.lwjgl.vulkan.VkImageViewCreateInfo;
+import org.lwjgl.vulkan.VkInstance;
+import org.lwjgl.vulkan.VkInstanceCreateInfo;
+import org.lwjgl.vulkan.VkLayerProperties;
+import org.lwjgl.vulkan.VkMemoryAllocateInfo;
+import org.lwjgl.vulkan.VkMemoryRequirements;
+import org.lwjgl.vulkan.VkOffset2D;
+import org.lwjgl.vulkan.VkPhysicalDevice;
+import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
+import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
+import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
+import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
+import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineDepthStencilStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
+import org.lwjgl.vulkan.VkPushConstantRange;
+import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
+import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
+import org.lwjgl.vulkan.VkPresentInfoKHR;
+import org.lwjgl.vulkan.VkQueue;
+import org.lwjgl.vulkan.VkQueueFamilyProperties;
+import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkRenderPassBeginInfo;
+import org.lwjgl.vulkan.VkRenderPassCreateInfo;
+import org.lwjgl.vulkan.VkSamplerCreateInfo;
+import org.lwjgl.vulkan.VkSemaphoreCreateInfo;
+import org.lwjgl.vulkan.VkShaderModuleCreateInfo;
+import org.lwjgl.vulkan.VkSubmitInfo;
+import org.lwjgl.vulkan.VkSubpassDependency;
+import org.lwjgl.vulkan.VkSubpassDescription;
+import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
+import org.lwjgl.vulkan.VkSurfaceFormatKHR;
+import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
+import org.lwjgl.vulkan.VkVertexInputAttributeDescription;
+import org.lwjgl.vulkan.VkVertexInputBindingDescription;
+import org.lwjgl.vulkan.VkViewport;
+import org.lwjgl.vulkan.VkWriteDescriptorSet;
+
+import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.PandemicMapGraph;
+import static jdemic.VulkanModules.AlignmentUtils.alignas;
+import static jdemic.VulkanModules.AlignmentUtils.alignof;
+import jdemic.VulkanModules.Frame;
+import jdemic.VulkanModules.ShaderSPIRVUtils.SPIRV;
+import static jdemic.VulkanModules.ShaderSPIRVUtils.ShaderKind.FRAGMENT_SHADER;
+import static jdemic.VulkanModules.ShaderSPIRVUtils.ShaderKind.VERTEX_SHADER;
+import static jdemic.VulkanModules.ShaderSPIRVUtils.compileShaderFile;
 
 class jDemicEngine
 {
@@ -76,19 +411,19 @@ class jDemicEngine
         private static final int MAP_NODE_HOVER_RADIUS_PX = 8*5;
         private static final float MAP_BORDER_FRACTION = 0.025f;
 
-        private static final boolean ENABLE_VALIDATION_LAYERS = DEBUG.get(true);
+        /** When true, use validation layers if the loader exposes {@code VK_LAYER_KHRONOS_validation} (e.g. Vulkan SDK). */
+        private static final boolean WANT_VALIDATION_LAYERS = DEBUG.get(true);
 
         private static final Set<String> VALIDATION_LAYERS;
         static
         {
-            if(ENABLE_VALIDATION_LAYERS)
+            if(WANT_VALIDATION_LAYERS)
             {
                 VALIDATION_LAYERS = new HashSet<>();
                 VALIDATION_LAYERS.add("VK_LAYER_KHRONOS_validation");
             }
             else
             {
-                // We are not going to use it, so we don't create it
                 VALIDATION_LAYERS = null;
             }
         }
@@ -314,6 +649,7 @@ class jDemicEngine
         private long descriptorSetLayout;
         private List<Long> descriptorSetsWood;
         private List<Long> descriptorSetsMap;
+        private List<Long> descriptorSetsDeck;
         private long pipelineLayout;
         private long graphicsPipeline;
 
@@ -346,6 +682,20 @@ class jDemicEngine
         private int woodIndexCount;
         private int mapPanelFirstIndex;
         private int mapPanelIndexCount;
+        private int deckPanelFirstIndex;
+        private int deckPanelIndexCount;
+
+        private static final int DECK_PUSH_CONSTANT_SIZE = 80;
+
+        private CardDeckUI cardDeckUI;
+        private BufferedImage deckRaster;
+        private int deckTextureWidth;
+        private int deckTextureHeight;
+        private long deckTextureImage;
+        private long deckTextureMemory;
+        private long deckTextureImageView;
+        private boolean deckGpuDirty;
+        private double lastUiTime;
 
         private List<Long> uniformBuffers;
         private List<Long> uniformBuffersMemory;
@@ -367,6 +717,9 @@ class jDemicEngine
         private int mapTextureWidth;
         private int mapTextureHeight;
         private int hoveredCityIndex = -1;
+
+        /** Effective validation enable after {@link #createInstance()} (layers may be unavailable). */
+        private boolean useValidationLayers;
 
         // ======= METHODS ======= //
 
@@ -433,8 +786,17 @@ class jDemicEngine
 
             while(!glfwWindowShouldClose(window))
             {
+                double now = glfwGetTime();
+                if(lastUiTime == 0.0)
+                {
+                    lastUiTime = now;
+                }
+                double dt = now - lastUiTime;
+                lastUiTime = now;
+
                 glfwPollEvents();
-                updateInputState();
+                updateInputState(dt);
+                refreshDeckTexture();
                 drawFrame();
             }
 
@@ -442,8 +804,28 @@ class jDemicEngine
             vkDeviceWaitIdle(device);
         }
 
-        private void updateInputState()
+        private ByteBuffer pushConstantsDeckScreen(MemoryStack stack, int screenSpaceMode, Matrix4f clipFromLocal)
         {
+
+            ByteBuffer bb = stack.malloc(DECK_PUSH_CONSTANT_SIZE);
+            bb.order(ByteOrder.LITTLE_ENDIAN);
+            bb.putInt(0, screenSpaceMode);
+            for(int i = 4; i < 16; i++)
+            {
+                bb.put(i, (byte)0);
+            }
+            clipFromLocal.get(16, bb);
+            return bb;
+        }
+
+        private void updateInputState(double dt)
+        {
+
+            if(cardDeckUI != null)
+            {
+                cardDeckUI.update(dt);
+            }
+
             boolean isTabDown = glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS;
             if(isTabDown && !tabPressed)
             {
@@ -452,14 +834,81 @@ class jDemicEngine
             tabPressed = isTabDown;
 
             boolean isLeftClickDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-            int hoveredCity = detectHoveredCityIndex();
 
-            if(isLeftClickDown && !leftClickPressed && hoveredCity != -1)
+            try(MemoryStack stack = stackPush())
             {
-                var City = alignedCityNodes.get(hoveredCity).city;
-                City.clickEvent();
+
+                DoubleBuffer cursorX = stack.mallocDouble(1);
+                DoubleBuffer cursorY = stack.mallocDouble(1);
+                glfwGetCursorPos(window, cursorX, cursorY);
+
+                IntBuffer windowWidth = stack.mallocInt(1);
+                IntBuffer windowHeight = stack.mallocInt(1);
+                IntBuffer framebufferWidth = stack.mallocInt(1);
+                IntBuffer framebufferHeight = stack.mallocInt(1);
+                glfwGetWindowSize(window, windowWidth, windowHeight);
+                glfwGetFramebufferSize(window, framebufferWidth, framebufferHeight);
+
+                int hoveredCity = -1;
+                if(windowWidth.get(0) != 0 && windowHeight.get(0) != 0)
+                {
+                    hoveredCity = detectHoveredCityIndex();
+                }
+
+                // Deck UI interaction (hover + click). We map the cursor into the deck raster space.
+                // Note: The deck strip currently renders near the top of the window (clip-space quad + Vulkan Y convention),
+                // so we treat the interactive band as 0..deckTextureHeight in framebuffer coordinates.
+                if(cardDeckUI != null && deckTextureHeight > 0 && windowWidth.get(0) != 0 && framebufferWidth.get(0) != 0)
+                {
+
+                    float cursorFramebufferX = (float) (cursorX.get(0) * framebufferWidth.get(0) / (double) windowWidth.get(0));
+                    float cursorFramebufferY = (float) (cursorY.get(0) * framebufferHeight.get(0) / (double) windowHeight.get(0));
+
+                    int fbH = framebufferHeight.get(0);
+                    int fbW = framebufferWidth.get(0);
+                    // Match deck quad in createTableGeometry: y from -1 to deckStripYBottom (-0.24) => span 0.76 => 38% of fb height.
+                    final float deckStripNdcSpan = -0.24f - (-1.00f);
+                    int bandHeight = Math.min(fbH, Math.max(1, Math.round(fbH * (deckStripNdcSpan * 0.5f))));
+                    int bandTop = 0;
+                    int bandBottom = bandTop + bandHeight;
+
+                    boolean inDeckBand = cursorFramebufferY >= bandTop && cursorFramebufferY < bandBottom;
+                    if(inDeckBand)
+                    {
+                        int localX = (int) (cursorFramebufferX * (long) deckTextureWidth / fbW);
+                        int localY = (int) ((cursorFramebufferY - bandTop) * (long) deckTextureHeight / Math.max(1, bandHeight));
+                        localX = Math.max(0, Math.min(deckTextureWidth - 1, localX));
+                        localY = Math.max(0, Math.min(deckTextureHeight - 1, localY));
+
+                        if(cardDeckUI.handleHover(localX, localY))
+                        {
+                            deckGpuDirty = true;
+                        }
+
+                        if(isLeftClickDown && !leftClickPressed && cardDeckUI.handleClick(localX, localY))
+                        {
+                            deckGpuDirty = true;
+                            leftClickPressed = isLeftClickDown;
+                            updateHoveredCityState();
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        if(cardDeckUI.clearHover())
+                        {
+                            deckGpuDirty = true;
+                        }
+                    }
+                }
+
+                if(isLeftClickDown && !leftClickPressed && hoveredCity != -1)
+                {
+                    var City = alignedCityNodes.get(hoveredCity).city;
+                    City.clickEvent();
+                }
+                leftClickPressed = isLeftClickDown;
             }
-            leftClickPressed = isLeftClickDown;
 
             updateHoveredCityState();
         }
@@ -631,8 +1080,147 @@ class jDemicEngine
             }
         }
 
+        private void createDeckTextureAndView()
+        {
+
+            deckTextureWidth = cardDeckUI.getRasterWidth();
+            deckTextureHeight = cardDeckUI.getRasterHeight();
+            if(deckTextureWidth <= 0 || deckTextureHeight <= 0)
+            {
+                return;
+            }
+
+            if(deckTextureImage != 0L)
+            {
+                vkDestroyImageView(device, deckTextureImageView, null);
+                vkDestroyImage(device, deckTextureImage, null);
+                vkFreeMemory(device, deckTextureMemory, null);
+                deckTextureImage = 0L;
+                deckTextureImageView = 0L;
+                deckTextureMemory = 0L;
+            }
+
+            final int mipLevels = 1;
+
+            try(MemoryStack stack = stackPush())
+            {
+
+                LongBuffer pImg = stack.mallocLong(1);
+                LongBuffer pMem = stack.mallocLong(1);
+                createImage(deckTextureWidth, deckTextureHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+                            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                            pImg, pMem);
+                deckTextureImage = pImg.get(0);
+                deckTextureMemory = pMem.get(0);
+            }
+
+            deckTextureImageView = createImageView(deckTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
+
+            if(deckRaster == null || deckRaster.getWidth() != deckTextureWidth || deckRaster.getHeight() != deckTextureHeight)
+            {
+                deckRaster = new BufferedImage(deckTextureWidth, deckTextureHeight, BufferedImage.TYPE_INT_RGB);
+            }
+            cardDeckUI.render(deckRaster);
+            uploadDeckRgbaToGpu(toRgbaByteBuffer(deckRaster), true);
+        }
+
+        private void uploadDeckRgbaToGpu(ByteBuffer rgba, boolean isFirstUpload)
+        {
+
+            if(deckTextureImage == 0L)
+            {
+                if(rgba != null)
+                {
+                    memFree(rgba);
+                }
+                return;
+            }
+
+            vkDeviceWaitIdle(device);
+
+            long imageSize = (long) deckTextureWidth * deckTextureHeight * 4;
+
+            try(MemoryStack stack = stackPush())
+            {
+
+                LongBuffer pStagingBuffer = stack.mallocLong(1);
+                LongBuffer pStagingBufferMemory = stack.mallocLong(1);
+                createBuffer(imageSize,
+                             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                             pStagingBuffer,
+                             pStagingBufferMemory);
+
+                PointerBuffer data = stack.mallocPointer(1);
+                vkMapMemory(device, pStagingBufferMemory.get(0), 0, imageSize, 0, data);
+                memcpy(data.getByteBuffer(0, (int) imageSize), rgba, imageSize);
+                vkUnmapMemory(device, pStagingBufferMemory.get(0));
+
+                if(isFirstUpload)
+                {
+                    transitionImageLayout(deckTextureImage,
+                                          VK_FORMAT_R8G8B8A8_SRGB,
+                                          VK_IMAGE_LAYOUT_UNDEFINED,
+                                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                          1);
+                }
+                else
+                {
+                    transitionImageLayout(deckTextureImage,
+                                          VK_FORMAT_R8G8B8A8_SRGB,
+                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                          1);
+                }
+
+                copyBufferToImage(pStagingBuffer.get(0), deckTextureImage, deckTextureWidth, deckTextureHeight);
+                transitionImageLayout(deckTextureImage,
+                                      VK_FORMAT_R8G8B8A8_SRGB,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      1);
+
+                vkDestroyBuffer(device, pStagingBuffer.get(0), null);
+                vkFreeMemory(device, pStagingBufferMemory.get(0), null);
+            }
+            finally
+            {
+                memFree(rgba);
+            }
+        }
+
+        private void refreshDeckTexture()
+        {
+
+            if(cardDeckUI == null || deckTextureImage == 0L || deckRaster == null)
+            {
+                return;
+            }
+
+            boolean animating = cardDeckUI.isAnimatingSelection();
+            if(!deckGpuDirty && !animating)
+            {
+                return;
+            }
+
+            deckGpuDirty = animating;
+            cardDeckUI.render(deckRaster);
+            uploadDeckRgbaToGpu(toRgbaByteBuffer(deckRaster), false);
+        }
+
         private void cleanupSwapChain()
         {
+
+            if(deckTextureImageView != 0L)
+            {
+                vkDestroyImageView(device, deckTextureImageView, null);
+                vkDestroyImage(device, deckTextureImage, null);
+                vkFreeMemory(device, deckTextureMemory, null);
+                deckTextureImageView = 0L;
+                deckTextureImage = 0L;
+                deckTextureMemory = 0L;
+            }
 
             vkDestroyImageView(device, colorImageView, null);
             vkDestroyImage(device, colorImage, null);
@@ -706,7 +1294,7 @@ class jDemicEngine
 
             vkDestroyDevice(device, null);
 
-            if(ENABLE_VALIDATION_LAYERS)
+            if(useValidationLayers)
             {
                 destroyDebugUtilsMessengerEXT(instance, debugMessenger, null);
             }
@@ -748,6 +1336,14 @@ class jDemicEngine
         private void createSwapChainObjects()
         {
             createSwapChain();
+
+            if(cardDeckUI == null)
+            {
+                cardDeckUI = new CardDeckUI();
+            }
+            cardDeckUI.onSwapChainResize(swapChainExtent.width(), swapChainExtent.height());
+            createDeckTextureAndView();
+
             createImageViews();
             createRenderPass();
             createGraphicsPipeline();
@@ -763,9 +1359,15 @@ class jDemicEngine
         private void createInstance()
         {
 
-            if(ENABLE_VALIDATION_LAYERS && !checkValidationLayerSupport())
+            useValidationLayers = false;
+            if(WANT_VALIDATION_LAYERS)
             {
-                throw new RuntimeException("Validation requested but not supported");
+                useValidationLayers = checkValidationLayerSupport();
+                if(!useValidationLayers)
+                {
+                    System.err.println(
+                        "jDemic: validation layers requested but not available; continuing without them (install Vulkan SDK for VK_LAYER_KHRONOS_validation).");
+                }
             }
 
             try(MemoryStack stack = stackPush())
@@ -789,7 +1391,7 @@ class jDemicEngine
                 // enabledExtensionCount is implicitly set when you call ppEnabledExtensionNames
                 createInfo.ppEnabledExtensionNames(getRequiredExtensions(stack));
 
-                if(ENABLE_VALIDATION_LAYERS)
+                if(useValidationLayers)
                 {
 
                     createInfo.ppEnabledLayerNames(asPointerBuffer(stack, VALIDATION_LAYERS));
@@ -822,7 +1424,7 @@ class jDemicEngine
         private void setupDebugMessenger()
         {
 
-            if(!ENABLE_VALIDATION_LAYERS)
+            if(!useValidationLayers)
             {
                 return;
             }
@@ -932,7 +1534,7 @@ class jDemicEngine
 
                 createInfo.ppEnabledExtensionNames(asPointerBuffer(stack, DEVICE_EXTENSIONS));
 
-                if(ENABLE_VALIDATION_LAYERS)
+                if(useValidationLayers)
                 {
                     createInfo.ppEnabledLayerNames(asPointerBuffer(stack, VALIDATION_LAYERS));
                 }
@@ -1281,9 +1883,15 @@ class jDemicEngine
 
                 // ===> PIPELINE LAYOUT CREATION <===
 
+                VkPushConstantRange.Buffer pushConstantRanges = VkPushConstantRange.calloc(1, stack);
+                pushConstantRanges.get(0).stageFlags(VK_SHADER_STAGE_VERTEX_BIT);
+                pushConstantRanges.get(0).offset(0);
+                pushConstantRanges.get(0).size(DECK_PUSH_CONSTANT_SIZE);
+
                 VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack);
                 pipelineLayoutInfo.sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
                 pipelineLayoutInfo.pSetLayouts(stack.longs(descriptorSetLayout));
+                pipelineLayoutInfo.pPushConstantRanges(pushConstantRanges);
 
                 LongBuffer pPipelineLayout = stack.longs(VK_NULL_HANDLE);
 
@@ -2249,6 +2857,20 @@ class jDemicEngine
             mapPanelIndexCount = generatedIndices.size() - mapPanelFirstIndex;
             woodIndexCount = mapPanelFirstIndex;
 
+            // Card-deck UI strip: clip-space positions when push_constant screenSpace != 0 (see table.vert).
+            Vector3f deckUiTint = new Vector3f(0.99f, 0.15f, 0.99f);
+            deckPanelFirstIndex = generatedIndices.size();
+            // Hand strip: NDC y from -1 (window top) down to yBottom. Span/2 = fraction of framebuffer height.
+            // Wider span = visibly larger cards (texture is stretched to this quad).
+            final float deckStripYBottom = -0.24f;
+            addQuad(generatedVertices, generatedIndices,
+                    new Vector3f(-1.00f, deckStripYBottom, 0.20f),
+                    new Vector3f(1.00f, deckStripYBottom, 0.20f),
+                    new Vector3f(1.00f, -1.00f, 0.20f),
+                    new Vector3f(-1.00f, -1.00f, 0.20f),
+                    deckUiTint);
+            deckPanelIndexCount = generatedIndices.size() - deckPanelFirstIndex;
+
             vertices = generatedVertices.toArray(new Vertex[0]);
             indices = new int[generatedIndices.size()];
             for(int i = 0; i < generatedIndices.size(); i++)
@@ -2445,16 +3067,16 @@ class jDemicEngine
 
                 VkDescriptorPoolSize uniformBufferPoolSize = poolSizes.get(0);
                 uniformBufferPoolSize.type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-                uniformBufferPoolSize.descriptorCount(swapChainImages.size() * 2);
+                uniformBufferPoolSize.descriptorCount(swapChainImages.size() * 3);
 
                 VkDescriptorPoolSize textureSamplerPoolSize = poolSizes.get(1);
                 textureSamplerPoolSize.type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-                textureSamplerPoolSize.descriptorCount(swapChainImages.size() * 2);
+                textureSamplerPoolSize.descriptorCount(swapChainImages.size() * 3);
 
                 VkDescriptorPoolCreateInfo poolInfo = VkDescriptorPoolCreateInfo.calloc(stack);
                 poolInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO);
                 poolInfo.pPoolSizes(poolSizes);
-                poolInfo.maxSets(swapChainImages.size() * 2);
+                poolInfo.maxSets(swapChainImages.size() * 3);
 
                 LongBuffer pDescriptorPool = stack.mallocLong(1);
 
@@ -2482,10 +3104,13 @@ class jDemicEngine
                 VkDescriptorSetAllocateInfo allocInfo = VkDescriptorSetAllocateInfo.calloc(stack);
                 allocInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO);
                 allocInfo.descriptorPool(descriptorPool);
-                allocInfo.pSetLayouts(layouts);
 
+                allocInfo.pSetLayouts(layouts.rewind());
                 descriptorSetsWood = allocateAndWriteDescriptorSets(stack, allocInfo, woodTextureImageView);
+                allocInfo.pSetLayouts(layouts.rewind());
                 descriptorSetsMap = allocateAndWriteDescriptorSets(stack, allocInfo, mapTextureImageView);
+                allocInfo.pSetLayouts(layouts.rewind());
+                descriptorSetsDeck = allocateAndWriteDescriptorSets(stack, allocInfo, deckTextureImageView);
             }
         }
 
@@ -2767,15 +3392,31 @@ class jDemicEngine
 
                         vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
+                        Matrix4f clipIdentity = new Matrix4f().identity();
+
+                        vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                                           pushConstantsDeckScreen(stack, 0, clipIdentity));
+
                         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                                 pipelineLayout, 0, stack.longs(descriptorSetsWood.get(i)), null);
 
                         vkCmdDrawIndexed(commandBuffer, woodIndexCount, 1, 0, 0, 0);
 
+                        vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                                           pushConstantsDeckScreen(stack, 0, clipIdentity));
+
                         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                                 pipelineLayout, 0, stack.longs(descriptorSetsMap.get(i)), null);
 
                         vkCmdDrawIndexed(commandBuffer, mapPanelIndexCount, 1, mapPanelFirstIndex, 0, 0);
+
+                        vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                                           pushConstantsDeckScreen(stack, 1, clipIdentity));
+
+                        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                                pipelineLayout, 0, stack.longs(descriptorSetsDeck.get(i)), null);
+
+                        vkCmdDrawIndexed(commandBuffer, deckPanelIndexCount, 1, deckPanelFirstIndex, 0, 0);
                     }
                     vkCmdEndRenderPass(commandBuffer);
 
@@ -3175,7 +3816,7 @@ class jDemicEngine
 
             PointerBuffer glfwExtensions = glfwGetRequiredInstanceExtensions();
 
-            if(ENABLE_VALIDATION_LAYERS)
+            if(useValidationLayers)
             {
 
                 PointerBuffer extensions = stack.mallocPointer(glfwExtensions.capacity() + 1);
@@ -3224,13 +3865,10 @@ class jDemicEngine
 
 }
 
-public class main
+public class Main
 {
-    public static class EntryPoint
+    public static void main(String[] args)
     {
-        public static void main(String[] args)
-        {
-            jDemicEngine.main(args);
-        }
+        jDemicEngine.main(args);
     }
 }

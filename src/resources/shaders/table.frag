@@ -10,6 +10,13 @@ layout(location = 2) in float fragTime;
 layout(location = 0) out vec4 outColor;
 
 void main() {
+    // Card-deck UI strip (vertex tint from engine; distinct from white map / brown wood)
+    bool isDeckUi = fragColor.r > 0.95 && fragColor.g < 0.35 && fragColor.b > 0.95;
+    if (isDeckUi) {
+        outColor = texture(texSampler, fragTexCoord);
+        return;
+    }
+
     // Detect map panel by vertex color (map = white, wood = brown)
     bool isMapPanel = fragColor.b > 0.9;
 

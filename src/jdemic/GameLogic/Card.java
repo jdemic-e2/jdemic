@@ -37,6 +37,25 @@ public class Card {
         this.description = description;
     }
 
+    /**
+     * Short explanation shown by the Hand Manager / Card UI tooltip.
+     * If a custom description was set, prefer that; otherwise fall back to a simple default by type.
+     */
+    public String getEffectDescription()
+    {
+        if(description != null && !description.isBlank())
+        {
+            return description;
+        }
+
+        return switch (cardType)
+        {
+            case CITY -> "Used for travel, sharing knowledge, or discovering a cure.";
+            case EVENT -> "Can be played for a special one-time effect.";
+            case INFECTION -> "Represents infection pressure on a city.";
+        };
+    }
+
     //idk if this is how it should be but meh
     public void update(double mouseX, double mouseY) {
         boolean hovered = (mouseX >= position.x && mouseX <= position.x + CARD_WIDTH &&
