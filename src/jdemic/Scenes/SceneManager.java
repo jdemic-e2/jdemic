@@ -3,8 +3,6 @@ package jdemic.Scenes;
 import javafx.scene.Parent;
 import javafx.stage.Stage;
 import jdemic.Scenes.Lobby.JoinCodeScene;
-import jdemic.Scenes.Lobby.LobbyScene;
-import jdemic.Scenes.MainMenuScene;
 import jdemic.Scenes.Settings.SettingsScene;
 import jdemic.Scenes.Tutorial.*;
 

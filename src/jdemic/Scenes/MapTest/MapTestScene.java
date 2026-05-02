@@ -2,7 +2,6 @@ package jdemic.Scenes.MapTest;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -18,7 +17,6 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.PandemicMapGraph;
-import jdemic.Scenes.MainMenuScene;
 import jdemic.Scenes.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.GameLogic.*;

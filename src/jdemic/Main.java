@@ -4,7 +4,6 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
-import jdemic.Scenes.MainMenuScene;
 import jdemic.Scenes.SceneManager;
 import jdemic.Scenes.Settings.AudioManager;
 import jdemic.Scenes.Settings.SettingsManager;

@@ -22,11 +22,10 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
-import jdemic.GameLogic.Player;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.GameManager;
+import jdemic.GameLogic.ServerRelatedClasses.*;
 
-import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.UnaryOperator;
 
@@ -293,20 +292,20 @@ public class PlayScene {
         StackPane.setAlignment(playerIconsContainer, Pos.TOP_LEFT);
         playerIconsContainer.setPickOnBounds(false);
 
-        for (Player p : gameManager.getState().getPlayers()) {
+        for (PlayerState p : gameManager.getState().getPlayers()) {
             playerIconsContainer.getChildren().add(createGameplayPlayerRow(p));
         }
         root.getChildren().add(playerIconsContainer);
     }
 
-    private HBox createGameplayPlayerRow(Player player) {
+    private HBox createGameplayPlayerRow(PlayerState player) {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setCursor(javafx.scene.Cursor.HAND);
 
         String roleFileName = "player_placeholder.png";
-        if (player.getState().getPlayerRole() != null) {
-            roleFileName = player.getState().getPlayerRole().toString().toLowerCase() + ".png";
+        if (player.getPlayerRole() != null) {
+            roleFileName = player.getPlayerRole().toString().toLowerCase() + ".png";
         }
 
         Image img = null;
@@ -337,7 +336,7 @@ public class PlayScene {
         return row;
     }
 
-    private void showPlayerCardsOverlay(Player player) {
+    private void showPlayerCardsOverlay(PlayerState player) {
         StackPane overlay = new StackPane();
         overlay.setStyle("-fx-background-color: rgba(0, 0, 0, 0.75);");
 
@@ -347,14 +346,14 @@ public class PlayScene {
         cardPanel.setStyle("-fx-background-color: rgba(13, 17, 23, 0.95); -fx-border-color: #00d9ff; -fx-border-width: 2; -fx-border-radius: 15; -fx-background-radius: 15;");
         GlowUtil.applyGlow(cardPanel, "#00d9ff", 15);
 
-        Label title = TextUtil.createText(player.getState().getPlayerName() + "'S HAND", "hkmodular", 0.035, "#d1d412", root);
+        Label title = TextUtil.createText(player.getPlayerName() + "'S HAND", "hkmodular", 0.035, "#d1d412", root);
         HBox cardList = new HBox(15);
         cardList.setAlignment(Pos.CENTER);
 
-        if (player.getState().getHand() == null || player.getState().getHand().isEmpty()) {
+        if (player.getHand() == null || player.getHand().isEmpty()) {
             cardList.getChildren().add(TextUtil.createText("NO CARDS IN HAND", "hkmodular", 0.020, "#ff2d2d", root));
         } else {
-            for (Card card : player.getState().getHand()) {
+            for (Card card : player.getHand()) {
                 VBox cardUI = new VBox(5);
                 cardUI.setAlignment(Pos.CENTER);
                 cardUI.setStyle("-fx-border-color: #00b5d4; -fx-padding: 10; -fx-border-radius: 5;");
