@@ -18,12 +18,15 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import com.fasterxml.jackson.databind.JsonNode;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.GameClient;
 import jdemic.GameLogic.GameManager;
+import jdemic.GameLogic.Player;
 import jdemic.GameLogic.ServerRelatedClasses.*;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -37,6 +40,8 @@ public class PlayScene {
     private String nickname = "";
     private final String hostCode;
     private Label hostStatusLabel;
+    private GameClient networkGameClient;
+    private Player networkPlayer;
 
     public PlayScene(Stage stage) {
         this.stage = stage;
@@ -45,6 +50,17 @@ public class PlayScene {
 
         setupBackground();
         showEntryScreen();
+    }
+
+    public PlayScene(Stage stage, String nickname, GameClient gameClient, JsonNode gameState) {
+        this.stage = stage;
+        this.root = new StackPane();
+        this.hostCode = "";
+        this.nickname = nickname == null || nickname.isBlank() ? "PLAYER" : nickname.toUpperCase();
+        this.networkGameClient = gameClient;
+
+        setupBackground();
+        showNetworkGameplayScreen(gameState);
     }
 
     public StackPane getRoot() {
@@ -296,6 +312,67 @@ public class PlayScene {
             playerIconsContainer.getChildren().add(createGameplayPlayerRow(p));
         }
         root.getChildren().add(playerIconsContainer);
+    }
+
+    private void showNetworkGameplayScreen(JsonNode gameState) {
+        resetScreen();
+
+        Label title = TextUtil.createText("GAME STARTED", "hkmodular", 0.05, "#d1d412", root);
+        GlowUtil.applyGlow(title, "#d1d412", 12);
+        StackPane.setAlignment(title, Pos.TOP_CENTER);
+        title.translateYProperty().bind(root.heightProperty().multiply(0.06));
+
+        VBox playersBox = new VBox(12);
+        playersBox.setAlignment(Pos.TOP_LEFT);
+        playersBox.paddingProperty().bind(Bindings.createObjectBinding(
+                () -> new Insets(root.getHeight() * 0.18, 0, 0, root.getWidth() * 0.06),
+                root.widthProperty(), root.heightProperty()
+        ));
+
+        JsonNode players = getPlayersArray(gameState);
+        if (players != null && players.isArray()) {
+            for (JsonNode playerNode : players) {
+                String playerName = playerNode.has("playerName") ? playerNode.get("playerName").asText() : "UNKNOWN";
+                String cityName = "Atlanta";
+                JsonNode cityNode = playerNode.get("playerCurrentCity");
+                if (cityNode != null && cityNode.has("name")) {
+                    cityName = cityNode.get("name").asText();
+                }
+
+                Label row = TextUtil.createText(playerName + " - " + cityName, "hkmodular", 0.024, "#00d9ff", root);
+                playersBox.getChildren().add(row);
+
+                if (playerName.equalsIgnoreCase(nickname) && networkPlayer == null) {
+                    PlayerState playerState = new PlayerState(playerName);
+                    networkPlayer = new Player(playerState, networkGameClient);
+                }
+            }
+        }
+
+        if (networkPlayer == null) {
+            PlayerState playerState = new PlayerState(nickname);
+            networkPlayer = new Player(playerState, networkGameClient);
+        }
+
+        ButtonsUtil samplePacketBtn = new ButtonsUtil("SEND TEST PACKET", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.24, 0.07, 0.020, root);
+        samplePacketBtn.setOnMouseClicked(e -> networkPlayer.sendTestPacket());
+        StackPane.setAlignment(samplePacketBtn, Pos.BOTTOM_CENTER);
+        samplePacketBtn.translateYProperty().bind(root.heightProperty().multiply(-0.08));
+
+        root.getChildren().addAll(title, playersBox, samplePacketBtn);
+    }
+
+    private JsonNode getPlayersArray(JsonNode gameState) {
+        if (gameState == null) {
+            return null;
+        }
+        if (gameState.has("players")) {
+            return gameState.get("players");
+        }
+        if (gameState.has("playerArray")) {
+            return gameState.get("playerArray");
+        }
+        return null;
     }
 
     private HBox createGameplayPlayerRow(PlayerState player) {

@@ -12,6 +12,10 @@ import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.ServerRelatedClasses.LobbyChatMessage;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * PacketProcessor handles packets that have already passed validation and
@@ -26,6 +30,9 @@ public class PacketProcessor {
 
     private GameManager gameManager;
     private ClientHandler clientHandler;
+    private static final int GAME_START_DELAY_SECONDS = 10;
+    private static final ScheduledExecutorService gameStartScheduler = Executors.newSingleThreadScheduledExecutor();
+    private static ScheduledFuture<?> gameStartTask;
 
     public PacketProcessor(GameManager gameManager, ClientHandler clientHandler) {
         this.gameManager = gameManager;
@@ -71,8 +78,16 @@ public class PacketProcessor {
     private void handleGameData(Packet packet) {
         System.out.println("[PacketProcessor] Received GAME_DATA packet: ");
         JsonNode payload = packet.getPayload();//local
+        String gameAction = payload.has("GameAction") ? payload.get("GameAction").asText() : "";
+        if ("TEST_ACTION".equals(gameAction)) {
+            String playerId = payload.has("PlayerID") ? payload.get("PlayerID").asText() : "UNKNOWN";
+            String message = payload.has("message") ? payload.get("message").asText() : "";
+            System.out.println("[PacketProcessor] TEST_ACTION received from " + playerId + ": " + message);
+            clientHandler.broadcastGameStateToAll();
+            return;
+        }
+
         String playerId = payload.get("PlayerID").asText();
-        String gameAction = payload.get("GameAction").asText();
 
         // Find PlayerState by playerId
         PlayerState playerState = null;
@@ -283,8 +298,51 @@ public class PacketProcessor {
 
         if (allReady && gameManager.getState().getLobbyCountdownStartedAt() == 0) {
             gameManager.getState().setLobbyCountdownStartedAt(System.currentTimeMillis());
+            scheduleGameStart();
         } else if (!allReady) {
             gameManager.getState().setLobbyCountdownStartedAt(0);
+            cancelGameStart();
         }
+    }
+
+    private void scheduleGameStart() {
+        synchronized (PacketProcessor.class) {
+            cancelGameStart();
+            gameStartTask = gameStartScheduler.schedule(() -> {
+                synchronized (PacketProcessor.class) {
+                    if (!areAllPlayersReady() || gameManager.getState().isGameStarted()) {
+                        gameManager.getState().setLobbyCountdownStartedAt(0);
+                        clientHandler.broadcastGameStateToAll();
+                        return;
+                    }
+
+                    gameManager.startGame();
+                    System.out.println("[PacketProcessor] Lobby countdown finished. Game started.");
+                    clientHandler.broadcastGameStateToAll();
+                }
+            }, GAME_START_DELAY_SECONDS, TimeUnit.SECONDS);
+        }
+    }
+
+    private void cancelGameStart() {
+        synchronized (PacketProcessor.class) {
+            if (gameStartTask != null && !gameStartTask.isDone()) {
+                gameStartTask.cancel(false);
+            }
+            gameStartTask = null;
+        }
+    }
+
+    private boolean areAllPlayersReady() {
+        if (gameManager.getState().getPlayers().isEmpty()) {
+            return false;
+        }
+
+        for (PlayerState player : gameManager.getState().getPlayers()) {
+            if (!player.isReady()) {
+                return false;
+            }
+        }
+        return true;
     }
 }

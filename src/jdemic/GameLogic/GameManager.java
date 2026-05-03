@@ -40,6 +40,22 @@ public class GameManager {
         }
     }
 
+    public void startGame()
+    {
+        if(state.isGameStarted()) return;
+
+        setupGame();
+        for(PlayerState playerState : state.getPlayers())
+        {
+            playerState.setReady(false);
+            playerState.setPlayer(new Player(playerState, null));
+        }
+        state.setCurrentPlayerIndex(0);
+        state.setActionsRemaining(ACTIONS_PER_TURN);
+        state.setLobbyCountdownStartedAt(0);
+        state.setGameStarted(true);
+    }
+
     public void performAction(Player player, GameAction action)
     {
         if(state.isGameOver()) return;

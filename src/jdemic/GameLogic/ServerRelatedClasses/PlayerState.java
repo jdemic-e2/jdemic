@@ -3,6 +3,9 @@ import jdemic.GameLogic.PlayerRoles;
 import jdemic.GameLogic.CityNode;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.Player;
 
@@ -24,8 +27,13 @@ public class PlayerState{
 
     // PlayerState must only have simple methods for changing variables, for easier serialization on the network.
 
+    @JsonIgnore
     public Player getPlayer(){
         return this.playerReference;
+    }
+
+    public void setPlayer(Player player){
+        this.playerReference = player;
     }
 
     public PlayerRoles getPlayerRole(){

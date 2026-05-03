@@ -31,6 +31,7 @@ public class GameState{
 
     private boolean gameOver;
     private boolean gameWon;
+    private boolean gameStarted;
 
     public GameState(){
         this.playerArray = new ArrayList<>();
@@ -134,5 +135,13 @@ public class GameState{
 
     public void setGameWon(boolean gameWon){
         this.gameWon = gameWon;
+    }
+
+    public boolean isGameStarted(){
+        return this.gameStarted;
+    }
+
+    public void setGameStarted(boolean gameStarted){
+        this.gameStarted = gameStarted;
     }
 }

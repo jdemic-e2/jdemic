@@ -25,6 +25,7 @@ import javafx.util.Duration;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.GameLogic.GameClient;
+import jdemic.Scenes.PlayScene;
 import jdemic.Scenes.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
@@ -42,6 +43,7 @@ public class WaitingRoomScene {
     private ButtonsUtil readyBtn;
     private Label countdownLabel;
     private boolean currentReady;
+    private boolean transitionedToGame;
     private long countdownStartedAt;
     private Timeline countdownTimeline;
     private static final int COUNTDOWN_SECONDS = 10;
@@ -205,6 +207,11 @@ public class WaitingRoomScene {
             return;
         }
 
+        if (gameState.has("gameStarted") && gameState.get("gameStarted").asBoolean()) {
+            transitionToGame(gameState);
+            return;
+        }
+
         playerList.getChildren().clear();
         boolean foundCurrentPlayer = false;
         for (JsonNode playerNode : playersArray) {
@@ -312,6 +319,15 @@ public class WaitingRoomScene {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("ready", ready);
         gameClient.sendPacket(new Packet(PacketType.LOBBY_READY, payload));
+    }
+
+    private void transitionToGame(JsonNode gameState) {
+        if (transitionedToGame) {
+            return;
+        }
+        transitionedToGame = true;
+        stopCountdown();
+        stage.getScene().setRoot(new PlayScene(stage, nickname, gameClient, gameState).getRoot());
     }
 
     private TextField createCyberInput() {
