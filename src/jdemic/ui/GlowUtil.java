@@ -23,4 +23,11 @@ public class GlowUtil {
             innerGlow.setInput(midGlow);
             node.setEffect(innerGlow);
         }
+            public static DropShadow createGlow(String colorHex, double radius) {
+        DropShadow glow = new DropShadow();
+        glow.setColor(Color.web(colorHex));
+        glow.setRadius(radius);
+        glow.setSpread(0.5);
+        return glow;
+    }
     }

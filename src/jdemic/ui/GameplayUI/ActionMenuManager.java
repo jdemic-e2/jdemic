@@ -41,10 +41,11 @@ public class ActionMenuManager {
         actionSubMenu.setMouseTransparent(true);
 
         actionSubMenu.paddingProperty().bind(createObjectBinding(() -> {
-            double mainButtonHeight = root.getHeight() * 0.07;
-            double bottomOffset = mainButtonHeight + 40;
-            return new Insets(0, 0, bottomOffset, (root.getWidth()+20)/24);
-        }, root.heightProperty()));
+            double buttonHeight = root.getHeight() * 0.07;
+            double gap = root.getHeight() * 0.02;
+            double bottomOffset = root.getHeight() * 0.25 + buttonHeight + gap;
+            return new Insets(0, 0, bottomOffset, (root.getWidth() + 20) / 24);
+        }, root.widthProperty(), root.heightProperty()));
 
         for (String action : actions) {
             actionSubMenu.getChildren().add(getButtonsUtil(action));
@@ -55,7 +56,12 @@ public class ActionMenuManager {
     private void setupMainButton() {
         VBox mainButtonBox = new VBox();
         mainButtonBox.setAlignment(Pos.BOTTOM_LEFT);
-        mainButtonBox.setPadding(new Insets(20));
+        mainButtonBox.paddingProperty().bind(
+            createObjectBinding(() ->
+                new Insets(0, 0, root.getHeight() * 0.25, 20),
+                root.heightProperty()
+            )
+        );
         mainButtonBox.setPickOnBounds(false);
 
         mainActionBtn = new ButtonsUtil(

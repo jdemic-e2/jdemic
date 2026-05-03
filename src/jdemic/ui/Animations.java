@@ -7,8 +7,10 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
@@ -81,4 +83,13 @@ public class Animations {
         pulse.play();
         return pulse;
     }
+    public static DropShadow createGlow(String colorHex, double radius) {
+        DropShadow glow = new DropShadow();
+        glow.setColor(Color.web(colorHex));
+        glow.setRadius(radius);
+        glow.setSpread(0.5);
+        return glow;
+    }
+
+
 }
