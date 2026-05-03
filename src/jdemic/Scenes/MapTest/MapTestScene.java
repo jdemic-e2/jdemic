@@ -53,6 +53,9 @@ public class MapTestScene {
     //Variables for CureManager
     private CureManager cureManager;
 
+    //Variable for gameplay chat
+    private ChatManager chatManager;
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
@@ -72,6 +75,7 @@ public class MapTestScene {
         setupNotifications();
         setupActionMenu();
         setupGlobalHUD();
+        setupChat();
 
         root.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
@@ -179,6 +183,12 @@ public class MapTestScene {
     private void setupActionMenu()
     {
         this.actionMenuManager = new ActionMenuManager(root, notificationManager, gameManager);
+    }
+
+    private void setupChat()
+    {
+        String playerName = gameManager.getCurrentPlayer().getState().getPlayerName();
+        this.chatManager = new ChatManager(root, playerName, notificationManager);
     }
 
     private void setupContent() {
