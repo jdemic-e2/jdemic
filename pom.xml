@@ -24,6 +24,7 @@
     <!-- Tell Maven where your source files live -->
     <build>
         <sourceDirectory>src</sourceDirectory>
+        <testSourceDirectory>tests</testSourceDirectory>
         <resources>
             <resource>
                 <directory>src/resources</directory>
@@ -78,20 +79,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- OWASP Dependency-Check para Seguridad 
-            <plugin>
-                <groupId>org.owasp</groupId>
-                <artifactId>dependency-check-maven</artifactId>
-                <version>9.0.9</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            -->
         </plugins>
     </build>
 

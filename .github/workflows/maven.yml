@@ -25,16 +25,8 @@ jobs:
     - name: Build and Test with Maven
       run: mvn -B clean verify
 
-    # TU PARTE: Cogemos el archivo generado y lo subimos como artefacto
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: pandemic-game-artifact
         path: target/*.jar
-
-    # NUESTRA TAREA DE ESTA SEMANA: Guardar el reporte de seguridad
-    - name: Upload OWASP Security Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: security-report
-        path: target/dependency-check-report.html
