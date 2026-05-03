@@ -12,6 +12,7 @@ import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.ServerRelatedClasses.LobbyChatMessage;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -33,6 +34,10 @@ public class PacketProcessor {
     private static final int GAME_START_DELAY_SECONDS = 10;
     private static final ScheduledExecutorService gameStartScheduler = Executors.newSingleThreadScheduledExecutor();
     private static ScheduledFuture<?> gameStartTask;
+
+    public PacketProcessor() {
+        this(new GameManager(new ArrayList<>()), null);
+    }
 
     public PacketProcessor(GameManager gameManager, ClientHandler clientHandler) {
         this.gameManager = gameManager;
@@ -83,11 +88,12 @@ public class PacketProcessor {
             String playerId = payload.has("PlayerID") ? payload.get("PlayerID").asText() : "UNKNOWN";
             String message = payload.has("message") ? payload.get("message").asText() : "";
             System.out.println("[PacketProcessor] TEST_ACTION received from " + playerId + ": " + message);
-            clientHandler.broadcastGameStateToAll();
+            broadcastGameState();
             return;
         }
 
-        String playerId = payload.has("PlayerID") ? payload.get("PlayerID").asText() : clientHandler.getConnectedPlayerName();
+        String playerId = payload.has("PlayerID") ? payload.get("PlayerID").asText()
+                : clientHandler != null ? clientHandler.getConnectedPlayerName() : "UNKNOWN";
         if (playerId == null || playerId.isBlank()) {
             System.err.println("[PacketProcessor] Missing PlayerID for GAME_DATA packet.");
             return;
@@ -184,7 +190,7 @@ public class PacketProcessor {
             case "SHARE":
             case "FLY":
                 consumeGenericGameplayAction(playerState, gameAction);
-                clientHandler.broadcastGameStateToAll();
+                broadcastGameState();
                 return;
             default:
                 System.err.println("[PacketProcessor] Unknown action: " + gameAction);
@@ -195,7 +201,7 @@ public class PacketProcessor {
         gameManager.performAction(player, action);
 
         System.out.println("[PacketProcessor] Action performed: " + gameAction + " for player " + playerId);
-        clientHandler.broadcastGameStateToAll();
+        broadcastGameState();
     }
 
     private void consumeGenericGameplayAction(PlayerState playerState, String gameAction) {
@@ -224,13 +230,15 @@ public class PacketProcessor {
             updateLobbyCountdown();
             
             // Store player name in client handler so we know who this is
-            clientHandler.setConnectedPlayerName(playerName);
+            if (clientHandler != null) {
+                clientHandler.setConnectedPlayerName(playerName);
+            }
             
             System.out.println("[PacketProcessor] Player registered: " + playerName);
             System.out.println("[PacketProcessor] Total players: " + gameManager.getState().getPlayers().size());
             
             // Broadcast updated game state to ALL connected clients
-            clientHandler.broadcastGameStateToAll();
+            broadcastGameState();
         } catch (Exception e) {
             System.err.println("[PacketProcessor] Error handling CONNECT: " + e.getMessage());
             e.printStackTrace();
@@ -250,7 +258,7 @@ public class PacketProcessor {
                 message = message.substring(0, 300);
             }
 
-            String playerName = clientHandler.getConnectedPlayerName();
+            String playerName = clientHandler != null ? clientHandler.getConnectedPlayerName() : null;
             if (playerName == null || playerName.isBlank()) {
                 playerName = payload.has("playerName") ? payload.get("playerName").asText() : "PLAYER";
             }
@@ -258,7 +266,7 @@ public class PacketProcessor {
             gameManager.getState().addLobbyChatMessage(
                     new LobbyChatMessage(playerName, message, System.currentTimeMillis())
             );
-            clientHandler.broadcastGameStateToAll();
+            broadcastGameState();
         } catch (Exception e) {
             System.err.println("[PacketProcessor] Error handling LOBBY_CHAT: " + e.getMessage());
             e.printStackTrace();
@@ -271,7 +279,7 @@ public class PacketProcessor {
         try {
             JsonNode payload = packet.getPayload();
             boolean ready = payload.has("ready") && payload.get("ready").asBoolean();
-            String playerName = clientHandler.getConnectedPlayerName();
+            String playerName = clientHandler != null ? clientHandler.getConnectedPlayerName() : null;
 
             if (playerName == null || playerName.isBlank()) {
                 System.err.println("[PacketProcessor] Ready update ignored because client is not registered.");
@@ -286,7 +294,7 @@ public class PacketProcessor {
 
             playerState.setReady(ready);
             updateLobbyCountdown();
-            clientHandler.broadcastGameStateToAll();
+            broadcastGameState();
         } catch (Exception e) {
             System.err.println("[PacketProcessor] Error handling LOBBY_READY: " + e.getMessage());
             e.printStackTrace();
@@ -295,6 +303,10 @@ public class PacketProcessor {
 
     private void handleDisconnect(Packet packet) {
         System.out.println("[PacketProcessor] Received DISCONNECT packet: " + packet);
+        disconnectCurrentPlayer();
+        if (clientHandler != null) {
+            clientHandler.closeConnection();
+        }
     }
 
     private void handleError(Packet packet) {
@@ -308,6 +320,33 @@ public class PacketProcessor {
             }
         }
         return null;
+    }
+
+    public void disconnectCurrentPlayer() {
+        if (gameManager == null || clientHandler == null) {
+            return;
+        }
+
+        String playerName = clientHandler.getConnectedPlayerName();
+        if (playerName == null || playerName.isBlank()) {
+            return;
+        }
+
+        boolean removed = gameManager.getState().getPlayers()
+                .removeIf(player -> playerName.equals(player.getPlayerName()));
+
+        if (removed) {
+            System.out.println("[PacketProcessor] Player disconnected: " + playerName);
+            updateLobbyCountdown();
+            clientHandler.clearConnectedPlayerName();
+            broadcastGameState();
+        }
+    }
+
+    private void broadcastGameState() {
+        if (clientHandler != null) {
+            clientHandler.broadcastGameStateToAll();
+        }
     }
 
     private void updateLobbyCountdown() {
@@ -336,13 +375,13 @@ public class PacketProcessor {
                 synchronized (PacketProcessor.class) {
                     if (!areAllPlayersReady() || gameManager.getState().isGameStarted()) {
                         gameManager.getState().setLobbyCountdownStartedAt(0);
-                        clientHandler.broadcastGameStateToAll();
+                        broadcastGameState();
                         return;
                     }
 
                     gameManager.startGame();
                     System.out.println("[PacketProcessor] Lobby countdown finished. Game started.");
-                    clientHandler.broadcastGameStateToAll();
+                    broadcastGameState();
                 }
             }, GAME_START_DELAY_SECONDS, TimeUnit.SECONDS);
         }

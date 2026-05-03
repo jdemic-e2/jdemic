@@ -162,7 +162,7 @@ public class WaitingRoomScene {
         readyBtn = new ButtonsUtil("READY", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.14, 0.07, 0.020, root);
         readyBtn.setOnMouseClicked(e -> sendReadyState(!currentReady));
 
-        cancelBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
+        cancelBtn.setOnMouseClicked(e -> leaveWaitingRoom());
 
         countdownLabel = TextUtil.createText("", "hkmodular", 0.024, "#ff2d2d", root);
         countdownLabel.setVisible(false);
@@ -319,6 +319,14 @@ public class WaitingRoomScene {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("ready", ready);
         gameClient.sendPacket(new Packet(PacketType.LOBBY_READY, payload));
+    }
+
+    private void leaveWaitingRoom() {
+        stopCountdown();
+        if (gameClient != null) {
+            gameClient.disconnectFromLobby();
+        }
+        SceneManager.switchScene("LOBBY");
     }
 
     private void transitionToGame(JsonNode gameState) {

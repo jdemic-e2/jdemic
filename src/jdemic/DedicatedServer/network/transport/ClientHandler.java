@@ -7,10 +7,10 @@ import java.net.Socket;
 import java.util.List;
 import java.util.function.Consumer;
 
+import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
 import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
 import jdemic.DedicatedServer.network.security.StateMasker;
 import jdemic.GameLogic.GameManager;
-import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
@@ -25,6 +25,7 @@ public class ClientHandler implements Runnable {
     private List<ClientHandler> connectedClients;
     private Consumer<Packet> packetReceivedListener;
     private String connectedPlayerName = null;
+    private volatile boolean closed;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public ClientHandler(SecureSocket secureSocket, GameManager gameManager, List<ClientHandler> connectedClients) {
@@ -96,13 +97,19 @@ public class ClientHandler implements Runnable {
     }
 
     private void inchideConexiunea() {
+        if (closed) {
+            return;
+        }
+        closed = true;
         try {
+            packetProcessor.disconnectCurrentPlayer();
             if (in != null) in.close();
             if (out != null) out.close();
             if (rawSocket != null && !rawSocket.isClosed()) {
                 rawSocket.close();
             }
             connectedClients.remove(this);
+            JdemicNetworkServer.removeClient(this);
             System.out.println("[ClientHandler] Resurse eliberate si conexiune inchisa.");
         } catch (Exception e) {
             System.err.println("[ClientHandler] Eroare la închiderea resurselor.");
@@ -115,6 +122,10 @@ public class ClientHandler implements Runnable {
 
     public void setConnectedPlayerName(String playerName) {
         this.connectedPlayerName = playerName;
+    }
+
+    public void clearConnectedPlayerName() {
+        this.connectedPlayerName = null;
     }
 
     public String getConnectedPlayerName() {

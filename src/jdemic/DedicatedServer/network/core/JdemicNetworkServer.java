@@ -14,6 +14,10 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class JdemicNetworkServer {
@@ -24,6 +28,8 @@ public class JdemicNetworkServer {
     private static AtomicReference<Packet> latestPacket = new AtomicReference<>();
     private static volatile boolean running;
     private static ServerSocket serverSocket;
+    private static final ScheduledExecutorService emptyServerScheduler = Executors.newSingleThreadScheduledExecutor();
+    private static ScheduledFuture<?> emptyServerShutdownTask;
 
     public static void main(String[] args) {
         System.out.println("Pornire Jdemic Network Server...");
@@ -64,6 +70,7 @@ public class JdemicNetworkServer {
                         Thread clientThread = new Thread(clientHandler);
                         clientThread.start();
                         connectedClients.add(clientHandler);
+                        cancelEmptyServerShutdown();
                     } else {
                         System.err.println("[SERVER] Handshake esuat! Respingem clientul.");
                         rawSocket.close();
@@ -84,6 +91,7 @@ public class JdemicNetworkServer {
 
     public static void shutdown() {
         running = false;
+        cancelEmptyServerShutdown();
         for (ClientHandler client : connectedClients) {
             client.closeConnection();
         }
@@ -105,5 +113,33 @@ public class JdemicNetworkServer {
 
     public static void removeClient(ClientHandler client) {
         connectedClients.remove(client);
+        scheduleEmptyServerShutdownIfNeeded();
+    }
+
+    private static void scheduleEmptyServerShutdownIfNeeded() {
+        synchronized (JdemicNetworkServer.class) {
+            if (!running || !connectedClients.isEmpty()) {
+                return;
+            }
+
+            cancelEmptyServerShutdown();
+            emptyServerShutdownTask = emptyServerScheduler.schedule(() -> {
+                synchronized (JdemicNetworkServer.class) {
+                    if (running && connectedClients.isEmpty()) {
+                        System.out.println("[SERVER] No players connected. Shutting down in empty-server timeout.");
+                        shutdown();
+                    }
+                }
+            }, 2, TimeUnit.SECONDS);
+        }
+    }
+
+    private static void cancelEmptyServerShutdown() {
+        synchronized (JdemicNetworkServer.class) {
+            if (emptyServerShutdownTask != null && !emptyServerShutdownTask.isDone()) {
+                emptyServerShutdownTask.cancel(false);
+            }
+            emptyServerShutdownTask = null;
+        }
     }
 }

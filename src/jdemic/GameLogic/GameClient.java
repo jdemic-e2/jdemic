@@ -165,6 +165,13 @@ public class GameClient {
         sendPacket(packet.toJson());
     }
 
+    public void disconnectFromLobby() {
+        if (isConnected && secureSocket != null && out != null) {
+            sendPacket(new Packet(PacketType.DISCONNECT));
+        }
+        disconnect();
+    }
+
     /**
      * This method will be used to receive the updated Gamestate
      */
@@ -184,19 +191,19 @@ public class GameClient {
 
     public void disconnect() {
         isConnected = false;
-        if (listeningThread != null) {
-            listeningThread.interrupt();
-            try {
-                listeningThread.join(1000); // Wait up to 1 second for thread to finish
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
         try {
             if (in != null) in.close();
             if (out != null) out.close();
             if (secureSocket != null && secureSocket.getRawSocket() != null && !secureSocket.getRawSocket().isClosed()) {
                 secureSocket.getRawSocket().close();
+            }
+            if (listeningThread != null) {
+                listeningThread.interrupt();
+                try {
+                    listeningThread.join(1000); // Wait up to 1 second for thread to finish
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
             System.out.println("[GameClient] Disconnected safely. Resources freed.");
         } catch (Exception e) {
