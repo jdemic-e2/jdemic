@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.List;
+import java.util.function.Consumer;
 
 import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
 import jdemic.DedicatedServer.network.security.StateMasker;
@@ -22,14 +23,25 @@ public class ClientHandler implements Runnable {
     private PacketProcessor packetProcessor;
     private GameManager gameManager;
     private List<ClientHandler> connectedClients;
+    private Consumer<Packet> packetReceivedListener;
     private String connectedPlayerName = null;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public ClientHandler(SecureSocket secureSocket, GameManager gameManager, List<ClientHandler> connectedClients) {
+        this(secureSocket, gameManager, connectedClients, packet -> {});
+    }
+
+    public ClientHandler(
+            SecureSocket secureSocket,
+            GameManager gameManager,
+            List<ClientHandler> connectedClients,
+            Consumer<Packet> packetReceivedListener
+    ) {
         this.secureSocket = secureSocket;
         this.rawSocket = secureSocket.getRawSocket();
         this.gameManager = gameManager;
         this.connectedClients = connectedClients;
+        this.packetReceivedListener = packetReceivedListener;
         packetProcessor = new PacketProcessor(gameManager, this);
 
         try {
@@ -57,6 +69,7 @@ public class ClientHandler implements Runnable {
                 String decryptedMessage = secureSocket.decrypt(encryptedMessage);
                 System.out.println("[ClientHandler] Am primit (decriptat): " + decryptedMessage);
                 Packet packetMessage = Packet.fromJson(decryptedMessage);
+                packetReceivedListener.accept(packetMessage);
                 packetProcessor.process(packetMessage);
 
                 // Send updated GameState as JSON
@@ -94,6 +107,10 @@ public class ClientHandler implements Runnable {
         } catch (Exception e) {
             System.err.println("[ClientHandler] Eroare la închiderea resurselor.");
         }
+    }
+
+    public void closeConnection() {
+        inchideConexiunea();
     }
 
     public void setConnectedPlayerName(String playerName) {
