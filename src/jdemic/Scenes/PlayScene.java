@@ -24,14 +24,11 @@ import jdemic.ui.CardDeckView;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
-import jdemic.GameLogic.CardType;
 import jdemic.GameLogic.GameManager;
-import jdemic.GameLogic.PandemicMapGraph;
 import jdemic.GameLogic.Player;
 import jdemic.GameLogic.Card;
-import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
-import java.util.List;
+import java.util.Collections;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.UnaryOperator;
 
@@ -43,49 +40,14 @@ public class PlayScene {
     private String nickname = "";
     private final String hostCode;
     private Label hostStatusLabel;
-    /** When true (local demo constructor), show a way back to the main menu. */
-    private final boolean localDemoMode;
 
     public PlayScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
         this.hostCode = generateHostCode();
-        this.localDemoMode = false;
 
         setupBackground();
         showEntryScreen();
-    }
-
-    /**
-     * Skips lobby; opens gameplay immediately (local demo / dev).
-     */
-    public PlayScene(Stage stage, GameManager demoGame) {
-        this.stage = stage;
-        this.root = new StackPane();
-        this.hostCode = "";
-        this.localDemoMode = true;
-        setupBackground();
-        showGameplayScreen(demoGame);
-    }
-
-    /**
-     * Single-player local session: one human player, synced city on the live map, sample hand for deck UI.
-     */
-    public static GameManager createLocalDemoGameManager() {
-        PandemicMapGraph preMap = new PandemicMapGraph();
-        Player demoPlayer = new Player(new PlayerState("LocalDemo", preMap.getCity("Atlanta")));
-        GameManager gm = new GameManager(List.of(demoPlayer));
-        var map = gm.getState().getMap();
-        demoPlayer.getState().setCurrentCity(map.getCity("Atlanta"));
-        var hand = demoPlayer.getState().getHand();
-        hand.clear();
-        hand.add(new Card("Paris", CardType.CITY, map.getCity("Paris")));
-        hand.add(new Card("Tokyo", CardType.CITY, map.getCity("Tokyo")));
-        hand.add(new Card("System Breach", CardType.EPIDEMIC, null));
-        Card ev = new Card("Threat Scan", CardType.EVENT, null);
-        ev.setEventType(Card.EventType.THREAT);
-        hand.add(ev);
-        return gm;
     }
 
     public StackPane getRoot() {
@@ -343,10 +305,10 @@ public class PlayScene {
             if (current != null && current.getState() != null && current.getState().getHand() != null) {
                 deckView.setCards(current.getState().getHand());
             } else {
-                deckView.setDummyCardsIfEmpty();
+                deckView.setCards(Collections.emptyList());
             }
         } catch (Exception e) {
-            deckView.setDummyCardsIfEmpty();
+            deckView.setCards(Collections.emptyList());
         }
 
         VBox playerIconsContainer = new VBox(15);
@@ -358,18 +320,6 @@ public class PlayScene {
             playerIconsContainer.getChildren().add(createGameplayPlayerRow(p));
         }
         root.getChildren().add(playerIconsContainer);
-
-        if (localDemoMode) {
-            ButtonsUtil backMenu = new ButtonsUtil("MAIN MENU", "#ff2d2d", "black", "#00b5d4", "#00b5d4", 2, 10, 10, 0.14, 0.055, 0.015, root);
-            backMenu.setOnMouseClicked(e -> {
-                SceneManager.clearCache();
-                SceneManager.switchScene("MAIN_MENU");
-            });
-            StackPane.setAlignment(backMenu, Pos.TOP_RIGHT);
-            backMenu.translateXProperty().bind(root.widthProperty().multiply(-0.02));
-            backMenu.translateYProperty().bind(root.heightProperty().multiply(0.03));
-            root.getChildren().add(backMenu);
-        }
     }
 
     private HBox createGameplayPlayerRow(Player player) {

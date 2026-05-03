@@ -14,9 +14,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.util.Duration;
 import jdemic.GameLogic.Card;
-import jdemic.GameLogic.CardType;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -158,18 +156,5 @@ public class CardDeckView extends StackPane {
 
     public void setCards(List<Card> list) {
         cards.setAll(list == null ? List.of() : list);
-    }
-
-    public void setDummyCardsIfEmpty() {
-        if (!cards.isEmpty()) return;
-        List<Card> demo = new ArrayList<>();
-        demo.add(new Card("Atlanta", CardType.CITY, null));
-        Card threat = new Card("Threat Scan", CardType.EVENT, null);
-        threat.setEventType(Card.EventType.THREAT);
-        demo.add(threat);
-        demo.add(new Card("System Breach", CardType.EPIDEMIC, null));
-        demo.add(new Card("Tokyo", CardType.CITY, null));
-        demo.add(new Card("Infection: Lima", CardType.INFECTION, null));
-        setCards(demo);
     }
 }
