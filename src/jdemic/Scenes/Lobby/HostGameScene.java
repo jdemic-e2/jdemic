@@ -1,10 +1,19 @@
 package jdemic.Scenes.Lobby;
 
+import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
+import jdemic.GameLogic.GameClient;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.net.InetAddress;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.application.Platform;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -24,6 +33,7 @@ public class HostGameScene {
     private final Stage stage;
     private final String nickname;
     private final String hostCode;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public HostGameScene(Stage stage, String nickname) {
         this.stage = stage;
@@ -88,7 +98,35 @@ public class HostGameScene {
         });
 
         backBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
-        hostBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode).getRoot()));
+        hostBtn.setOnMouseClicked(e -> {
+            // Start the server in a new thread
+            new Thread(() -> {
+                JdemicNetworkServer.main(new String[]{});
+            }).start();
+            
+            // Wait a bit for server to start, then connect as client
+            new Thread(() -> {
+                try {
+                    Thread.sleep(1500); // Give server time to start
+                    GameClient hostClient = new GameClient();
+                    hostClient.connectToServer("localhost", 9000);
+                    
+                    // Send CONNECT packet
+                    ObjectNode payload = objectMapper.createObjectNode();
+                    payload.put("playerName", nickname);
+                    Packet connectPacket = new Packet(PacketType.CONNECT, payload);
+                    hostClient.sendPacket(connectPacket);
+                    
+                    // Go to waiting room with connected client
+                    Platform.runLater(() -> 
+                        stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode, hostClient).getRoot())
+                    );
+                } catch (Exception ex) {
+                    System.err.println("[HostGameScene] Error connecting as client: " + ex.getMessage());
+                    ex.printStackTrace();
+                }
+            }).start();
+        });
 
         HBox bottomRow = new HBox(backBtn, hostBtn);
         bottomRow.setAlignment(Pos.CENTER);
@@ -113,13 +151,10 @@ public class HostGameScene {
     }
 
     private String generateHostCode() {
-        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        ThreadLocalRandom rnd = ThreadLocalRandom.current();
-        StringBuilder sb = new StringBuilder(8);
-        for (int i = 0; i < 8; i++) {
-            sb.append(chars.charAt(rnd.nextInt(chars.length())));
-            if (i == 3 && i < 7) sb.append('-');
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            return "127.0.0.1"; // Fallback
         }
-        return sb.toString();
     }
 }

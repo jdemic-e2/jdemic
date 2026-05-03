@@ -11,19 +11,19 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class JdemicNetworkServer {
 
     private static final int PORT = 9000;
     private static GameManager gameManager;
+    private static List<ClientHandler> connectedClients = new CopyOnWriteArrayList<>();
 
     public static void main(String[] args) {
         System.out.println("Pornire Jdemic Network Server...");
 
-        //de test cu 2 jucatori momentan
+        // Start with empty player list - players register when they connect
         List<PlayerState> players = new ArrayList<>();
-        players.add(new PlayerState("regin_77"));
-        players.add(new PlayerState("Player2"));
         gameManager = new GameManager(players);
 
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
@@ -41,9 +41,10 @@ public class JdemicNetworkServer {
                     if (secureSocket != null) {
                         System.out.println("[SERVER] Handshake reusit. Delegare catre ClientHandler.");
 
-                        ClientHandler clientHandler = new ClientHandler(secureSocket, gameManager);
+                        ClientHandler clientHandler = new ClientHandler(secureSocket, gameManager, connectedClients);
                         Thread clientThread = new Thread(clientHandler);
                         clientThread.start();
+                        connectedClients.add(clientHandler);
                     } else {
                         System.err.println("[SERVER] Handshake esuat! Respingem clientul.");
                         rawSocket.close();
@@ -58,5 +59,13 @@ public class JdemicNetworkServer {
             System.err.println("Eroare fatala: Nu s-a putut porni serverul pe portul " + PORT);
             e.printStackTrace();
         }
+    }
+
+    public static GameManager getGameManager() {
+        return gameManager;
+    }
+
+    public static void removeClient(ClientHandler client) {
+        connectedClients.remove(client);
     }
 }

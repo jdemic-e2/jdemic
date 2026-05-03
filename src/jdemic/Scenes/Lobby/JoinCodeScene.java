@@ -1,5 +1,11 @@
 package jdemic.Scenes.Lobby;
 
+import jdemic.GameLogic.GameClient;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -15,10 +21,14 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
 
+import java.net.InetAddress;
+
 public class JoinCodeScene {
     private final StackPane root;
     private final Stage stage;
     private Label errorLabel;
+    private GameClient gameClient;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public JoinCodeScene(Stage stage) {
         this.stage = stage;
@@ -45,10 +55,18 @@ public class JoinCodeScene {
         Label accessLabel = TextUtil.createText("ENTER ACCESS CODE", "hkmodular", 0.03, "#ff0000", root);
         accessLabel.setTextAlignment(TextAlignment.CENTER);
 
+        TextField nicknameField = new TextField("Newbie");
+        nicknameField.setMaxWidth(300);
+        nicknameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
+
+        Label nameLabel = TextUtil.createText("NICKNAME:", "hkmodular", 0.026, "#00b5d4", root);
+        nameLabel.setTextAlignment(TextAlignment.CENTER);
+        GlowUtil.applyGlow(nameLabel, "#00b5d4", 6);
+
         TextField codeField = new TextField();
         codeField.setMaxWidth(500);
         codeField.setPrefHeight(75);
-        codeField.setPromptText("XXXX-YYYY");
+        codeField.setPromptText("192.168.1.100");
         codeField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
 
         ButtonsUtil cancelBtn = new ButtonsUtil("CANCEL", "#ff0000", "black", "#ff0000", "#ff0000", 2, 15, 15, 0.2, 0.1, 0.02, root);
@@ -57,18 +75,38 @@ public class JoinCodeScene {
         ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff", 2, 15, 15, 0.2, 0.1, 0.02, root);
         joinBtn.setOnMouseClicked(e -> {
             String code = codeField.getText().trim();
-            if ("1234".equals(code)) {
-                stage.getScene().setRoot(new WaitingRoomScene(stage, "GUEST", code).getRoot());
-            } else {
+            String nickname = nicknameField.getText().trim();
+            if (nickname.isEmpty()) {
+                errorLabel.setText("ENTER NICKNAME");
+                errorLabel.setVisible(true);
+                return;
+            }
+            if (code.isEmpty()) {
+                errorLabel.setText("ENTER IP ADDRESS");
+                errorLabel.setVisible(true);
+                return;
+            }
+            try {
+                gameClient = new GameClient();
+                gameClient.connectToServer(code, 9000);
+                // Send CONNECT packet
+                ObjectNode payload = objectMapper.createObjectNode();
+                payload.put("playerName", nickname);
+                Packet connectPacket = new Packet(PacketType.CONNECT, payload);
+                gameClient.sendPacket(connectPacket);
+                // Go to waiting room
+                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, code, gameClient).getRoot());
+            } catch (Exception ex) {
+                errorLabel.setText("FAILED TO CONNECT");
                 errorLabel.setVisible(true);
             }
         });
 
-        errorLabel = TextUtil.createText("ERROR: INVALID CODE", "hkmodular", 0.025, "#ff0000", root);
+        errorLabel = TextUtil.createText("", "hkmodular", 0.025, "#ff0000", root);
         errorLabel.setTextAlignment(TextAlignment.CENTER);
         errorLabel.setVisible(false);
 
-        VBox inputBox = new VBox(10, accessLabel, codeField);
+        VBox inputBox = new VBox(10, nameLabel, nicknameField, accessLabel, codeField);
         inputBox.setAlignment(Pos.CENTER);
 
         HBox buttonBox = new HBox(20, joinBtn, cancelBtn);

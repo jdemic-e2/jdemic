@@ -10,6 +10,7 @@ import jdemic.GameLogic.Actions.DirectFlightAction;
 import jdemic.GameLogic.Actions.ShuttleFlightAction;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.ServerRelatedClasses.LobbyChatMessage;
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
@@ -24,9 +25,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class PacketProcessor {
 
     private GameManager gameManager;
+    private ClientHandler clientHandler;
 
-    public PacketProcessor(GameManager gameManager) {
+    public PacketProcessor(GameManager gameManager, ClientHandler clientHandler) {
         this.gameManager = gameManager;
+        this.clientHandler = clientHandler;
     }
 
     public void process(Packet packet) {
@@ -43,6 +46,10 @@ public class PacketProcessor {
             handleGameData(packet);
         } else if (packet.getType() == PacketType.CONNECT) {
             handleConnect(packet);
+        } else if (packet.getType() == PacketType.LOBBY_CHAT) {
+            handleLobbyChat(packet);
+        } else if (packet.getType() == PacketType.LOBBY_READY) {
+            handleLobbyReady(packet);
         } else if (packet.getType() == PacketType.DISCONNECT) {
             handleDisconnect(packet);
         } else if (packet.getType() == PacketType.ERROR) {
@@ -166,6 +173,85 @@ public class PacketProcessor {
 
     private void handleConnect(Packet packet) {
         System.out.println("[PacketProcessor] Received CONNECT packet: " + packet);
+        
+        try {
+            JsonNode payload = packet.getPayload();
+            String playerName = payload.has("playerName") ? payload.get("playerName").asText() : "PLAYER";
+            
+            // Register this player with the game manager
+            PlayerState newPlayer = new PlayerState(playerName);
+            newPlayer.setReady(false);
+            gameManager.getState().addPlayer(newPlayer);
+            updateLobbyCountdown();
+            
+            // Store player name in client handler so we know who this is
+            clientHandler.setConnectedPlayerName(playerName);
+            
+            System.out.println("[PacketProcessor] Player registered: " + playerName);
+            System.out.println("[PacketProcessor] Total players: " + gameManager.getState().getPlayers().size());
+            
+            // Broadcast updated game state to ALL connected clients
+            clientHandler.broadcastGameStateToAll();
+        } catch (Exception e) {
+            System.err.println("[PacketProcessor] Error handling CONNECT: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void handleLobbyChat(Packet packet) {
+        System.out.println("[PacketProcessor] Received LOBBY_CHAT packet: " + packet);
+
+        try {
+            JsonNode payload = packet.getPayload();
+            String message = payload.has("message") ? payload.get("message").asText().trim() : "";
+            if (message.isEmpty()) {
+                return;
+            }
+            if (message.length() > 300) {
+                message = message.substring(0, 300);
+            }
+
+            String playerName = clientHandler.getConnectedPlayerName();
+            if (playerName == null || playerName.isBlank()) {
+                playerName = payload.has("playerName") ? payload.get("playerName").asText() : "PLAYER";
+            }
+
+            gameManager.getState().addLobbyChatMessage(
+                    new LobbyChatMessage(playerName, message, System.currentTimeMillis())
+            );
+            clientHandler.broadcastGameStateToAll();
+        } catch (Exception e) {
+            System.err.println("[PacketProcessor] Error handling LOBBY_CHAT: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void handleLobbyReady(Packet packet) {
+        System.out.println("[PacketProcessor] Received LOBBY_READY packet: " + packet);
+
+        try {
+            JsonNode payload = packet.getPayload();
+            boolean ready = payload.has("ready") && payload.get("ready").asBoolean();
+            String playerName = clientHandler.getConnectedPlayerName();
+
+            if (playerName == null || playerName.isBlank()) {
+                System.err.println("[PacketProcessor] Ready update ignored because client is not registered.");
+                return;
+            }
+
+            PlayerState playerState = findPlayerState(playerName);
+            if (playerState == null) {
+                System.err.println("[PacketProcessor] Ready update ignored. Player not found: " + playerName);
+                return;
+            }
+
+            playerState.setReady(ready);
+            updateLobbyCountdown();
+            clientHandler.broadcastGameStateToAll();
+        } catch (Exception e) {
+            System.err.println("[PacketProcessor] Error handling LOBBY_READY: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void handleDisconnect(Packet packet) {
@@ -174,5 +260,31 @@ public class PacketProcessor {
 
     private void handleError(Packet packet) {
         System.err.println("[PacketProcessor] Received ERROR packet: " + packet);
+    }
+
+    private PlayerState findPlayerState(String playerName) {
+        for (PlayerState ps : gameManager.getState().getPlayers()) {
+            if (ps.getPlayerName().equals(playerName)) {
+                return ps;
+            }
+        }
+        return null;
+    }
+
+    private void updateLobbyCountdown() {
+        boolean hasPlayers = !gameManager.getState().getPlayers().isEmpty();
+        boolean allReady = hasPlayers;
+        for (PlayerState player : gameManager.getState().getPlayers()) {
+            if (!player.isReady()) {
+                allReady = false;
+                break;
+            }
+        }
+
+        if (allReady && gameManager.getState().getLobbyCountdownStartedAt() == 0) {
+            gameManager.getState().setLobbyCountdownStartedAt(System.currentTimeMillis());
+        } else if (!allReady) {
+            gameManager.getState().setLobbyCountdownStartedAt(0);
+        }
     }
 }

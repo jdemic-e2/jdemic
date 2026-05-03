@@ -13,6 +13,8 @@ public class GameState{
 
     // player info
     private List<PlayerState> playerArray = new ArrayList<>();
+    private List<LobbyChatMessage> lobbyChatMessages = new ArrayList<>();
+    private long lobbyCountdownStartedAt;
 
     private DiseaseManager diseaseManager;
     private Deck cardDeck;
@@ -44,6 +46,22 @@ public class GameState{
 
     public List<PlayerState> getPlayers(){
         return this.playerArray;
+    }
+
+    public List<LobbyChatMessage> getLobbyChatMessages(){
+        return this.lobbyChatMessages;
+    }
+
+    public void addLobbyChatMessage(LobbyChatMessage message){
+        this.lobbyChatMessages.add(message);
+    }
+
+    public long getLobbyCountdownStartedAt(){
+        return this.lobbyCountdownStartedAt;
+    }
+
+    public void setLobbyCountdownStartedAt(long lobbyCountdownStartedAt){
+        this.lobbyCountdownStartedAt = lobbyCountdownStartedAt;
     }
 
     public DiseaseManager getDiseaseManager(){

@@ -4,29 +4,33 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.List;
 
 import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
 import jdemic.DedicatedServer.network.security.StateMasker;
 import jdemic.GameLogic.GameManager;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 public class ClientHandler implements Runnable {
 
-    
     private final SecureSocket secureSocket;
     private final Socket rawSocket;
     private BufferedReader in;
     private PrintWriter out;
     private PacketProcessor packetProcessor;
     private GameManager gameManager;
+    private List<ClientHandler> connectedClients;
+    private String connectedPlayerName = null;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ClientHandler(SecureSocket secureSocket, GameManager gameManager) {
+    public ClientHandler(SecureSocket secureSocket, GameManager gameManager, List<ClientHandler> connectedClients) {
         this.secureSocket = secureSocket;
         this.rawSocket = secureSocket.getRawSocket();
         this.gameManager = gameManager;
-        packetProcessor = new PacketProcessor(gameManager);
+        this.connectedClients = connectedClients;
+        packetProcessor = new PacketProcessor(gameManager, this);
 
         try {
             this.in = new BufferedReader(new InputStreamReader(rawSocket.getInputStream()));
@@ -49,14 +53,12 @@ public class ClientHandler implements Runnable {
             String encryptedMessage;
             System.out.println("[ClientHandler] Astept mesaje criptate de la client...");
 
-            
             while ((encryptedMessage = in.readLine()) != null) {
-
                 String decryptedMessage = secureSocket.decrypt(encryptedMessage);
                 System.out.println("[ClientHandler] Am primit (decriptat): " + decryptedMessage);
                 Packet packetMessage = Packet.fromJson(decryptedMessage);
                 packetProcessor.process(packetMessage);
-                // --- 1. Here is where you get the response from the Backend Game Logic ---
+
                 // Send updated GameState as JSON
                 String gameStateJson;
                 try {
@@ -66,13 +68,9 @@ public class ClientHandler implements Runnable {
                     gameStateJson = "{}"; // Fallback
                 }
 
-                // --- 2. APPLY ZERO-KNOWLEDGE MASKING BEFORE ENCRYPTION ---
-                // (Assuming we somehow know this thread belongs to "player2". 
-                // In the future, ClientHandler should store the connected player's ID)
-                String targetPlayerId = "player2"; 
+                // Apply masking and send to this client
+                String targetPlayerId = connectedPlayerName != null ? connectedPlayerName : "UNKNOWN";
                 String maskedResponse = StateMasker.maskStateForPlayer(gameStateJson, targetPlayerId);
-
-                // --- 3. Encrypt the cleaned, masked data and send it ---
                 String encryptedResponse = secureSocket.encrypt(maskedResponse);
                 out.println(encryptedResponse);
             }
@@ -91,9 +89,39 @@ public class ClientHandler implements Runnable {
             if (rawSocket != null && !rawSocket.isClosed()) {
                 rawSocket.close();
             }
+            connectedClients.remove(this);
             System.out.println("[ClientHandler] Resurse eliberate si conexiune inchisa.");
         } catch (Exception e) {
             System.err.println("[ClientHandler] Eroare la închiderea resurselor.");
+        }
+    }
+
+    public void setConnectedPlayerName(String playerName) {
+        this.connectedPlayerName = playerName;
+    }
+
+    public String getConnectedPlayerName() {
+        return connectedPlayerName;
+    }
+
+    public void broadcastGameStateToAll() {
+        try {
+            String gameStateJson = objectMapper.writeValueAsString(gameManager.getState());
+            // Send to all connected clients
+            for (ClientHandler client : connectedClients) {
+                if (client.connectedPlayerName != null) {
+                    try {
+                        String maskedResponse = StateMasker.maskStateForPlayer(gameStateJson, client.connectedPlayerName);
+                        String encryptedResponse = client.secureSocket.encrypt(maskedResponse);
+                        client.out.println(encryptedResponse);
+                    } catch (Exception e) {
+                        System.err.println("[ClientHandler] Error sending to client: " + e.getMessage());
+                    }
+                }
+            }
+            System.out.println("[ClientHandler] Broadcast game state to " + connectedClients.size() + " clients");
+        } catch (Exception e) {
+            System.err.println("[ClientHandler] Error broadcasting game state: " + e.getMessage());
         }
     }
 }

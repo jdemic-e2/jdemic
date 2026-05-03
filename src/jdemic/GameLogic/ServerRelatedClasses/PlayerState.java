@@ -13,10 +13,12 @@ public class PlayerState{
     private CityNode currentCity;
     private List<Card> hand = new ArrayList<>();
     private boolean discardingCards;
+    private boolean ready;
     private Player playerReference;
 
     public PlayerState(String name){
         this.discardingCards = false;
+        this.ready = false;
         this.playerName = name;
     }
 
@@ -64,5 +66,13 @@ public class PlayerState{
 
     public void setIsDiscarding(boolean state){
         this.discardingCards = state;
+    }
+
+    public boolean isReady(){
+        return this.ready;
+    }
+
+    public void setReady(boolean ready){
+        this.ready = ready;
     }
 }
