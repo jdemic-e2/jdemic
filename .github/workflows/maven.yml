@@ -31,3 +31,10 @@ jobs:
       with:
         name: pandemic-game-artifact
         path: target/*.jar
+
+    # NUESTRA TAREA DE ESTA SEMANA: Guardar el reporte de seguridad
+    - name: Upload OWASP Security Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: target/dependency-check-report.html
