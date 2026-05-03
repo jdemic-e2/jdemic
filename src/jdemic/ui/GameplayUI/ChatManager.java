@@ -1,5 +1,8 @@
 package jdemic.ui.GameplayUI;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -9,6 +12,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
+import jdemic.GameLogic.GameClient;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
@@ -17,13 +23,20 @@ public class ChatManager {
     private final StackPane root;
     private final String playerName;
     private final NotificationManager notificationManager;
+    private final GameClient gameClient;
     private TextArea chatArea;
     private TextField chatInput;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public ChatManager(StackPane root, String playerName, NotificationManager notificationManager) {
+        this(root, playerName, notificationManager, null);
+    }
+
+    public ChatManager(StackPane root, String playerName, NotificationManager notificationManager, GameClient gameClient) {
         this.root = root;
         this.playerName = playerName == null || playerName.isBlank() ? "PLAYER" : playerName.toUpperCase();
         this.notificationManager = notificationManager;
+        this.gameClient = gameClient;
         setupUI();
     }
 
@@ -101,14 +114,49 @@ public class ChatManager {
         String message = chatInput.getText().trim();
         if (message.isEmpty()) return;
 
-        if (!chatArea.getText().isEmpty()) {
-            chatArea.appendText("\n");
+        if (gameClient != null) {
+            ObjectNode payload = objectMapper.createObjectNode();
+            payload.put("playerName", playerName);
+            payload.put("message", message);
+            gameClient.sendPacket(new Packet(PacketType.LOBBY_CHAT, payload));
+        } else {
+            appendMessage(playerName, message);
         }
-        chatArea.appendText(playerName + ": " + message);
+
         chatInput.clear();
 
         if (notificationManager != null) {
             notificationManager.showNotification("Chat message sent");
         }
+    }
+
+    public void updateMessages(JsonNode messages) {
+        if (messages == null || !messages.isArray()) {
+            chatArea.clear();
+            return;
+        }
+
+        StringBuilder chatText = new StringBuilder();
+        for (JsonNode messageNode : messages) {
+            String senderName = messageNode.has("playerName") ? messageNode.get("playerName").asText() : "PLAYER";
+            String message = messageNode.has("message") ? messageNode.get("message").asText() : "";
+            if (message.isBlank()) {
+                continue;
+            }
+            if (!chatText.isEmpty()) {
+                chatText.append("\n");
+            }
+            chatText.append(senderName).append(": ").append(message);
+        }
+
+        chatArea.setText(chatText.toString());
+        chatArea.positionCaret(chatArea.getText().length());
+    }
+
+    private void appendMessage(String senderName, String message) {
+        if (!chatArea.getText().isEmpty()) {
+            chatArea.appendText("\n");
+        }
+        chatArea.appendText(senderName + ": " + message);
     }
 }

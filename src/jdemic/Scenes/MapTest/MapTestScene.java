@@ -1,5 +1,9 @@
 package jdemic.Scenes.MapTest;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -19,6 +23,8 @@ import javafx.stage.Stage;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.PandemicMapGraph;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.GameLogic.*;
@@ -56,18 +62,38 @@ public class MapTestScene {
     //Variable for gameplay chat
     private ChatManager chatManager;
 
+    //Variables for connected gameplay
+    private GameClient gameClient;
+    private String playerName = "Tester";
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
         this.mapGraph = new PandemicMapGraph();
 
-        //This is a test player because I needed to test certain features
-        List<Player> players = new ArrayList<>();
-        CityNode startingCity = mapGraph.getCity("Atlanta");
-        players.add(new Player(new PlayerState("Tester", startingCity)));
+        this.gameManager = createLocalGameManager();
+        initializeScene();
+    }
 
-        this.gameManager = new GameManager(players); //[cite: 16]
+    public MapTestScene(Stage stage, String playerName, GameClient gameClient, JsonNode gameState) {
+        this.stage = stage;
+        this.root = new StackPane();
+        this.mapGraph = new PandemicMapGraph();
+        this.gameClient = gameClient;
+        this.playerName = playerName == null || playerName.isBlank() ? "PLAYER" : playerName.toUpperCase();
 
+        this.gameManager = createNetworkGameManager(gameState);
+        initializeScene();
+
+        if (this.gameClient != null) {
+            this.gameClient.addPlayerUpdateListener(updatedGameState ->
+                    Platform.runLater(() -> applyGameStateSnapshot(updatedGameState))
+            );
+        }
+    }
+
+    private void initializeScene() {
         this.root.setStyle("-fx-background-color: #050a14;");
         setupBackground();
         setupContent();
@@ -95,6 +121,142 @@ public class MapTestScene {
                 });
             }
         });
+    }
+
+    private GameManager createLocalGameManager() {
+        List<PlayerState> players = new ArrayList<>();
+        CityNode startingCity = mapGraph.getCity("Atlanta");
+        PlayerState testPlayer = new PlayerState(playerName);
+        testPlayer.setCurrentCity(startingCity);
+        players.add(testPlayer);
+        return new GameManager(players);
+    }
+
+    private GameManager createNetworkGameManager(JsonNode gameState) {
+        List<PlayerState> players = createPlayersFromSnapshot(gameState);
+        if (players.isEmpty()) {
+            players.add(new PlayerState(playerName));
+        }
+
+        GameManager manager = new GameManager(players);
+        applyGameStateSnapshot(manager, gameState);
+        return manager;
+    }
+
+    private List<PlayerState> createPlayersFromSnapshot(JsonNode gameState) {
+        List<PlayerState> players = new ArrayList<>();
+        JsonNode playersArray = getPlayersArray(gameState);
+        if (playersArray == null || !playersArray.isArray()) {
+            return players;
+        }
+
+        for (JsonNode playerNode : playersArray) {
+            String name = playerNode.has("playerName") ? playerNode.get("playerName").asText() : "PLAYER";
+            PlayerState playerState = new PlayerState(name);
+            CityNode currentCity = getCityFromPlayerNode(playerNode, mapGraph);
+            if (currentCity != null) {
+                playerState.setCurrentCity(currentCity);
+            }
+            players.add(playerState);
+        }
+        return players;
+    }
+
+    private void applyGameStateSnapshot(JsonNode gameState) {
+        if (gameState == null) {
+            return;
+        }
+
+        applyGameStateSnapshot(gameManager, gameState);
+        if (actionMenuManager != null) actionMenuManager.updateMenuState();
+        if (infectionRateManager != null) infectionRateManager.updateTrack();
+        if (outbreakManager != null) outbreakManager.updateTrack();
+        if (cureManager != null) cureManager.updateUI();
+        if (chatManager != null) chatManager.updateMessages(gameState.get("lobbyChatMessages"));
+    }
+
+    private void applyGameStateSnapshot(GameManager manager, JsonNode gameState) {
+        if (manager == null || gameState == null) {
+            return;
+        }
+
+        if (gameState.has("actionsRemaining")) {
+            manager.getState().setActionsRemaining(gameState.get("actionsRemaining").asInt());
+        }
+        if (gameState.has("infectionRate")) {
+            manager.getState().setInfectionRate(gameState.get("infectionRate").asInt());
+        }
+        if (gameState.has("epidemicCount")) {
+            manager.getState().setEpidemicCount(gameState.get("epidemicCount").asInt());
+        }
+        if (gameState.has("gameOver")) {
+            manager.getState().setGameOver(gameState.get("gameOver").asBoolean());
+        }
+        if (gameState.has("gameWon")) {
+            manager.getState().setGameWon(gameState.get("gameWon").asBoolean());
+        }
+        if (gameState.has("gameStarted")) {
+            manager.getState().setGameStarted(gameState.get("gameStarted").asBoolean());
+        }
+
+        JsonNode playersArray = getPlayersArray(gameState);
+        if (playersArray != null && playersArray.isArray()) {
+            int index = 0;
+            for (JsonNode playerNode : playersArray) {
+                if (index >= manager.getState().getPlayers().size()) {
+                    break;
+                }
+
+                CityNode currentCity = getCityFromPlayerNode(playerNode, manager.getState().getMap());
+                if (currentCity != null) {
+                    manager.getState().getPlayers().get(index).setCurrentCity(currentCity);
+                }
+                index++;
+            }
+        }
+
+        if (gameState.has("currentPlayerIndex") && !manager.getState().getPlayers().isEmpty()) {
+            int currentPlayerIndex = gameState.get("currentPlayerIndex").asInt();
+            int maxPlayerIndex = manager.getState().getPlayers().size() - 1;
+            manager.getState().setCurrentPlayerIndex(Math.max(0, Math.min(currentPlayerIndex, maxPlayerIndex)));
+        }
+    }
+
+    private JsonNode getPlayersArray(JsonNode gameState) {
+        if (gameState == null) {
+            return null;
+        }
+        if (gameState.has("players")) {
+            return gameState.get("players");
+        }
+        if (gameState.has("playerArray")) {
+            return gameState.get("playerArray");
+        }
+        return null;
+    }
+
+    private CityNode getCityFromPlayerNode(JsonNode playerNode, PandemicMapGraph graph) {
+        if (playerNode == null || graph == null) {
+            return null;
+        }
+
+        JsonNode cityNode = playerNode.get("playerCurrentCity");
+        if (cityNode == null) {
+            cityNode = playerNode.get("currentCity");
+        }
+
+        if (cityNode == null) {
+            return null;
+        }
+
+        String cityName = null;
+        if (cityNode.isTextual()) {
+            cityName = cityNode.asText();
+        } else if (cityNode.has("name")) {
+            cityName = cityNode.get("name").asText();
+        }
+
+        return cityName == null ? null : graph.getCity(cityName);
     }
 
     private void setupUI() {
@@ -182,13 +344,42 @@ public class MapTestScene {
 
     private void setupActionMenu()
     {
-        this.actionMenuManager = new ActionMenuManager(root, notificationManager, gameManager);
+        this.actionMenuManager = gameClient == null
+                ? new ActionMenuManager(root, notificationManager, gameManager)
+                : new ActionMenuManager(root, notificationManager, gameManager, this::sendMenuActionPacket);
     }
 
     private void setupChat()
     {
-        String playerName = gameManager.getCurrentPlayer().getState().getPlayerName();
-        this.chatManager = new ChatManager(root, playerName, notificationManager);
+        String playerName = gameManager.getCurrentPlayer().getPlayerName();
+        this.chatManager = new ChatManager(root, playerName, notificationManager, gameClient);
+    }
+
+    private void sendMenuActionPacket(String action) {
+        if (gameClient == null) {
+            return;
+        }
+
+        ObjectNode payload = createBaseGameActionPayload();
+        payload.put("GameAction", action);
+        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    private void sendDriveFerryPacket(CityNode destination) {
+        if (gameClient == null || destination == null) {
+            return;
+        }
+
+        ObjectNode payload = createBaseGameActionPayload();
+        payload.put("GameAction", "DRIVE_FERRY");
+        payload.put("destination", destination.getName());
+        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    private ObjectNode createBaseGameActionPayload() {
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("PlayerID", playerName);
+        return payload;
     }
 
     private void setupContent() {
@@ -293,7 +484,12 @@ public class MapTestScene {
             });
 
             node.setOnMouseClicked(ev -> {city.clickEvent();
-                notificationManager.showNotification("Selected City: " + city.getName());
+                sendDriveFerryPacket(city);
+                notificationManager.showNotification(
+                        gameClient == null
+                                ? "Selected City: " + city.getName()
+                                : "Move request sent: " + city.getName()
+                );
             });
 
             Text label = new Text(city.getName());

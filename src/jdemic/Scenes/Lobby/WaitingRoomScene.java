@@ -25,7 +25,7 @@ import javafx.util.Duration;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.GameLogic.GameClient;
-import jdemic.Scenes.PlayScene;
+import jdemic.Scenes.MapTest.MapTestScene;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
@@ -327,7 +327,7 @@ public class WaitingRoomScene {
         }
         transitionedToGame = true;
         stopCountdown();
-        stage.getScene().setRoot(new PlayScene(stage, nickname, gameClient, gameState).getRoot());
+        stage.getScene().setRoot(new MapTestScene(stage, nickname, gameClient, gameState).getRoot());
     }
 
     private TextField createCyberInput() {

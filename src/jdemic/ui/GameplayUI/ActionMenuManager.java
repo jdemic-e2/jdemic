@@ -12,6 +12,9 @@ import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 import jdemic.ui.ButtonsUtil;
 import jdemic.GameLogic.GameManager;
+
+import java.util.function.Consumer;
+
 import static javafx.beans.binding.Bindings.createObjectBinding;
 
 public class ActionMenuManager {
@@ -22,11 +25,17 @@ public class ActionMenuManager {
     private ButtonsUtil mainActionBtn;
     private boolean isMenuOpen = false;
     private final String[] actions;
+    private final Consumer<String> actionSender;
 
     public ActionMenuManager(StackPane root, NotificationManager notificationManager, GameManager gameManager) {
+        this(root, notificationManager, gameManager, null);
+    }
+
+    public ActionMenuManager(StackPane root, NotificationManager notificationManager, GameManager gameManager, Consumer<String> actionSender) {
         this.root = root;
         this.notificationManager = notificationManager;
         this.gameManager = gameManager;
+        this.actionSender = actionSender;
         this.actions = new String[]{"MOVE", "BUILD", "SHARE", "FLY"};
 
         setupSubMenu();
@@ -88,9 +97,14 @@ public class ActionMenuManager {
         actionBtn.setOnMouseClicked(e -> {
             int left = gameManager.getState().getActionsRemaining();
             if (left > 0) {
-                gameManager.getState().setActionsRemaining(left - 1);
-                notificationManager.showNotification("Action " + action + " executed. Moves left: " + (left - 1));
-                updateMenuState();
+                if (actionSender != null) {
+                    actionSender.accept(action);
+                    notificationManager.showNotification("Action " + action + " sent to server");
+                } else {
+                    gameManager.getState().setActionsRemaining(left - 1);
+                    notificationManager.showNotification("Action " + action + " executed. Moves left: " + (left - 1));
+                    updateMenuState();
+                }
                 toggleMenu();
             }
         });

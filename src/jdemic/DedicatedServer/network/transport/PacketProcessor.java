@@ -87,12 +87,16 @@ public class PacketProcessor {
             return;
         }
 
-        String playerId = payload.get("PlayerID").asText();
+        String playerId = payload.has("PlayerID") ? payload.get("PlayerID").asText() : clientHandler.getConnectedPlayerName();
+        if (playerId == null || playerId.isBlank()) {
+            System.err.println("[PacketProcessor] Missing PlayerID for GAME_DATA packet.");
+            return;
+        }
 
         // Find PlayerState by playerId
         PlayerState playerState = null;
         for (PlayerState ps : gameManager.getState().getPlayers()) {
-            if (ps.getPlayerName().equals(playerId)) {
+            if (ps.getPlayerName().equalsIgnoreCase(playerId)) {
                 playerState = ps;
                 break;
             }
@@ -175,6 +179,13 @@ public class PacketProcessor {
                     return;
                 }
                 break;
+            case "MOVE":
+            case "BUILD":
+            case "SHARE":
+            case "FLY":
+                consumeGenericGameplayAction(playerState, gameAction);
+                clientHandler.broadcastGameStateToAll();
+                return;
             default:
                 System.err.println("[PacketProcessor] Unknown action: " + gameAction);
                 return;
@@ -184,6 +195,19 @@ public class PacketProcessor {
         gameManager.performAction(player, action);
 
         System.out.println("[PacketProcessor] Action performed: " + gameAction + " for player " + playerId);
+        clientHandler.broadcastGameStateToAll();
+    }
+
+    private void consumeGenericGameplayAction(PlayerState playerState, String gameAction) {
+        int actionsRemaining = gameManager.getState().getActionsRemaining();
+        if (actionsRemaining <= 0) {
+            System.out.println("[PacketProcessor] Ignored " + gameAction + " because no actions remain.");
+            return;
+        }
+
+        gameManager.getState().setActionsRemaining(actionsRemaining - 1);
+        System.out.println("[PacketProcessor] Generic gameplay action consumed: " + gameAction
+                + " for player " + playerState.getPlayerName());
     }
 
     private void handleConnect(Packet packet) {
