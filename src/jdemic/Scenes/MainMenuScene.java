@@ -25,6 +25,7 @@ import jdemic.ui.GlowLineUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
+import jdemic.GameLogic.GameManager;
 
 public class MainMenuScene {
 
@@ -177,12 +178,19 @@ public class MainMenuScene {
 
         ButtonsUtil playBtn = new ButtonsUtil("PLAY", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil maptestBtn = new ButtonsUtil("MAP TEST", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
+        ButtonsUtil localDemoBtn = new ButtonsUtil("LOCAL DEMO", "#d1d412", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil tutorialBtn = new ButtonsUtil("TUTORIAL", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil settingsBtn = new ButtonsUtil("SETTINGS", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil exitBtn = new ButtonsUtil("EXIT", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
 
         maptestBtn.setOnMouseClicked(e -> {
             SceneManager.switchScene("MAP_TEST");
+        });
+
+        localDemoBtn.setOnMouseClicked(e -> {
+            GameManager gm = PlayScene.createLocalDemoGameManager();
+            PlayScene demo = new PlayScene(stage, gm);
+            stage.getScene().setRoot(demo.getRoot());
         });
 
         tutorialBtn.setOnMouseClicked(e -> {
@@ -248,7 +256,7 @@ public class MainMenuScene {
         menuBox.setFillWidth(false);
         menuBox.setAlignment(Pos.BOTTOM_CENTER);
         menuBox.spacingProperty().bind(root.heightProperty().multiply(0.025));
-        menuBox.getChildren().addAll(playBtn, maptestBtn, tutorialBtn, settingsBtn, exitBtn);
+        menuBox.getChildren().addAll(playBtn, maptestBtn, localDemoBtn, tutorialBtn, settingsBtn, exitBtn);
         menuBox.translateXProperty().bind(root.widthProperty().multiply(-0.35));
         menuBox.translateYProperty().bind(root.heightProperty().multiply(-0.25));
 

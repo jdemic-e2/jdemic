@@ -17,14 +17,19 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import jdemic.ui.ButtonsUtil;
+import jdemic.ui.CardDeckView;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
+import jdemic.GameLogic.CardType;
+import jdemic.GameLogic.GameManager;
+import jdemic.GameLogic.PandemicMapGraph;
 import jdemic.GameLogic.Player;
 import jdemic.GameLogic.Card;
-import jdemic.GameLogic.GameManager;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -38,14 +43,49 @@ public class PlayScene {
     private String nickname = "";
     private final String hostCode;
     private Label hostStatusLabel;
+    /** When true (local demo constructor), show a way back to the main menu. */
+    private final boolean localDemoMode;
 
     public PlayScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
         this.hostCode = generateHostCode();
+        this.localDemoMode = false;
 
         setupBackground();
         showEntryScreen();
+    }
+
+    /**
+     * Skips lobby; opens gameplay immediately (local demo / dev).
+     */
+    public PlayScene(Stage stage, GameManager demoGame) {
+        this.stage = stage;
+        this.root = new StackPane();
+        this.hostCode = "";
+        this.localDemoMode = true;
+        setupBackground();
+        showGameplayScreen(demoGame);
+    }
+
+    /**
+     * Single-player local session: one human player, synced city on the live map, sample hand for deck UI.
+     */
+    public static GameManager createLocalDemoGameManager() {
+        PandemicMapGraph preMap = new PandemicMapGraph();
+        Player demoPlayer = new Player(new PlayerState("LocalDemo", preMap.getCity("Atlanta")));
+        GameManager gm = new GameManager(List.of(demoPlayer));
+        var map = gm.getState().getMap();
+        demoPlayer.getState().setCurrentCity(map.getCity("Atlanta"));
+        var hand = demoPlayer.getState().getHand();
+        hand.clear();
+        hand.add(new Card("Paris", CardType.CITY, map.getCity("Paris")));
+        hand.add(new Card("Tokyo", CardType.CITY, map.getCity("Tokyo")));
+        hand.add(new Card("System Breach", CardType.EPIDEMIC, null));
+        Card ev = new Card("Threat Scan", CardType.EVENT, null);
+        ev.setEventType(Card.EventType.THREAT);
+        hand.add(ev);
+        return gm;
     }
 
     public StackPane getRoot() {
@@ -288,6 +328,27 @@ public class PlayScene {
 
     public void showGameplayScreen(GameManager gameManager) {
         resetScreen();
+
+        // --- Card deck (bottom-center overlay) ---
+        CardDeckView deckView = new CardDeckView(root.widthProperty(), root.heightProperty());
+        StackPane.setAlignment(deckView, Pos.BOTTOM_CENTER);
+        // Margin-like behavior with responsive translate (keeps deck inside screen)
+        deckView.setTranslateY(-40);
+        root.getChildren().add(deckView);
+
+        // Bind to current player's hand for now (acts as "visible deck" in UI).
+        // TODO: replace with actual "player deck" vs "hand" model once gameplay flow is wired.
+        try {
+            var current = gameManager.getCurrentPlayer();
+            if (current != null && current.getState() != null && current.getState().getHand() != null) {
+                deckView.setCards(current.getState().getHand());
+            } else {
+                deckView.setDummyCardsIfEmpty();
+            }
+        } catch (Exception e) {
+            deckView.setDummyCardsIfEmpty();
+        }
+
         VBox playerIconsContainer = new VBox(15);
         playerIconsContainer.setPadding(new Insets(20, 0, 0, 20));
         StackPane.setAlignment(playerIconsContainer, Pos.TOP_LEFT);
@@ -297,6 +358,18 @@ public class PlayScene {
             playerIconsContainer.getChildren().add(createGameplayPlayerRow(p));
         }
         root.getChildren().add(playerIconsContainer);
+
+        if (localDemoMode) {
+            ButtonsUtil backMenu = new ButtonsUtil("MAIN MENU", "#ff2d2d", "black", "#00b5d4", "#00b5d4", 2, 10, 10, 0.14, 0.055, 0.015, root);
+            backMenu.setOnMouseClicked(e -> {
+                SceneManager.clearCache();
+                SceneManager.switchScene("MAIN_MENU");
+            });
+            StackPane.setAlignment(backMenu, Pos.TOP_RIGHT);
+            backMenu.translateXProperty().bind(root.widthProperty().multiply(-0.02));
+            backMenu.translateYProperty().bind(root.heightProperty().multiply(0.03));
+            root.getChildren().add(backMenu);
+        }
     }
 
     private HBox createGameplayPlayerRow(Player player) {
@@ -320,18 +393,26 @@ public class PlayScene {
                 if (placeholderStream == null) throw new Exception("Placeholder da bulunamadı");
                 img = new Image(placeholderStream);
             } catch (Exception ex) {
-                img = new Image(getClass().getResourceAsStream("/elements/redDot.png"));
+                var red = getClass().getResourceAsStream("/elements/redDot.png");
+                if (red != null) {
+                    img = new Image(red);
+                }
             }
         }
 
-        ImageView iconView = new ImageView(img);
-        iconView.setFitWidth(45);
-        iconView.setFitHeight(45);
-        iconView.setPreserveRatio(true);
-
-        GlowUtil.applyGlow(iconView, "#00d9ff", 10);
-
-        row.getChildren().add(iconView);
+        if (img != null && !img.isError()) {
+            ImageView iconView = new ImageView(img);
+            iconView.setFitWidth(45);
+            iconView.setFitHeight(45);
+            iconView.setPreserveRatio(true);
+            GlowUtil.applyGlow(iconView, "#00d9ff", 10);
+            row.getChildren().add(iconView);
+        } else {
+            Circle fallback = new Circle(22, Color.web("#00d9ff"));
+            fallback.setOpacity(0.85);
+            GlowUtil.applyGlow(fallback, "#00d9ff", 10);
+            row.getChildren().add(fallback);
+        }
         row.setOnMouseClicked(e -> showPlayerCardsOverlay(player));
 
         return row;
