@@ -13,6 +13,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.Animations;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.DotUtil;

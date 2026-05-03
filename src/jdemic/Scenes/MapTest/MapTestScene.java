@@ -1,5 +1,6 @@
 package jdemic.Scenes.MapTest;
 
+import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.effect.DropShadow;
@@ -17,14 +18,14 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.PandemicMapGraph;
-import jdemic.Scenes.SceneManager;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.GameLogic.*;
+import javafx.scene.layout.VBox;
+import jdemic.ui.GameplayUI.*;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class MapTestScene {
     private Stage stage;
@@ -33,14 +34,67 @@ public class MapTestScene {
     private Map<CityNode, Circle> nodeVisuals = new HashMap<>();
     private Map<String, Line> edgeVisuals = new HashMap<>();
 
+    //Variables for notifications
+    private NotificationManager notificationManager;
+    private VBox notificationContainer;
+
+    //Variable for ActionMenu
+    private ActionMenuManager actionMenuManager;
+
+    //Variable for game manager (temp)
+    private GameManager gameManager;
+
+    //Variables for InfectionManager
+    private InfectionRateManager infectionRateManager;
+
+    //Variables for OutbreakManager
+    private OutbreakManager outbreakManager;
+
+    //Variables for CureManager
+    private CureManager cureManager;
+
+    //Variable for gameplay chat
+    private ChatManager chatManager;
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
         this.mapGraph = new PandemicMapGraph();
+
+        //This is a test player because I needed to test certain features
+        List<Player> players = new ArrayList<>();
+        CityNode startingCity = mapGraph.getCity("Atlanta");
+        players.add(new Player(new PlayerState("Tester", startingCity)));
+
+        this.gameManager = new GameManager(players); //[cite: 16]
+
         this.root.setStyle("-fx-background-color: #050a14;");
         setupBackground();
         setupContent();
         setupUI();
+        setupNotifications();
+        setupActionMenu();
+        setupGlobalHUD();
+        setupChat();
+
+        root.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.setOnKeyPressed(event -> {
+                    if (event.getCode() == javafx.scene.input.KeyCode.I) {
+                        if (gameManager.getState().getInfectionRate() < gameManager.getInfectionRateTrack().length - 1) {
+                            gameManager.increaseInfectionRate();
+                            infectionRateManager.updateTrack(); // Actualizăm doar ce s-a schimbat
+                            notificationManager.showNotification("DEBUG: Infection Rate Increased!");
+                        }
+                    }
+                    if (event.getCode() == javafx.scene.input.KeyCode.O) {
+                        gameManager.getState().getDiseaseManager().increaseOutbreakScore();
+                        outbreakManager.updateTrack();
+                        notificationManager.showNotification("DEBUG: Outbreak Occurred!");
+                    }
+                });
+            }
+        });
     }
 
     private void setupUI() {
@@ -58,11 +112,83 @@ public class MapTestScene {
         );
 
         backBtn.setOnMouseClicked(e -> {
+            if (gameManager != null && gameManager.getState() != null) {
+                gameManager.getState().setActionsRemaining(4);
+            }
+            if (actionMenuManager != null) actionMenuManager.updateMenuState();
+            if (infectionRateManager != null) infectionRateManager.updateTrack();
+            if (outbreakManager != null) outbreakManager.updateTrack();
+            if (cureManager != null) cureManager.updateUI();
+
             returnToMainMenu();
         });
 
         header.getChildren().add(backBtn);
         root.getChildren().add(header);
+    }
+
+    private void setupGlobalHUD() {
+        HBox mainHUD = new HBox();
+        mainHUD.setAlignment(Pos.TOP_CENTER);
+        mainHUD.setPickOnBounds(false);
+
+        mainHUD.setStyle(
+                "-fx-background-color: rgba(0, 0, 0, 0.8); " +
+                        "-fx-background-radius: 15px; " +
+                        "-fx-padding: 10px;"
+        );
+
+        mainHUD.setMaxHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
+
+        mainHUD.maxWidthProperty().bind(root.widthProperty().multiply(0.6));
+        StackPane.setAlignment(mainHUD, Pos.TOP_CENTER);
+        mainHUD.paddingProperty().bind(Bindings.createObjectBinding(() ->
+                        new Insets(root.getHeight() * 0.04, 10, 10, 10),
+                root.heightProperty()
+        ));
+
+        mainHUD.translateXProperty().bind(root.widthProperty().multiply(0.05));
+        mainHUD.spacingProperty().bind(root.widthProperty().multiply(0.03));
+
+        this.outbreakManager = new OutbreakManager(root, gameManager);
+        this.infectionRateManager = new InfectionRateManager(root, gameManager);
+        this.cureManager = new CureManager(root, gameManager);
+
+        mainHUD.getChildren().addAll(
+                outbreakManager.getContainer(),
+                infectionRateManager.getContainer(),
+                cureManager.getContainer()
+        );
+
+        root.getChildren().add(mainHUD);
+    }
+
+    private void setupNotifications()
+    {
+        notificationContainer = new VBox(10);
+        notificationContainer.prefWidthProperty().bind(root.widthProperty());
+        notificationContainer.prefHeightProperty().bind(root.heightProperty());
+
+        notificationContainer.paddingProperty().bind(Bindings.createObjectBinding(() ->
+                        new Insets(root.getHeight() * 0.15, 20, 0, 0),
+                root.heightProperty()
+        ));
+        notificationContainer.setAlignment(Pos.TOP_RIGHT);
+        notificationContainer.setMouseTransparent(true);
+
+        notificationManager = new NotificationManager(notificationContainer);
+        root.getChildren().add(notificationContainer);
+    }
+
+    private void setupActionMenu()
+    {
+        this.actionMenuManager = new ActionMenuManager(root, notificationManager, gameManager);
+    }
+
+    private void setupChat()
+    {
+        String playerName = gameManager.getCurrentPlayer().getState().getPlayerName();
+        this.chatManager = new ChatManager(root, playerName, notificationManager);
     }
 
     private void setupContent() {
@@ -166,7 +292,9 @@ public class MapTestScene {
                 }
             });
 
-            node.setOnMouseClicked(ev -> city.clickEvent());
+            node.setOnMouseClicked(ev -> {city.clickEvent();
+                notificationManager.showNotification("Selected City: " + city.getName());
+            });
 
             Text label = new Text(city.getName());
             label.setFill(Color.WHITE);
