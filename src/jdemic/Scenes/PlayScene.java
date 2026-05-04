@@ -29,6 +29,8 @@ import jdemic.GameLogic.GameManager;
 import jdemic.GameLogic.Player;
 import jdemic.GameLogic.ServerRelatedClasses.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.UnaryOperator;
 
@@ -49,7 +51,7 @@ public class PlayScene {
         this.hostCode = generateHostCode();
 
         setupBackground();
-        showEntryScreen();
+        showGameplayScreen(createLocalGameManager());
     }
 
     public PlayScene(Stage stage, String nickname, GameClient gameClient, JsonNode gameState) {
@@ -297,6 +299,15 @@ public class PlayScene {
         StringBuilder sb = new StringBuilder(10);
         for (int i = 0; i < 10; i++) { sb.append(chars.charAt(rnd.nextInt(chars.length()))); }
         return sb.toString();
+    }
+
+    private GameManager createLocalGameManager() {
+        List<PlayerState> players = new ArrayList<>();
+        players.add(new PlayerState("PLAYER"));
+
+        GameManager gameManager = new GameManager(players);
+        gameManager.startGame();
+        return gameManager;
     }
 
     // --- PLAYER ICON TASK INNOVATIONS (Simplified to Icons Only) ---

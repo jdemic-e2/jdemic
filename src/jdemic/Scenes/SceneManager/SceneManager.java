@@ -30,7 +30,7 @@ public class SceneManager {
                 //Lobby related buttons
                 case "LOBBY": root = new jdemic.Scenes.Lobby.LobbyScene(stage).getRoot();break;
                 case "JOIN_CODE":root = new JoinCodeScene(stage).getRoot();break;
-                case "MAP_TEST": root = new jdemic.Scenes.MapTest.MapTestScene(stage).getRoot();break;
+                case "MAP_TEST": root = new jdemic.Scenes.PlayScene(stage).getRoot();break;
 
                 //The holy set of tutorial scenes
                 case "TUTORIAL": root = new jdemic.Scenes.Tutorial.TutorialRulesScene(stage).getRoot();break;
