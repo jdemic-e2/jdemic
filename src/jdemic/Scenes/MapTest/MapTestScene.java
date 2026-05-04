@@ -67,6 +67,9 @@ public class MapTestScene {
     private String playerName = "Tester";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    private Map<String, PawnUI> playerPawns = new HashMap<>();
+    private Map<CityNode, List<String>> cityOccupants = new HashMap<>();
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
@@ -103,6 +106,10 @@ public class MapTestScene {
         setupGlobalHUD();
         setupChat();
 
+        Platform.runLater(() -> {
+            updatePawnPositions();
+        });
+
         root.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 newScene.setOnKeyPressed(event -> {
@@ -121,6 +128,61 @@ public class MapTestScene {
                 });
             }
         });
+    }
+
+    // Inside setupContent() or initializeScene()
+    private void setupPawns(Pane mapPane) {
+        Color[] colors = {Color.CYAN, Color.MAGENTA, Color.LIME, Color.ORANGE};
+        int i = 0;
+
+        for (PlayerState player : gameManager.getState().getPlayers()) {
+            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), colors[i % colors.length]);
+            playerPawns.put(player.getPlayerName(), pawn);
+            mapPane.getChildren().add(pawn.getNode());
+            i++;
+        }
+        updatePawnPositions();
+    }
+
+    private void updatePawnPositions() {
+        cityOccupants.clear();
+
+        // 1. Group player names by their current CityNode[cite: 6]
+        for (PlayerState player : gameManager.getState().getPlayers()) {
+            CityNode city = player.getPlayerCurrentCity(); // Using the correct method from source 6
+            if (city != null) {
+                cityOccupants.computeIfAbsent(city, k -> new ArrayList<>()).add(player.getPlayerName());
+            }
+        }
+
+        // 2. Iterate through cities that have occupants
+        for (Map.Entry<CityNode, List<String>> entry : cityOccupants.entrySet()) {
+            CityNode city = entry.getKey();
+            List<String> playersInCity = entry.getValue();
+            int count = playersInCity.size();
+
+            Circle cityVisual = nodeVisuals.get(city); // Get visual node created in setupContent
+            if (cityVisual == null) continue;
+
+            for (int i = 0; i < count; i++) {
+                String playerName = playersInCity.get(i);
+                PawnUI pawnUI = playerPawns.get(playerName);
+
+                if (pawnUI == null) continue;
+
+                pawnUI.unbindPosition();
+
+                if (count == 1) {
+                    // Centered position
+                    pawnUI.bindToCenter(cityVisual.centerXProperty(), cityVisual.centerYProperty());
+                } else {
+                    // Radial offset to prevent overlapping
+                    double angle = 2 * Math.PI * i / count;
+                    double offset = 14.0;
+                    pawnUI.bindWithOffset(cityVisual.centerXProperty(), cityVisual.centerYProperty(), angle, offset);
+                }
+            }
+        }
     }
 
     private GameManager createLocalGameManager() {
@@ -173,6 +235,7 @@ public class MapTestScene {
         if (outbreakManager != null) outbreakManager.updateTrack();
         if (cureManager != null) cureManager.updateUI();
         if (chatManager != null) chatManager.updateMessages(gameState.get("lobbyChatMessages"));
+        Platform.runLater(this::updatePawnPositions);
     }
 
     private void applyGameStateSnapshot(GameManager manager, JsonNode gameState) {
@@ -207,7 +270,7 @@ public class MapTestScene {
                     break;
                 }
 
-                CityNode currentCity = getCityFromPlayerNode(playerNode, manager.getState().getMap());
+                CityNode currentCity = getCityFromPlayerNode(playerNode, this.mapGraph);
                 if (currentCity != null) {
                     manager.getState().getPlayers().get(index).setCurrentCity(currentCity);
                 }
@@ -502,7 +565,7 @@ public class MapTestScene {
 
             mapPane.getChildren().addAll(node, label);
         }
-
+        setupPawns(mapPane);
         root.getChildren().add(mapPane);
     }
 
