@@ -299,39 +299,32 @@ public class MapTestScene {
     }
 
     private void setupGlobalHUD() {
-        HBox mainHUD = new HBox();
-        mainHUD.setAlignment(Pos.TOP_CENTER);
-        mainHUD.setPickOnBounds(false);
-
-        mainHUD.setStyle(
-                "-fx-background-color: rgba(0, 0, 0, 0.8); " +
-                        "-fx-background-radius: 15px; " +
-                        "-fx-padding: 10px;"
-        );
-
-        mainHUD.setMaxHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
-
-        mainHUD.maxWidthProperty().bind(root.widthProperty().multiply(0.6));
-        StackPane.setAlignment(mainHUD, Pos.TOP_CENTER);
-        mainHUD.paddingProperty().bind(Bindings.createObjectBinding(() ->
-                        new Insets(root.getHeight() * 0.04, 10, 10, 10),
-                root.heightProperty()
-        ));
-
-        mainHUD.translateXProperty().bind(root.widthProperty().multiply(0.05));
-        mainHUD.spacingProperty().bind(root.widthProperty().multiply(0.03));
 
         this.outbreakManager = new OutbreakManager(root, gameManager);
         this.infectionRateManager = new InfectionRateManager(root, gameManager);
         this.cureManager = new CureManager(root, gameManager);
 
-        mainHUD.getChildren().addAll(
-                outbreakManager.getContainer(),
-                infectionRateManager.getContainer(),
-                cureManager.getContainer()
-        );
+        HBox outbreakBox = new HBox(outbreakManager.getContainer());
+        outbreakBox.setAlignment(Pos.CENTER_LEFT);
+        outbreakBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        root.getChildren().add(mainHUD);
+        StackPane.setAlignment(outbreakBox, Pos.TOP_LEFT);
+        StackPane.setMargin(outbreakBox, new Insets(40, 0, 0, 40));
+
+        HBox infectionBox = new HBox(infectionRateManager.getContainer());
+        infectionBox.setAlignment(Pos.CENTER);
+        infectionBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
+        StackPane.setAlignment(infectionBox, Pos.TOP_CENTER);
+        StackPane.setMargin(infectionBox, new Insets(40, 0, 0, 0));
+
+        VBox curesBox = cureManager.getContainer();
+        curesBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
+        StackPane.setAlignment(curesBox, Pos.TOP_RIGHT);
+        StackPane.setMargin(curesBox, new Insets(100, 40, 0, 0));
+
+        root.getChildren().addAll(outbreakBox, infectionBox, curesBox);
     }
 
     private void setupNotifications()
