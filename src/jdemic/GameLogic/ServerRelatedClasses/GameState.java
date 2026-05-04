@@ -144,4 +144,25 @@ public class GameState{
     public void setGameStarted(boolean gameStarted){
         this.gameStarted = gameStarted;
     }
+
+    /**
+     * Gets the current player whose turn it is
+     * @return the current PlayerState, or null if no players exist
+     */
+    public PlayerState getCurrentPlayer(){
+        if(playerArray == null || playerArray.isEmpty()){
+            return null;
+        }
+        return playerArray.get(currentPlayerIndex);
+    }
+
+    /**
+     * Checks if the given player is the current player
+     * @param playerState the player to check
+     * @return true if it's the player's turn, false otherwise
+     */
+    public boolean isPlayerTurn(PlayerState playerState){
+        PlayerState currentPlayer = getCurrentPlayer();
+        return currentPlayer != null && currentPlayer.getPlayerName().equals(playerState.getPlayerName());
+    }
 }

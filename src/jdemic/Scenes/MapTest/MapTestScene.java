@@ -7,6 +7,7 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -47,6 +48,7 @@ public class MapTestScene {
 
     //Variable for ActionMenu
     private ActionMenuManager actionMenuManager;
+    private Set<CityNode> highlightedValidNodes = new HashSet<>();
 
     //Variable for game manager (temp)
     private GameManager gameManager;
@@ -74,6 +76,9 @@ public class MapTestScene {
 
     //Variables for connected gameplay
     private GameClient gameClient;
+    
+    //Variable for current player display
+    private Label currentPlayerLabel;
     private String playerName = "Tester";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -84,6 +89,7 @@ public class MapTestScene {
         this.stage = stage;
         this.root = new StackPane();
         this.mapGraph = new PandemicMapGraph();
+        addDefaultResearchStationToSceneMap();
 
         this.gameManager = createLocalGameManager();
         initializeScene();
@@ -93,6 +99,7 @@ public class MapTestScene {
         this.stage = stage;
         this.root = new StackPane();
         this.mapGraph = new PandemicMapGraph();
+        addDefaultResearchStationToSceneMap();
         this.gameClient = gameClient;
         this.playerName = playerName == null || playerName.isBlank() ? "PLAYER" : playerName.toUpperCase();
 
@@ -353,7 +360,21 @@ public class MapTestScene {
             cityName = cityNode.get("name").asText();
         }
 
-        return cityName == null ? null : graph.getCity(cityName);
+        CityNode city = cityName == null ? null : graph.getCity(cityName);
+        if (city != null && cityNode.has("hasResearchStation") && cityNode.get("hasResearchStation").asBoolean()) {
+            city.addResearchStation();
+        }
+        if (city != null && cityNode.has("researchStation") && cityNode.get("researchStation").asBoolean()) {
+            city.addResearchStation();
+        }
+        return city;
+    }
+
+    private void addDefaultResearchStationToSceneMap() {
+        CityNode atlanta = mapGraph.getCity("Atlanta");
+        if (atlanta != null) {
+            atlanta.addResearchStation();
+        }
     }
 
     private void setupUI() {
@@ -412,7 +433,17 @@ public class MapTestScene {
         StackPane.setAlignment(curesBox, Pos.TOP_RIGHT);
         StackPane.setMargin(curesBox, new Insets(100, 40, 0, 0));
 
-        root.getChildren().addAll(outbreakBox, infectionBox, curesBox);
+        // Create current player display label
+        currentPlayerLabel = new Label();
+        currentPlayerLabel.setFont(Font.font("hkmodular", FontWeight.BOLD, 20));
+        currentPlayerLabel.setTextFill(Color.web("#d1d412"));
+        currentPlayerLabel.setStyle("-fx-effect: dropshadow(gaussian, #d1d412, 10, 0.5, 0, 0);");
+        updateCurrentPlayerLabel();
+        
+        StackPane.setAlignment(currentPlayerLabel, Pos.BOTTOM_CENTER);
+        StackPane.setMargin(currentPlayerLabel, new Insets(0, 0, 40, 0));
+
+        root.getChildren().addAll(outbreakBox, infectionBox, curesBox, currentPlayerLabel);
     }
 
     private void setupNotifications()
@@ -434,15 +465,31 @@ public class MapTestScene {
 
     private void setupActionMenu()
     {
+        // For network games, pass playerName to enforce turn-based validation
+        // For local games, pass null to allow any player to act during their turn
+        String playerNameForMenu = (gameClient != null) ? playerName : null;
+        
         this.actionMenuManager = gameClient == null
-                ? new ActionMenuManager(root, notificationManager, gameManager)
-                : new ActionMenuManager(root, notificationManager, gameManager, this::sendMenuActionPacket);
+                ? new ActionMenuManager(root, notificationManager, gameManager, null, this::highlightValidNodes, playerNameForMenu, this::updateCurrentPlayerLabel)
+                : new ActionMenuManager(root, notificationManager, gameManager, this::sendMenuActionPacket, this::highlightValidNodes, playerNameForMenu, this::updateCurrentPlayerLabel);
     }
 
     private void setupChat()
     {
         String playerName = gameManager.getCurrentPlayer().getPlayerName();
         this.chatManager = new ChatManager(root, playerName, notificationManager, gameClient);
+    }
+
+    /**
+     * Updates the current player label with the name of the player whose turn it is
+     */
+    private void updateCurrentPlayerLabel() {
+        if (currentPlayerLabel != null && gameManager != null) {
+            PlayerState current = gameManager.getState().getCurrentPlayer();
+            if (current != null) {
+                currentPlayerLabel.setText("CURRENT TURN: " + current.getPlayerName().toUpperCase());
+            }
+        }
     }
 
     private void sendMenuActionPacket(String action) {
@@ -464,6 +511,75 @@ public class MapTestScene {
         payload.put("GameAction", "DRIVE_FERRY");
         payload.put("destination", destination.getName());
         gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    private void highlightValidNodes(String movementType) {
+        // Clear previous highlights
+        for (CityNode city : highlightedValidNodes) {
+            Circle nodeCircle = nodeVisuals.get(city);
+            if (nodeCircle != null) {
+                Color nativeColor = getFxColor(city.getNativeColor());
+                nodeCircle.setFill(nativeColor);
+                nodeCircle.setEffect(null);
+            }
+        }
+        highlightedValidNodes.clear();
+
+        if (movementType == null || movementType.isEmpty()) {
+            return;
+        }
+
+        // Get current player's city
+        PlayerState currentPlayer = gameManager.getCurrentPlayer();
+        if (currentPlayer == null) {
+            return;
+        }
+
+        CityNode currentCity = currentPlayer.getPlayerCurrentCity();
+        if (currentCity == null) {
+            return;
+        }
+
+        // For DRIVE/FERRY, highlight all connected cities
+        if ("DRIVE_FERRY".equals(movementType)) {
+            for (CityNode neighbor : currentCity.getConnectedCities()) {
+                highlightedValidNodes.add(neighbor);
+                Circle nodeCircle = nodeVisuals.get(neighbor);
+                if (nodeCircle != null) {
+                    nodeCircle.setFill(Color.web("#00ff00"));
+                    
+                    javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
+                    glow.setColor(Color.web("#00ff00"));
+                    glow.setRadius(20);
+                    glow.setSpread(0.6);
+                    nodeCircle.setEffect(glow);
+                    
+                    // Add click handler for movement
+                    nodeCircle.setOnMouseClicked(ev -> {
+                        // Consume an action point
+                        int actionsLeft = gameManager.getState().getActionsRemaining();
+                        if (actionsLeft > 0) {
+                            gameManager.getState().setActionsRemaining(actionsLeft - 1);
+                            
+                            sendDriveFerryPacket(neighbor);
+                            notificationManager.showNotification(
+                                    gameClient == null
+                                            ? "Moved to " + neighbor.getName() + ". Actions left: " + (actionsLeft - 1)
+                                            : "Move request sent: " + neighbor.getName()
+                            );
+                            
+                            // Clear highlights and reset movement selection
+                            highlightValidNodes(""); 
+                            if (actionMenuManager != null) {
+                                actionMenuManager.clearSelectedMovementAction();
+                            }
+                        } else {
+                            notificationManager.showNotification("No actions remaining!");
+                        }
+                    });
+                }
+            }
+        }
     }
 
     private ObjectNode createBaseGameActionPayload() {
@@ -585,13 +701,8 @@ public class MapTestScene {
                 }
             });
 
-            node.setOnMouseClicked(ev -> {city.clickEvent();
-                sendDriveFerryPacket(city);
-                notificationManager.showNotification(
-                        gameClient == null
-                                ? "Selected City: " + city.getName()
-                                : "Move request sent: " + city.getName()
-                );
+            node.setOnMouseClicked(ev -> {
+                city.clickEvent();
             });
 
             Text label = new Text(city.getName());

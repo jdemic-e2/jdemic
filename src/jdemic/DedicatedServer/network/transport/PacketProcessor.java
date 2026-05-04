@@ -187,8 +187,9 @@ public class PacketProcessor {
                 break;
             case "MOVE":
             case "BUILD":
+            case "TREAT":
             case "SHARE":
-            case "FLY":
+            case "DISCOVER":
                 consumeGenericGameplayAction(playerState, gameAction);
                 broadcastGameState();
                 return;

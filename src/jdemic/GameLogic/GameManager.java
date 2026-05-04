@@ -60,11 +60,19 @@ public class GameManager {
     {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
+        
+        // Only allow the current player to perform actions
+        if(!state.isPlayerTurn(player.getState())) return;
 
         if(action.isValid(state, player.getState()))
         {
             action.execute(state, player.getState());
             state.setActionsRemaining(state.getActionsRemaining() - 1);
+            
+            // Automatically advance to next turn when actions reach 0
+            if(state.getActionsRemaining() <= 0){
+                nextTurn();
+            }
         }
     }
 
