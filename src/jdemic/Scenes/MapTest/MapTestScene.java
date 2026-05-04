@@ -68,11 +68,16 @@ public class MapTestScene {
 
     //Variable player hand
     private HandManager handManager;
+    // Add to MapTestScene class fields
+    private PlayerListUI playerListUI;
 
     //Variables for connected gameplay
     private GameClient gameClient;
     private String playerName = "Tester";
     private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    private Map<String, PawnUI> playerPawns = new HashMap<>();
+    private Map<CityNode, List<String>> cityOccupants = new HashMap<>();
 
     public MapTestScene(Stage stage) {
         this.stage = stage;
@@ -112,14 +117,40 @@ public class MapTestScene {
         deckManager = new DeckManager(root);
         handManager = new HandManager(root, deckManager);
 
+        Platform.runLater(() -> {
+            updatePawnPositions();
+        });
+
+        Color[] playerColors = {Color.CYAN, Color.MAGENTA, Color.LIME, Color.ORANGE};
+        this.playerListUI = new PlayerListUI(gameManager.getState().getPlayers(), playerColors);
+        root.getChildren().add(playerListUI.getContainer()); // Add to top level StackPane
+
         root.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
+                // Use Filter instead of Handler to catch TAB specifically
+                newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+                    if (event.getCode() == javafx.scene.input.KeyCode.TAB) {
+                        playerListUI.setVisible(true);
+                        event.consume(); // Prevents focus from jumping to buttons
+                    }
+                });
+
+                newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_RELEASED, event -> {
+                    if (event.getCode() == javafx.scene.input.KeyCode.TAB) {
+                        playerListUI.setVisible(false);
+                        event.consume();
+                    }
+                });
+
+                // Keep your other debug keys as standard handlers
                 newScene.setOnKeyPressed(event -> {
                     if (event.getCode() == javafx.scene.input.KeyCode.I) {
                         if (gameManager.getState().getInfectionRate() < gameManager.getInfectionRateTrack().length - 1) {
                             gameManager.increaseInfectionRate();
-                            infectionRateManager.updateTrack(); // Actualizăm doar ce s-a schimbat
+                            infectionRateManager.updateTrack();
                             notificationManager.showNotification("DEBUG: Infection Rate Increased!");
+                        } else {
+                            notificationManager.showNotification("DEBUG: Infection Rate is maxed");
                         }
                     }
                     if (event.getCode() == javafx.scene.input.KeyCode.O) {
@@ -130,6 +161,61 @@ public class MapTestScene {
                 });
             }
         });
+    }
+
+    // Inside setupContent() or initializeScene()
+    private void setupPawns(Pane mapPane) {
+        Color[] colors = {Color.CYAN, Color.MAGENTA, Color.LIME, Color.ORANGE};
+        int i = 0;
+
+        for (PlayerState player : gameManager.getState().getPlayers()) {
+            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), colors[i % colors.length]);
+            playerPawns.put(player.getPlayerName(), pawn);
+            mapPane.getChildren().add(pawn.getNode());
+            i++;
+        }
+        updatePawnPositions();
+    }
+
+    private void updatePawnPositions() {
+        cityOccupants.clear();
+
+        // 1. Group player names by their current CityNode[cite: 6]
+        for (PlayerState player : gameManager.getState().getPlayers()) {
+            CityNode city = player.getPlayerCurrentCity(); // Using the correct method from source 6
+            if (city != null) {
+                cityOccupants.computeIfAbsent(city, k -> new ArrayList<>()).add(player.getPlayerName());
+            }
+        }
+
+        // 2. Iterate through cities that have occupants
+        for (Map.Entry<CityNode, List<String>> entry : cityOccupants.entrySet()) {
+            CityNode city = entry.getKey();
+            List<String> playersInCity = entry.getValue();
+            int count = playersInCity.size();
+
+            Circle cityVisual = nodeVisuals.get(city); // Get visual node created in setupContent
+            if (cityVisual == null) continue;
+
+            for (int i = 0; i < count; i++) {
+                String playerName = playersInCity.get(i);
+                PawnUI pawnUI = playerPawns.get(playerName);
+
+                if (pawnUI == null) continue;
+
+                pawnUI.unbindPosition();
+
+                if (count == 1) {
+                    // Centered position
+                    pawnUI.bindToCenter(cityVisual.centerXProperty(), cityVisual.centerYProperty());
+                } else {
+                    // Radial offset to prevent overlapping
+                    double angle = 2 * Math.PI * i / count;
+                    double offset = 14.0;
+                    pawnUI.bindWithOffset(cityVisual.centerXProperty(), cityVisual.centerYProperty(), angle, offset);
+                }
+            }
+        }
     }
 
     private GameManager createLocalGameManager() {
@@ -182,6 +268,7 @@ public class MapTestScene {
         if (outbreakManager != null) outbreakManager.updateTrack();
         if (cureManager != null) cureManager.updateUI();
         if (chatManager != null) chatManager.updateMessages(gameState.get("lobbyChatMessages"));
+        Platform.runLater(this::updatePawnPositions);
     }
 
     private void applyGameStateSnapshot(GameManager manager, JsonNode gameState) {
@@ -216,7 +303,7 @@ public class MapTestScene {
                     break;
                 }
 
-                CityNode currentCity = getCityFromPlayerNode(playerNode, manager.getState().getMap());
+                CityNode currentCity = getCityFromPlayerNode(playerNode, this.mapGraph);
                 if (currentCity != null) {
                     manager.getState().getPlayers().get(index).setCurrentCity(currentCity);
                 }
@@ -518,6 +605,8 @@ public class MapTestScene {
         }
         mapContainer.getChildren().add(mapPane);
         root.getChildren().add(mapContainer);
+        setupPawns(mapPane);
+        root.getChildren().add(mapPane);
     }
 
     private Color getFxColor(DiseaseColor color) {
