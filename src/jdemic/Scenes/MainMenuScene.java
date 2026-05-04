@@ -21,7 +21,6 @@ import jdemic.ui.GlowLineUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
-
 public class MainMenuScene {
 
     private StackPane root;

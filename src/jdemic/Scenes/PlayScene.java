@@ -17,19 +17,22 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import com.fasterxml.jackson.databind.JsonNode;
 import jdemic.ui.ButtonsUtil;
+import jdemic.ui.CardDeckView;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
+import jdemic.GameLogic.GameManager;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.GameClient;
-import jdemic.GameLogic.GameManager;
 import jdemic.GameLogic.Player;
 import jdemic.GameLogic.ServerRelatedClasses.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.UnaryOperator;
@@ -315,7 +318,26 @@ public class PlayScene {
     public void showGameplayScreen(GameManager gameManager) {
         resetScreen();
 
-        // --- EXISTING CODE: Player icons on the left side ---
+        // --- Card deck (bottom-center overlay) ---
+        CardDeckView deckView = new CardDeckView(root.widthProperty(), root.heightProperty());
+        StackPane.setAlignment(deckView, Pos.BOTTOM_CENTER);
+        // Margin-like behavior with responsive translate (keeps deck inside screen)
+        deckView.setTranslateY(-40);
+        root.getChildren().add(deckView);
+
+        // Bind to current player's hand for now (acts as "visible deck" in UI).
+        // TODO: replace with actual "player deck" vs "hand" model once gameplay flow is wired.
+        try {
+            var current = gameManager.getCurrentPlayer();
+            if (current != null && current.getHand() != null) {
+                deckView.setCards(current.getHand());
+            } else {
+                deckView.setCards(Collections.emptyList());
+            }
+        } catch (Exception e) {
+            deckView.setCards(Collections.emptyList());
+        }
+
         VBox playerIconsContainer = new VBox(15);
         playerIconsContainer.setPadding(new Insets(20, 0, 0, 20));
         StackPane.setAlignment(playerIconsContainer, Pos.TOP_LEFT);
@@ -472,18 +494,26 @@ public class PlayScene {
                 if (placeholderStream == null) throw new Exception("Placeholder not found either");
                 img = new Image(placeholderStream);
             } catch (Exception ex) {
-                img = new Image(getClass().getResourceAsStream("/elements/redDot.png"));
+                var red = getClass().getResourceAsStream("/elements/redDot.png");
+                if (red != null) {
+                    img = new Image(red);
+                }
             }
         }
 
-        ImageView iconView = new ImageView(img);
-        iconView.setFitWidth(45);
-        iconView.setFitHeight(45);
-        iconView.setPreserveRatio(true);
-
-        GlowUtil.applyGlow(iconView, "#00d9ff", 10);
-
-        row.getChildren().add(iconView);
+        if (img != null && !img.isError()) {
+            ImageView iconView = new ImageView(img);
+            iconView.setFitWidth(45);
+            iconView.setFitHeight(45);
+            iconView.setPreserveRatio(true);
+            GlowUtil.applyGlow(iconView, "#00d9ff", 10);
+            row.getChildren().add(iconView);
+        } else {
+            Circle fallback = new Circle(22, Color.web("#00d9ff"));
+            fallback.setOpacity(0.85);
+            GlowUtil.applyGlow(fallback, "#00d9ff", 10);
+            row.getChildren().add(fallback);
+        }
         row.setOnMouseClicked(e -> showPlayerCardsOverlay(player));
 
         return row;
