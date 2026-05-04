@@ -24,7 +24,7 @@
     <!-- Tell Maven where your source files live -->
     <build>
         <sourceDirectory>src</sourceDirectory>
-        <testSourceDirectory>tests</testSourceDirectory>
+        <testSourceDirectory>tests/java</testSourceDirectory>
         <resources>
             <resource>
                 <directory>src/resources</directory>
