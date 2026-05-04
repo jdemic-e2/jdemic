@@ -303,6 +303,8 @@ public class PlayScene {
 
     public void showGameplayScreen(GameManager gameManager) {
         resetScreen();
+
+        // --- EXISTING CODE: Player icons on the left side ---
         VBox playerIconsContainer = new VBox(15);
         playerIconsContainer.setPadding(new Insets(20, 0, 0, 20));
         StackPane.setAlignment(playerIconsContainer, Pos.TOP_LEFT);
@@ -311,7 +313,70 @@ public class PlayScene {
         for (PlayerState p : gameManager.getState().getPlayers()) {
             playerIconsContainer.getChildren().add(createGameplayPlayerRow(p));
         }
-        root.getChildren().add(playerIconsContainer);
+
+        // --- NEWLY ADDED CODE: Top Right Status Panel ---
+        VBox statsBox = new VBox(12);
+        statsBox.setAlignment(Pos.TOP_LEFT);
+        statsBox.setPadding(new Insets(15, 20, 15, 20));
+
+        // Cyberpunk box design (Dark background, blue border)
+        statsBox.setStyle(
+                "-fx-background-color: rgba(10, 15, 25, 0.85);" +
+                        "-fx-border-color: #00b5d4;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 10;" +
+                        "-fx-background-radius: 10;"
+        );
+        GlowUtil.applyGlow(statsBox, "#00b5d4", 10);
+
+        // Pin the box to the top right corner
+        statsBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        StackPane.setAlignment(statsBox, Pos.TOP_RIGHT);
+        StackPane.setMargin(statsBox, new Insets(20, 20, 0, 0));
+
+        // 1. Title
+        Label statsTitle = TextUtil.createText("GLOBAL STATUS", "hkmodular", 0.02, "#cfc900", root);
+
+        // 2. Outbreaks
+        int outbreaks = gameManager.getState().getDiseaseManager().getOutbreakScore();
+        Label outbreakLabel = TextUtil.createText("OUTBREAKS: " + outbreaks + "/8", "hkmodular", 0.015, "#ff2d2d", root);
+
+        // 3. Infection Rate
+        int infRate = gameManager.getInfectionRate();
+        Label infectionLabel = TextUtil.createText("INFECTION RATE: " + infRate, "hkmodular", 0.015, "#00d9ff", root);
+
+        // 4. Cures Found
+        Label curesTitle = TextUtil.createText("CURES FOUND:", "hkmodular", 0.015, "#ffffff", root);
+        HBox curesBox = new HBox(10);
+        curesBox.setAlignment(Pos.CENTER_LEFT);
+
+        // Check the cure status for each color and add it as a glowing text to the screen
+        jdemic.GameLogic.DiseaseManager diseaseManager = gameManager.getState().getDiseaseManager();
+        for (jdemic.GameLogic.DiseaseColor color : jdemic.GameLogic.DiseaseColor.values()) {
+            if (diseaseManager.isCured(color)) {
+                // If a cure is found, add a glowing text with that color's specific HEX code
+                String hexColor = switch (color) {
+                    case BLUE -> "#00b5d4";
+                    case YELLOW -> "#cfc900";
+                    case BLACK -> "#888888"; // Gray color to make it visible on a dark background
+                    case RED -> "#ff2d2d";
+                };
+                Label curedColorLabel = TextUtil.createText(color.name(), "hkmodular", 0.012, hexColor, root);
+                GlowUtil.applyGlow(curedColorLabel, hexColor, 5);
+                curesBox.getChildren().add(curedColorLabel);
+            }
+        }
+
+        // If no cures are found yet, display "NONE"
+        if (curesBox.getChildren().isEmpty()) {
+            curesBox.getChildren().add(TextUtil.createText("NONE", "hkmodular", 0.012, "#888888", root));
+        }
+
+        // Add all elements to the stats box
+        statsBox.getChildren().addAll(statsTitle, outbreakLabel, infectionLabel, curesTitle, curesBox);
+
+        // --- Add both UI containers to the root screen ---
+        root.getChildren().addAll(playerIconsContainer, statsBox);
     }
 
     private void showNetworkGameplayScreen(JsonNode gameState) {
@@ -388,12 +453,12 @@ public class PlayScene {
         Image img = null;
         try {
             var stream = getClass().getResourceAsStream("/elements/" + roleFileName);
-            if (stream == null) throw new Exception("Asıl ikon bulunamadı");
+            if (stream == null) throw new Exception("Main icon not found");
             img = new Image(stream);
         } catch (Exception e) {
             try {
                 var placeholderStream = getClass().getResourceAsStream("/elements/player_placeholder.png");
-                if (placeholderStream == null) throw new Exception("Placeholder da bulunamadı");
+                if (placeholderStream == null) throw new Exception("Placeholder not found either");
                 img = new Image(placeholderStream);
             } catch (Exception ex) {
                 img = new Image(getClass().getResourceAsStream("/elements/redDot.png"));
