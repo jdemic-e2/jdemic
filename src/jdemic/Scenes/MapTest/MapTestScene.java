@@ -62,6 +62,9 @@ public class MapTestScene {
     //Variable for gameplay chat
     private ChatManager chatManager;
 
+    // Add to MapTestScene class fields
+    private PlayerListUI playerListUI;
+
     //Variables for connected gameplay
     private GameClient gameClient;
     private String playerName = "Tester";
@@ -110,14 +113,36 @@ public class MapTestScene {
             updatePawnPositions();
         });
 
+        Color[] playerColors = {Color.CYAN, Color.MAGENTA, Color.LIME, Color.ORANGE};
+        this.playerListUI = new PlayerListUI(gameManager.getState().getPlayers(), playerColors);
+        root.getChildren().add(playerListUI.getContainer()); // Add to top level StackPane
+
         root.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
+                // Use Filter instead of Handler to catch TAB specifically
+                newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+                    if (event.getCode() == javafx.scene.input.KeyCode.TAB) {
+                        playerListUI.setVisible(true);
+                        event.consume(); // Prevents focus from jumping to buttons
+                    }
+                });
+
+                newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_RELEASED, event -> {
+                    if (event.getCode() == javafx.scene.input.KeyCode.TAB) {
+                        playerListUI.setVisible(false);
+                        event.consume();
+                    }
+                });
+
+                // Keep your other debug keys as standard handlers
                 newScene.setOnKeyPressed(event -> {
                     if (event.getCode() == javafx.scene.input.KeyCode.I) {
                         if (gameManager.getState().getInfectionRate() < gameManager.getInfectionRateTrack().length - 1) {
                             gameManager.increaseInfectionRate();
-                            infectionRateManager.updateTrack(); // Actualizăm doar ce s-a schimbat
+                            infectionRateManager.updateTrack();
                             notificationManager.showNotification("DEBUG: Infection Rate Increased!");
+                        } else {
+                            notificationManager.showNotification("DEBUG: Infection Rate is maxed");
                         }
                     }
                     if (event.getCode() == javafx.scene.input.KeyCode.O) {
