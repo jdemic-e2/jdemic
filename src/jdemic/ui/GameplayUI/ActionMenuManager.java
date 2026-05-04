@@ -189,6 +189,13 @@ public class ActionMenuManager {
     }
 
     public void updateMenuState() {
+        if (!isCurrentPlayerTurn()) {
+            menuMode = MenuMode.MAIN;
+            selectedMovementAction = null;
+            if (validNodesHighlighter != null) {
+                validNodesHighlighter.accept("");
+            }
+        }
         actionSubMenu.getChildren().setAll(createButtonsForCurrentMode());
     }
 
@@ -275,7 +282,7 @@ public class ActionMenuManager {
             return false;
         }
         
-        return playerName.equals(currentPlayer.getPlayerName());
+        return playerName.equalsIgnoreCase(currentPlayer.getPlayerName());
     }
 
     private void styleActionButton(ButtonsUtil button, boolean disabled) {

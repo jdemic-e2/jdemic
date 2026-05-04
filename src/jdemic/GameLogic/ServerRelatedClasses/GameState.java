@@ -163,6 +163,6 @@ public class GameState{
      */
     public boolean isPlayerTurn(PlayerState playerState){
         PlayerState currentPlayer = getCurrentPlayer();
-        return currentPlayer != null && currentPlayer.getPlayerName().equals(playerState.getPlayerName());
+        return currentPlayer != null && currentPlayer.getPlayerName().equalsIgnoreCase(playerState.getPlayerName());
     }
 }

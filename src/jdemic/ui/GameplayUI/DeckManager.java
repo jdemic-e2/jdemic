@@ -17,16 +17,20 @@ public class DeckManager {
 
     public void setupDecks() {
         HBox decks = new HBox(createCityDeck(), createEpidemicDeck());
-        decks.setSpacing(30);
+        decks.spacingProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(12, root.getWidth() * 0.018),
+                root.widthProperty()
+        ));
 
         StackPane wrapper = new StackPane(decks);
         wrapper.setPickOnBounds(false);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        wrapper.translateXProperty().bind(root.widthProperty().multiply(-0.018));
+        wrapper.translateYProperty().bind(root.heightProperty().multiply(-0.018));
 
         root.getChildren().add(wrapper);
 
         StackPane.setAlignment(wrapper, Pos.BOTTOM_RIGHT);
-        StackPane.setMargin(wrapper, new Insets(0, 30, 15, 0));
     }
 
     public StackPane createCardStack(Image topImage, int stackSize) {
@@ -60,7 +64,12 @@ public class DeckManager {
         GlowUtil.applyGlow(drawPile, "#00d9ff", 8);
         GlowUtil.applyGlow(discardPile, "#00d9ff", 8);
 
-        return new HBox(20, drawPile, discardPile);
+        HBox cityDeck = new HBox(drawPile, discardPile);
+        cityDeck.spacingProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(8, root.getWidth() * 0.012),
+                root.widthProperty()
+        ));
+        return cityDeck;
     }
 
     public StackPane createCityCard(CityNode city) {
@@ -119,6 +128,11 @@ public class DeckManager {
         GlowUtil.applyGlow(drawPile, "#ff2d2d", 8);
         GlowUtil.applyGlow(discardPile, "#ff2d2d", 8);
 
-        return new HBox(20, drawPile, discardPile);
+        HBox epidemicDeck = new HBox(drawPile, discardPile);
+        epidemicDeck.spacingProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(8, root.getWidth() * 0.012),
+                root.widthProperty()
+        ));
+        return epidemicDeck;
     }
 }

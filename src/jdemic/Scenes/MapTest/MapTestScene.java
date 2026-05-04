@@ -124,6 +124,7 @@ public class MapTestScene {
         setupChat();
         deckManager = new DeckManager(root);
         handManager = new HandManager(root, deckManager);
+        updateHandUI();
 
         Platform.runLater(() -> {
             updatePawnPositions();
@@ -241,7 +242,7 @@ public class MapTestScene {
             players.add(new PlayerState(playerName));
         }
 
-        GameManager manager = new GameManager(players);
+        GameManager manager = new GameManager(players, false);
         applyGameStateSnapshot(manager, gameState);
         return manager;
     }
@@ -272,6 +273,8 @@ public class MapTestScene {
 
         applyGameStateSnapshot(gameManager, gameState);
         if (actionMenuManager != null) actionMenuManager.updateMenuState();
+        updateCurrentPlayerLabel();
+        updateHandUI();
         if (infectionRateManager != null) infectionRateManager.updateTrack();
         if (outbreakManager != null) outbreakManager.updateTrack();
         if (cureManager != null) cureManager.updateUI();
@@ -314,6 +317,23 @@ public class MapTestScene {
                 CityNode currentCity = getCityFromPlayerNode(playerNode, this.mapGraph);
                 if (currentCity != null) {
                     manager.getState().getPlayers().get(index).setCurrentCity(currentCity);
+                }
+
+                if (playerNode.has("hand") && playerNode.get("hand").isArray()) {
+                    List<Card> hand = manager.getState().getPlayers().get(index).getHand();
+                    hand.clear();
+                    for (JsonNode cardNode : playerNode.get("hand")) {
+                        Card card = getCardFromNode(cardNode, this.mapGraph);
+                        if (card != null) {
+                            hand.add(card);
+                        }
+                    }
+                }
+
+                if (playerNode.has("isDiscarding")) {
+                    manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get("isDiscarding").asBoolean());
+                } else if (playerNode.has("discardingCards")) {
+                    manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get("discardingCards").asBoolean());
                 }
                 index++;
             }
@@ -368,6 +388,42 @@ public class MapTestScene {
             city.addResearchStation();
         }
         return city;
+    }
+
+    private Card getCardFromNode(JsonNode cardNode, PandemicMapGraph graph) {
+        if (cardNode == null || !cardNode.has("cardName") || !cardNode.has("type")) {
+            return null;
+        }
+
+        String cardName = cardNode.get("cardName").asText();
+        CardType type;
+        try {
+            type = CardType.valueOf(cardNode.get("type").asText());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+
+        CityNode targetCity = null;
+        JsonNode targetCityNode = cardNode.get("targetCity");
+        if (targetCityNode != null && graph != null) {
+            String cityName = null;
+            if (targetCityNode.isTextual()) {
+                cityName = targetCityNode.asText();
+            } else if (targetCityNode.has("name")) {
+                cityName = targetCityNode.get("name").asText();
+            }
+            targetCity = cityName == null ? null : graph.getCity(cityName);
+        }
+
+        Card card = new Card(cardName, type, targetCity);
+        if (cardNode.has("eventType") && !cardNode.get("eventType").isNull()) {
+            try {
+                card.setEventType(Card.EventType.valueOf(cardNode.get("eventType").asText()));
+            } catch (IllegalArgumentException ignored) {
+                // Event type is optional for non-event cards and older snapshots.
+            }
+        }
+        return card;
     }
 
     private void addDefaultResearchStationToSceneMap() {
@@ -470,14 +526,66 @@ public class MapTestScene {
         String playerNameForMenu = (gameClient != null) ? playerName : null;
         
         this.actionMenuManager = gameClient == null
-                ? new ActionMenuManager(root, notificationManager, gameManager, null, this::highlightValidNodes, playerNameForMenu, this::updateCurrentPlayerLabel)
-                : new ActionMenuManager(root, notificationManager, gameManager, this::sendMenuActionPacket, this::highlightValidNodes, playerNameForMenu, this::updateCurrentPlayerLabel);
+                ? new ActionMenuManager(root, notificationManager, gameManager, null, this::highlightValidNodes, playerNameForMenu, this::refreshTurnUI)
+                : new ActionMenuManager(root, notificationManager, gameManager, this::sendMenuActionPacket, this::highlightValidNodes, playerNameForMenu, this::refreshTurnUI);
     }
 
     private void setupChat()
     {
         String playerName = gameManager.getCurrentPlayer().getPlayerName();
         this.chatManager = new ChatManager(root, playerName, notificationManager, gameClient);
+    }
+
+    private void updateHandUI() {
+        if (handManager == null || gameManager == null) {
+            return;
+        }
+
+        PlayerState displayedPlayer = getDisplayedHandPlayer();
+        boolean discardMode = displayedPlayer != null
+                && gameManager.getState().isPlayerTurn(displayedPlayer)
+                && displayedPlayer.getIsDiscarding();
+
+        handManager.updateHand(displayedPlayer, discardMode, this::handleDiscardCardRequest);
+    }
+
+    private void refreshTurnUI() {
+        updateCurrentPlayerLabel();
+        updateHandUI();
+    }
+
+    private PlayerState getDisplayedHandPlayer() {
+        if (gameManager == null || gameManager.getState() == null) {
+            return null;
+        }
+
+        if (gameClient != null) {
+            for (PlayerState player : gameManager.getState().getPlayers()) {
+                if (player.getPlayerName().equalsIgnoreCase(playerName)) {
+                    return player;
+                }
+            }
+        }
+
+        return gameManager.getState().getCurrentPlayer();
+    }
+
+    private void handleDiscardCardRequest(int cardIndex) {
+        PlayerState displayedPlayer = getDisplayedHandPlayer();
+        if (displayedPlayer == null || !displayedPlayer.getIsDiscarding()) {
+            return;
+        }
+
+        if (gameClient != null) {
+            sendDiscardCardPacket(cardIndex);
+            notificationManager.showNotification("Discard request sent");
+        } else {
+            gameManager.discardCurrentPlayerCard(displayedPlayer, cardIndex);
+            notificationManager.showNotification("Card discarded");
+            if (actionMenuManager != null) actionMenuManager.updateMenuState();
+            updateCurrentPlayerLabel();
+            updateHandUI();
+        }
     }
 
     /**
@@ -510,6 +618,17 @@ public class MapTestScene {
         ObjectNode payload = createBaseGameActionPayload();
         payload.put("GameAction", "DRIVE_FERRY");
         payload.put("destination", destination.getName());
+        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    private void sendDiscardCardPacket(int cardIndex) {
+        if (gameClient == null) {
+            return;
+        }
+
+        ObjectNode payload = createBaseGameActionPayload();
+        payload.put("GameAction", "DISCARD_CARD");
+        payload.put("cardIndex", cardIndex);
         gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
     }
 
@@ -560,11 +679,14 @@ public class MapTestScene {
                         int actionsLeft = gameManager.getState().getActionsRemaining();
                         if (actionsLeft > 0) {
                             gameManager.getState().setActionsRemaining(actionsLeft - 1);
+                            if (gameClient == null && gameManager.getState().getActionsRemaining() <= 0) {
+                                gameManager.nextTurn();
+                            }
                             
                             sendDriveFerryPacket(neighbor);
                             notificationManager.showNotification(
                                     gameClient == null
-                                            ? "Moved to " + neighbor.getName() + ". Actions left: " + (actionsLeft - 1)
+                                            ? "Moved to " + neighbor.getName() + ". Actions left: " + gameManager.getState().getActionsRemaining()
                                             : "Move request sent: " + neighbor.getName()
                             );
                             
@@ -573,6 +695,7 @@ public class MapTestScene {
                             if (actionMenuManager != null) {
                                 actionMenuManager.clearSelectedMovementAction();
                             }
+                            refreshTurnUI();
                         } else {
                             notificationManager.showNotification("No actions remaining!");
                         }
@@ -592,12 +715,17 @@ public class MapTestScene {
         StackPane mapContainer = new StackPane();
         mapContainer.setAlignment(Pos.CENTER);
         mapContainer.translateYProperty().bind(root.heightProperty().multiply(-0.10));
+        mapContainer.prefWidthProperty().bind(root.widthProperty());
+        mapContainer.prefHeightProperty().bind(root.heightProperty());
+        mapContainer.setPickOnBounds(false);
 
         Pane mapPane = new Pane();
-        mapPane.prefWidthProperty().bind(root.widthProperty().multiply(0.70));
+        mapPane.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.min(root.getWidth() * 0.70, root.getHeight() * 1.38),
+                root.widthProperty(), root.heightProperty()
+        ));
         mapPane.prefHeightProperty().bind(mapPane.prefWidthProperty().multiply(0.5));
         mapPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        mapPane.setStyle("-fx-border-color: red;");
 
         ImageView mapBg = new ImageView( new Image(getClass().getResource("/backgroundMap.png").toExternalForm()));
         mapBg.fitWidthProperty().bind(mapPane.widthProperty());
@@ -716,7 +844,8 @@ public class MapTestScene {
             mapPane.getChildren().addAll(node, label);
         }
         setupPawns(mapPane);
-        root.getChildren().add(mapPane);
+        mapContainer.getChildren().add(mapPane);
+        root.getChildren().add(mapContainer);
     }
 
     private Color getFxColor(DiseaseColor color) {

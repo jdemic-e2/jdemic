@@ -113,6 +113,17 @@ public class PacketProcessor {
             return;
         }
 
+        if ("DISCARD_CARD".equals(gameAction)) {
+            if (!payload.has("cardIndex") || !payload.get("cardIndex").isInt()) {
+                System.err.println("[PacketProcessor] Missing or invalid cardIndex for DISCARD_CARD");
+                return;
+            }
+
+            gameManager.discardCurrentPlayerCard(playerState, payload.get("cardIndex").asInt());
+            broadcastGameState();
+            return;
+        }
+
         // Create Player object (assuming Player has a constructor with PlayerState and GameClient, but GameClient is null for server)
         Player player = new Player(playerState, null); // GameClient is null on server
 
@@ -206,13 +217,18 @@ public class PacketProcessor {
     }
 
     private void consumeGenericGameplayAction(PlayerState playerState, String gameAction) {
-        int actionsRemaining = gameManager.getState().getActionsRemaining();
-        if (actionsRemaining <= 0) {
+        if (gameManager.getState().getCurrentPlayer() != null && gameManager.getState().getCurrentPlayer().getIsDiscarding()) {
+            System.out.println("[PacketProcessor] Ignored " + gameAction + " because the current player must discard first.");
+            return;
+        }
+
+        int actionsBefore = gameManager.getState().getActionsRemaining();
+        if (actionsBefore <= 0) {
             System.out.println("[PacketProcessor] Ignored " + gameAction + " because no actions remain.");
             return;
         }
 
-        gameManager.getState().setActionsRemaining(actionsRemaining - 1);
+        gameManager.consumeAction(playerState);
         System.out.println("[PacketProcessor] Generic gameplay action consumed: " + gameAction
                 + " for player " + playerState.getPlayerName());
     }
