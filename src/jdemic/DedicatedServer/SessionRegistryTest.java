@@ -77,5 +77,7 @@ public class SessionRegistryTest {
         }
 
         System.out.println("\n=== FINAL RESULT: REGISTRY IS BULLETPROOF ===");
+   
     }
+    
 }

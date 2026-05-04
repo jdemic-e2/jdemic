@@ -56,7 +56,14 @@ public class ClientHandler implements Runnable {
         }
 
         // NEW: Tell the server that this player is officially online
-        SessionRegistry.registerPlayer(this.playerId, this);
+        boolean isRegistered = SessionRegistry.registerPlayer(this.playerId, this);
+        
+        // NEW: If registration fails (e.g., duplicate login or invalid ID), drop the connection immediately.
+        if (!isRegistered) {
+            System.err.println("[ClientHandler] Registration failed. Closing connection for " + this.playerId);
+            inchideConexiunea();
+            return; // Stop the thread before allowing them to send messages
+        }
 
         try {
             String mesajCriptat;

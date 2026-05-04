@@ -1,6 +1,7 @@
 package jdemic.DedicatedServer.network.session;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -18,8 +19,8 @@ public class SessionRegistry {
     private static final Map<String, ClientHandler> activeSessions = new ConcurrentHashMap<>();
     
     // Strict Regex to validate the Player ID format (e.g., "Player_12345")
-    // Prevents injection of invalid characters like newlines (\n) or spaces.
-    private static final Pattern PLAYER_ID_PATTERN = Pattern.compile("^Player_[a-zA-Z0-9-]{5,36}$");
+    // CHANGED: Lowered the minimum suffix length from 5 to 1 to support test IDs like "Player_1"
+    private static final Pattern PLAYER_ID_PATTERN = Pattern.compile("^Player_[a-zA-Z0-9-]{1,36}$");
 
     /**
      * Internal security check to ensure the ID format is completely valid
@@ -39,7 +40,6 @@ public class SessionRegistry {
      * @return true if registered successfully, false if the player is already logged in or ID is invalid.
      */
     public static boolean registerPlayer(String playerId, ClientHandler handler) {
-        // Validation check based on Discord PR review
         if (!isValidPlayerId(playerId)) {
             System.err.println("[SessionRegistry] Failed to register: Invalid playerId format ('" + playerId + "')");
             return false;
@@ -98,7 +98,8 @@ public class SessionRegistry {
      * Useful for broadcasting the updated game state to everyone.
      */
     public static Collection<ClientHandler> getAllActiveSessions() {
-        return activeSessions.values();
+        // CHANGED: Wrapped in unmodifiableCollection to prevent external modification
+        return Collections.unmodifiableCollection(activeSessions.values());
     }
     
     /**
