@@ -363,4 +363,58 @@ class GameFlowE2ETest {
         assertEquals(player1, gameManager.getCurrentPlayer(),
                 "After 2 full turns, it should be Player 1's turn again.");
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // 8. SIMULATED PLAYER ACTIONS (Sprint 1 workarounds)
+    // ─────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("E2E-21 | Simulate Player treating disease (Removing 1 cube)")
+    void simulatePlayerTreatingDisease() {
+        PandemicMapGraph map = gameManager.getState().getMap();
+        CityNode atlanta     = map.getCity("Atlanta");
+        DiseaseManager dm    = gameManager.getState().getDiseaseManager();
+
+        // Setup: Atlanta has 2 blue cubes
+        dm.addInfectionCubes(atlanta, 2);
+        
+        // Simulate "Treat Disease Action" 
+        // In Sprint 1, actions are directly invoked on DiseaseManager
+        dm.removeInfectionCubes(atlanta, 1);
+        
+        // Verify only 1 cube remains
+        assertEquals(1, atlanta.getCubeCount(DiseaseColor.BLUE),
+                "Atlanta should have 1 blue cube after player treats disease once.");
+    }
+
+    @Test
+    @DisplayName("E2E-22 | Simulate Player discovering a cure")
+    void simulatePlayerDiscoveringCure() {
+        DiseaseManager dm = gameManager.getState().getDiseaseManager();
+        
+        // Setup: Not cured yet
+        assertFalse(dm.isCured(DiseaseColor.BLACK), "Black disease should not be cured yet.");
+        
+        // Simulate "Discover Cure Action" (e.g. at a research station with 5 cards)
+        dm.discoverCure(DiseaseColor.BLACK);
+        
+        // Verify
+        assertTrue(dm.isCured(DiseaseColor.BLACK), "Black disease must be cured.");
+    }
+
+    @Test
+    @DisplayName("E2E-23 | Turn advance draws 2 cards for the current player")
+    void nextTurnShouldDrawCardsForPlayer() {
+        // Player 1 starts with 0 cards in hand in this mock setup
+        int handSizeBefore = player1.getState().getHand().size();
+        assertEquals(0, handSizeBefore);
+
+        // Turn ends for player 1, advancing to player 2. Player 1 should have drawn 2 cards.
+        gameManager.nextTurn();
+
+        int handSizeAfter = player1.getState().getHand().size();
+        // Since drawCards is called on 'current' before switching index:
+        // Wait, nextTurn() logic draws cards for the CURRENT player, then switches.
+        assertEquals(2, handSizeAfter, "Player 1 should draw exactly 2 cards at the end of their turn.");
+    }
 }

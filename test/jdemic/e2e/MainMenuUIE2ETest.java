@@ -15,7 +15,6 @@
 
 package jdemic.e2e;
 
-import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
 import org.junit.jupiter.api.DisplayName;
@@ -25,11 +24,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
-import org.testfx.matcher.control.LabeledMatchers;
 
 import jdemic.Main;
 
-import static org.testfx.api.FxAssert.verifyThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -42,15 +39,15 @@ class MainMenuUIE2ETest {
 
     /**
      * @Start is called by TestFX before each test to launch the app.
-     * It mirrors what JavaFX calls Application#start(Stage).
+     *        It mirrors what JavaFX calls Application#start(Stage).
      */
     @Start
     void start(Stage stage) throws Exception {
         // Enable headless (no screen) mode via Monocle
-        System.setProperty("testfx.robot",  "glass");
+        System.setProperty("testfx.robot", "glass");
         System.setProperty("testfx.headless", "true");
-        System.setProperty("prism.order",   "sw");
-        System.setProperty("prism.text",    "t2k");
+        System.setProperty("prism.order", "sw");
+        System.setProperty("prism.text", "t2k");
         System.setProperty("glass.platform", "Monocle");
         System.setProperty("monocle.platform", "Headless");
 
@@ -67,9 +64,8 @@ class MainMenuUIE2ETest {
         // The main menu must show the game title text on screen.
         // The actual text depends on what the front-end team used; adjust if needed.
         assertTrue(
-            robot.lookup(".label").tryQuery().isPresent(),
-            "At least one Label must be visible on the Main Menu screen."
-        );
+                robot.lookup(".label").tryQuery().isPresent(),
+                "At least one Label must be visible on the Main Menu screen.");
     }
 
     @Test
@@ -79,50 +75,38 @@ class MainMenuUIE2ETest {
         // TestFX can locate nodes by CSS class or by text content.
         boolean hasButton = robot.lookup(".button").tryQuery().isPresent();
         assertTrue(hasButton,
-            "The Main Menu must have at least one clickable button (Host / Play / Join).");
+                "The Main Menu must have at least one clickable button (Host / Play / Join).");
     }
 
     @Test
-    @DisplayName("UI-E2E-03 | Clicking the HOST button navigates to the Lobby scene")
-    void clickingHostButtonShouldNavigateToLobby(FxRobot robot) {
-        // Look for a button whose text is "HOST" (case-insensitive) and click it.
-        // If the button is not found, the test will fail with a clear error.
-        try {
-            robot.clickOn("HOST");
+    @DisplayName("UI-E2E-03 | Clicking PLAY navigates to the PlayScene (Lobby Selection)")
+    void clickingPlayButtonShouldNavigateToLobby(FxRobot robot) {
+        // First click PLAY in the main menu
+        robot.clickOn("PLAY");
 
-            // After clicking HOST, the Lobby / Host scene should appear.
-            // We verify by checking that some lobby-specific element is present.
-            // Adjust the expected text based on the actual UI your team built.
-            assertTrue(
-                robot.lookup(".label").tryQuery().isPresent(),
-                "After clicking HOST, a Lobby scene with labels should be visible."
-            );
-        } catch (Exception e) {
-            // If HOST button doesn't exist yet (scene not implemented), skip gracefully.
-            System.out.println("[UI-E2E-03] HOST button not found — scene may not be implemented yet: " + e.getMessage());
-        }
+        // The next scene (PlayScene) should contain "HOST GAME" and "JOIN BY CODE"
+        boolean hasHostGame = robot.lookup("HOST GAME").tryQuery().isPresent();
+        assertTrue(hasHostGame, "After clicking PLAY, the 'HOST GAME' button must be visible.");
     }
 
     @Test
-    @DisplayName("UI-E2E-04 | Clicking the JOIN button navigates to the Join scene")
-    void clickingJoinButtonShouldNavigateToJoinScene(FxRobot robot) {
-        try {
-            robot.clickOn("JOIN");
-            assertTrue(
-                robot.lookup(".label").tryQuery().isPresent(),
-                "After clicking JOIN, a Join scene with labels should be visible."
-            );
-        } catch (Exception e) {
-            System.out.println("[UI-E2E-04] JOIN button not found — scene may not be implemented yet: " + e.getMessage());
-        }
+    @DisplayName("UI-E2E-04 | End-to-End Navigation: PLAY -> HOST GAME -> HostGameScene")
+    void navigatingToHostGameScene(FxRobot robot) {
+        robot.clickOn("PLAY");
+        robot.clickOn("HOST GAME");
+
+        // HostGameScene should have some labels or a "SEND" button for IP
+        assertTrue(
+                robot.lookup(".button").tryQuery().isPresent(),
+                "After clicking HOST GAME, a new scene should load with buttons.");
     }
 
     @Test
     @DisplayName("UI-E2E-05 | Stage title is set to the game name")
     void stageTitleShouldBeGameName(FxRobot robot) {
         // The Main class sets: stage.setTitle("Cyber Crisis")
-        String title = robot.targetWindow().getScene().getWindow().impl_getTitle();
-        // Use a lenient check in case the API differs between JFX versions
+        Stage stage = (Stage) robot.targetWindow();
+        String title = stage.getTitle();
         assertNotNull(title, "The application window must have a title set.");
     }
 }
