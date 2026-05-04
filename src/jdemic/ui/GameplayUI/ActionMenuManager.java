@@ -50,10 +50,11 @@ public class ActionMenuManager {
         actionSubMenu.setMouseTransparent(true);
 
         actionSubMenu.paddingProperty().bind(createObjectBinding(() -> {
-            double mainButtonHeight = root.getHeight() * 0.07;
-            double bottomOffset = mainButtonHeight + 40;
-            return new Insets(0, 0, bottomOffset, (root.getWidth()+20)/24);
-        }, root.heightProperty()));
+            double buttonHeight = root.getHeight() * 0.05;
+            double gap = root.getHeight() * 0.01;
+            double bottomOffset = root.getHeight() * 0.25 + buttonHeight + gap;
+            return new Insets(0, 0, bottomOffset, root.getWidth() * 0.02);
+        }, root.widthProperty(), root.heightProperty()));
 
         for (String action : actions) {
             actionSubMenu.getChildren().add(getButtonsUtil(action));
@@ -64,12 +65,17 @@ public class ActionMenuManager {
     private void setupMainButton() {
         VBox mainButtonBox = new VBox();
         mainButtonBox.setAlignment(Pos.BOTTOM_LEFT);
-        mainButtonBox.setPadding(new Insets(20));
+        mainButtonBox.paddingProperty().bind(
+            createObjectBinding(() ->
+                new Insets(0, 0, root.getHeight() * 0.23, 15),
+                root.heightProperty()
+            )
+        );
         mainButtonBox.setPickOnBounds(false);
 
         mainActionBtn = new ButtonsUtil(
                 "ACTION MENU", "#00b5d4", "black", "#00b5d4", "#00b5d4",
-                3, 15, 15, 0.15, 0.07, 0.012, root
+                3, 8, 8, 0.10, 0.05, 0.010, root
         );
         for (Node node : mainActionBtn.getChildren()) {
             if (node instanceof Label) {
@@ -85,7 +91,7 @@ public class ActionMenuManager {
     private ButtonsUtil getButtonsUtil(String action) {
         ButtonsUtil actionBtn = new ButtonsUtil(
                 action, "#00ffea", "black", "#00b5d4", "#00ffea",
-                2, 5, 5, 0.10, 0.04, 0.01, root
+                2, 5, 5, 0.08, 0.035, 0.009, root
         );
 
         for (Node node : actionBtn.getChildren()) {

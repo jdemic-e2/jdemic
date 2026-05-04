@@ -43,33 +43,27 @@ public class ChatManager {
     private void setupUI() {
         VBox chatPanel = new VBox();
         chatPanel.setAlignment(Pos.TOP_LEFT);
-        chatPanel.spacingProperty().bind(root.heightProperty().multiply(0.012));
-        chatPanel.prefWidthProperty().bind(root.widthProperty().multiply(0.28));
         chatPanel.prefHeightProperty().bind(root.heightProperty().multiply(0.27));
-        chatPanel.maxWidthProperty().bind(chatPanel.prefWidthProperty());
         chatPanel.maxHeightProperty().bind(chatPanel.prefHeightProperty());
-        chatPanel.setStyle(
-                "-fx-background-color: rgba(0, 0, 0, 0.72);" +
-                "-fx-border-color: #00b5d4;" +
-                "-fx-border-width: 2;" +
-                "-fx-border-radius: 10;" +
-                "-fx-background-radius: 10;"
-        );
-        GlowUtil.applyGlow(chatPanel, "#00b5d4", 10);
+        StackPane wrapper = new StackPane(chatPanel);
+        chatPanel.prefWidthProperty().bind(wrapper.prefWidthProperty());
+        wrapper.setMaxSize(StackPane.USE_PREF_SIZE, StackPane.USE_PREF_SIZE);
+        wrapper.setStyle("-fx-background-color: black;" + "-fx-border-color: transparent #00b5d4 transparent transparent;" + "-fx-border-width: 0 1 0 0;");
+        wrapper.prefWidthProperty().bind(root.widthProperty().multiply(0.24));
+        GlowUtil.applyGlow(wrapper, "#00b5d4", 15);
 
         chatPanel.paddingProperty().bind(Bindings.createObjectBinding(
                 () -> new Insets(root.getHeight() * 0.014, root.getWidth() * 0.010,
                         root.getHeight() * 0.014, root.getWidth() * 0.010),
                 root.widthProperty(), root.heightProperty()
         ));
-
-        Label title = TextUtil.createText("PLAYER CHAT", "hkmodular", 0.018, "#d1d412", root);
-
+        Label title = TextUtil.createText("PLAYER CHAT", "hkmodular", 0.010, "#00d9ff", root);
         chatArea = new TextArea();
         chatArea.setEditable(false);
         chatArea.setWrapText(true);
         chatArea.setFocusTraversable(false);
-        chatArea.prefHeightProperty().bind(root.heightProperty().multiply(0.14));
+        chatArea.prefHeightProperty().bind(root.heightProperty().multiply(0.09));
+        chatArea.prefWidthProperty().bind(chatPanel.widthProperty().multiply(0.97));
         chatArea.setStyle(
                 "-fx-control-inner-background: black;" +
                 "-fx-text-fill: #00d9ff;" +
@@ -83,31 +77,33 @@ public class ChatManager {
         chatInput.setStyle(
                 "-fx-background-color: black;" +
                 "-fx-text-fill: #00d9ff;" +
-                "-fx-prompt-text-fill: #356f78;" +
                 "-fx-border-color: #00b5d4;" +
-                "-fx-border-width: 2;" +
+                "-fx-border-width: 1;" +
                 "-fx-font-family: 'hkmodular';"
         );
-        chatInput.prefWidthProperty().bind(root.widthProperty().multiply(0.18));
+        chatInput.prefWidthProperty().bind(chatPanel.widthProperty().multiply(0.75));
         chatInput.prefHeightProperty().bind(root.heightProperty().multiply(0.045));
         chatInput.setOnAction(e -> sendMessage());
 
         ButtonsUtil sendBtn = new ButtonsUtil(
-                "SEND", "#d1d412", "black", "#00b5d4", "#00b5d4",
-                2, 8, 8, 0.07, 0.045, 0.012, root
+            "SEND","#00d9ff", "black", "#00b5d4", "#00b5d4",
+            1, 8, 8, 0.06, 0.045, 0.012, root
         );
         sendBtn.setOnMouseClicked(e -> sendMessage());
-
+        sendBtn.setPrefWidth(70);
         HBox inputRow = new HBox(chatInput, sendBtn);
         inputRow.setAlignment(Pos.CENTER_LEFT);
         inputRow.spacingProperty().bind(root.widthProperty().multiply(0.008));
 
         chatPanel.getChildren().addAll(title, chatArea, inputRow);
 
-        StackPane.setAlignment(chatPanel, Pos.BOTTOM_RIGHT);
-        chatPanel.translateXProperty().bind(root.widthProperty().multiply(-0.025));
-        chatPanel.translateYProperty().bind(root.heightProperty().multiply(-0.045));
-        root.getChildren().add(chatPanel);
+        StackPane.setAlignment(chatPanel, Pos.BOTTOM_LEFT);
+        StackPane.setAlignment(wrapper, Pos.BOTTOM_LEFT);
+        StackPane.setMargin(wrapper, new Insets(0, 0, root.getHeight() * 0.02, root.getWidth() * 0.02));
+        wrapper.translateXProperty().bind(root.widthProperty().multiply(0.42));
+        wrapper.translateYProperty().bind(root.heightProperty().multiply(0.078));
+        
+        root.getChildren().add(wrapper);
     }
 
     private void sendMessage() {
