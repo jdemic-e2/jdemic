@@ -12,6 +12,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -20,16 +21,16 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-import jdemic.GameLogic.CityNode;
-import jdemic.GameLogic.PandemicMapGraph;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
+import jdemic.ui.GlowUtil;
 import jdemic.GameLogic.*;
 import javafx.scene.layout.VBox;
 import jdemic.ui.GameplayUI.*;
+import javafx.scene.Node;
 
 import java.util.*;
 
@@ -61,6 +62,12 @@ public class MapTestScene {
 
     //Variable for gameplay chat
     private ChatManager chatManager;
+
+    //Variable for decks
+    private DeckManager deckManager;
+
+    //Variable player hand
+    private HandManager handManager;
 
     //Variables for connected gameplay
     private GameClient gameClient;
@@ -102,6 +109,8 @@ public class MapTestScene {
         setupActionMenu();
         setupGlobalHUD();
         setupChat();
+        deckManager = new DeckManager(root);
+        handManager = new HandManager(root, deckManager);
 
         root.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
@@ -383,9 +392,21 @@ public class MapTestScene {
     }
 
     private void setupContent() {
+        StackPane mapContainer = new StackPane();
+        mapContainer.setAlignment(Pos.CENTER);
+        mapContainer.translateYProperty().bind(root.heightProperty().multiply(-0.10));
+
         Pane mapPane = new Pane();
-        mapPane.prefWidthProperty().bind(root.widthProperty());
-        mapPane.prefHeightProperty().bind(root.heightProperty());
+        mapPane.prefWidthProperty().bind(root.widthProperty().multiply(0.70));
+        mapPane.prefHeightProperty().bind(mapPane.prefWidthProperty().multiply(0.5));
+        mapPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        mapPane.setStyle("-fx-border-color: red;");
+
+        ImageView mapBg = new ImageView( new Image(getClass().getResource("/backgroundMap.png").toExternalForm()));
+        mapBg.fitWidthProperty().bind(mapPane.widthProperty());
+        mapBg.fitHeightProperty().bind(mapPane.heightProperty());
+        mapBg.setPreserveRatio(false);
+        mapPane.getChildren().add(mapBg);
 
         Color defaultLineColor = Color.color(0, 0.7, 1, 0.3);
         Color activeLineColor = Color.web("#00ffea");
@@ -406,7 +427,7 @@ public class MapTestScene {
                     Line line = new Line();
                     line.setStroke(defaultLineColor);
                     line.setStrokeWidth(2);
-
+                    line.setMouseTransparent(true);
                     line.startXProperty().bind(mapPane.widthProperty().multiply(city.getRenderX()));
                     line.startYProperty().bind(mapPane.heightProperty().multiply(city.getRenderY()));
                     line.endXProperty().bind(mapPane.widthProperty().multiply(neighbor.getRenderX()));
@@ -421,7 +442,7 @@ public class MapTestScene {
 
         for (CityNode city : mapGraph.getCityList()) {
             Circle node = new Circle();
-            node.radiusProperty().bind(mapPane.heightProperty().multiply(0.012));
+            node.radiusProperty().bind(mapPane.widthProperty().add(mapPane.heightProperty()).multiply(0.006));
 
             Color nativeColor = getFxColor(city.getNativeColor());
             node.setFill(nativeColor);
@@ -497,13 +518,13 @@ public class MapTestScene {
             label.setFont(Font.font("hkmodular", FontWeight.BOLD, 10));
             label.setMouseTransparent(true);
 
-            label.layoutXProperty().bind(node.centerXProperty().subtract(label.getLayoutBounds().getWidth() / 2));
+            label.layoutXProperty().bind(Bindings.createDoubleBinding(() -> node.getCenterX() - label.getLayoutBounds().getWidth() / 2, node.centerXProperty(),label.layoutBoundsProperty()));
             label.layoutYProperty().bind(node.centerYProperty().add(20));
 
             mapPane.getChildren().addAll(node, label);
         }
-
-        root.getChildren().add(mapPane);
+        mapContainer.getChildren().add(mapPane);
+        root.getChildren().add(mapContainer);
     }
 
     private Color getFxColor(DiseaseColor color) {
@@ -524,7 +545,7 @@ public class MapTestScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/backgroundMap.png").toExternalForm()));
+        ImageView background = new ImageView(new Image(getClass().getResource("/bgGame.png").toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
