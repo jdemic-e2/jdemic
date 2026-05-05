@@ -18,11 +18,13 @@ class PacketTypeTest {
         PacketType[] values = PacketType.values();
 
         assertNotNull(values);
-        assertEquals(6, values.length);
+        assertEquals(8, values.length);
         assertTrue(contains(PacketType.PING, values));
         assertTrue(contains(PacketType.PONG, values));
         assertTrue(contains(PacketType.GAME_DATA, values));
         assertTrue(contains(PacketType.CONNECT, values));
+        assertTrue(contains(PacketType.LOBBY_CHAT, values));
+        assertTrue(contains(PacketType.LOBBY_READY, values));
         assertTrue(contains(PacketType.DISCONNECT, values));
         assertTrue(contains(PacketType.ERROR, values));
     }
@@ -34,6 +36,8 @@ class PacketTypeTest {
         assertEquals("PONG", PacketType.PONG.name());
         assertEquals("GAME_DATA", PacketType.GAME_DATA.name());
         assertEquals("CONNECT", PacketType.CONNECT.name());
+        assertEquals("LOBBY_CHAT", PacketType.LOBBY_CHAT.name());
+        assertEquals("LOBBY_READY", PacketType.LOBBY_READY.name());
         assertEquals("DISCONNECT", PacketType.DISCONNECT.name());
         assertEquals("ERROR", PacketType.ERROR.name());
     }

@@ -7,6 +7,8 @@ public enum PacketType {
     PONG,
     GAME_DATA,
     CONNECT,
+    LOBBY_CHAT,
+    LOBBY_READY,
     DISCONNECT,
     ERROR
 }

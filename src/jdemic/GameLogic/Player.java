@@ -1,40 +1,62 @@
 package jdemic.GameLogic;
 
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+import jdemic.GameLogic.Actions.GameAction;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class Player {
     
-    private PlayerState playerState;
-    public Deck deckReference;
+    private PlayerState state;
+    private GameClient gameClient; // Class that sends packages to the server
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    public Player(PlayerState state) {
-        this.playerState = state;
+    public Player(PlayerState state, GameClient gameClient) {
+        this.state = state;
+        this.gameClient = gameClient;
     }
 
-    // Players can have maximum 7 cards. If player has 6/7 cards, enter discard mode. In discard mode, select cards to discard until you have 5 cards or below. Then you can draw.
-    public void drawCards(Deck deck) {
-        while(playerState.getHand().size() > 5){
-            if(playerState.getIsDiscarding() == false){
-                playerState.setIsDiscarding(true);
-            }
+    /**
+     * Method called by GUI
+     */
+    public void executeAction(GameAction action) {
+        // Action name, ex: "DriveAction", "ShuttleFlightAction"
+        String actionName = action.getClass().getSimpleName();
+        String playerId = state.getPlayerName();
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("PlayerID", playerId);
+        payload.put("GameAction", actionName);
+
+        System.out.println("[Player] Executing action: " + actionName + ". Sending to server...");
+
+        if (gameClient != null) {
+            gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
         }
-        playerState.setIsDiscarding(false);
-        deck.drawHand(this.playerState);
-        
+    }
+
+    public void sendTestPacket() {
+        if (gameClient == null) {
+            System.err.println("[Player] Cannot send test packet without a GameClient.");
+            return;
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("PlayerID", state.getPlayerName());
+        payload.put("GameAction", "TEST_ACTION");
+        payload.put("message", "Sample gameplay packet from Player.java");
+
+        System.out.println("[Player] Sending sample test packet to server...");
+        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
     }
 
     public PlayerState getState() {
-        return this.playerState;
+        return state;
     }
 
-    // make a new object to add to the discard pile, then remove the card from the player deck.
-    public void discardCard(int index) {
-        Card c = playerState.getCard(index);
-        playerState.removeCard(index);
-        deckReference.discard(c);
-    }
-
-    public void syncStateFromServer(PlayerState newState) {
-        this.playerState = newState;
+    public void updateState(PlayerState newState) {
+        this.state = newState;
     }
 }

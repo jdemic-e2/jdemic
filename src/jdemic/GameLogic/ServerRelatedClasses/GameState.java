@@ -3,6 +3,7 @@ package jdemic.GameLogic.ServerRelatedClasses;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jdemic.GameLogic.Deck;
 import jdemic.GameLogic.DiseaseManager;
 import jdemic.GameLogic.PandemicMapGraph;
@@ -12,14 +13,14 @@ public class GameState{
 
     // player info
     private List<PlayerState> playerArray = new ArrayList<>();
-
-    // player actions
-    private List<Player> players;
+    private List<LobbyChatMessage> lobbyChatMessages = new ArrayList<>();
+    private long lobbyCountdownStartedAt;
 
     private DiseaseManager diseaseManager;
     private Deck cardDeck;
 
-    private PandemicMapGraph map;
+    @JsonIgnore // pentru erori
+    private transient PandemicMapGraph map; // adaugat transient pentru evitare serializare
 
     private int currentPlayerIndex;
     private int actionsRemaining;
@@ -30,6 +31,7 @@ public class GameState{
 
     private boolean gameOver;
     private boolean gameWon;
+    private boolean gameStarted;
 
     public GameState(){
         this.playerArray = new ArrayList<>();
@@ -43,8 +45,24 @@ public class GameState{
         this.playerArray.remove(s);
     }
 
-    public List<PlayerState> getPlayerStates(){
+    public List<PlayerState> getPlayers(){
         return this.playerArray;
+    }
+
+    public List<LobbyChatMessage> getLobbyChatMessages(){
+        return this.lobbyChatMessages;
+    }
+
+    public void addLobbyChatMessage(LobbyChatMessage message){
+        this.lobbyChatMessages.add(message);
+    }
+
+    public long getLobbyCountdownStartedAt(){
+        return this.lobbyCountdownStartedAt;
+    }
+
+    public void setLobbyCountdownStartedAt(long lobbyCountdownStartedAt){
+        this.lobbyCountdownStartedAt = lobbyCountdownStartedAt;
     }
 
     public DiseaseManager getDiseaseManager(){
@@ -61,14 +79,6 @@ public class GameState{
 
     public void setCardDeck(Deck cardDeck){
         this.cardDeck = cardDeck;
-    }
-
-    public List<Player> getPlayers(){
-        return this.players;
-    }
-
-    public void setPlayers(List<Player> players){
-        this.players = players;
     }
 
     public PandemicMapGraph getMap(){
@@ -125,5 +135,34 @@ public class GameState{
 
     public void setGameWon(boolean gameWon){
         this.gameWon = gameWon;
+    }
+
+    public boolean isGameStarted(){
+        return this.gameStarted;
+    }
+
+    public void setGameStarted(boolean gameStarted){
+        this.gameStarted = gameStarted;
+    }
+
+    /**
+     * Gets the current player whose turn it is
+     * @return the current PlayerState, or null if no players exist
+     */
+    public PlayerState getCurrentPlayer(){
+        if(playerArray == null || playerArray.isEmpty()){
+            return null;
+        }
+        return playerArray.get(currentPlayerIndex);
+    }
+
+    /**
+     * Checks if the given player is the current player
+     * @param playerState the player to check
+     * @return true if it's the player's turn, false otherwise
+     */
+    public boolean isPlayerTurn(PlayerState playerState){
+        PlayerState currentPlayer = getCurrentPlayer();
+        return currentPlayer != null && currentPlayer.getPlayerName().equalsIgnoreCase(playerState.getPlayerName());
     }
 }

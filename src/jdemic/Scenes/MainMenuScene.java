@@ -3,7 +3,6 @@ package jdemic.Scenes;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -14,10 +13,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
-import jdemic.Scenes.Lobby.LobbyScene;
-import jdemic.Scenes.MapTest.MapTestScene;
-import jdemic.Scenes.Settings.SettingsScene;
-import jdemic.Scenes.Tutorial.TutorialRulesScene;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.Animations;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.DotUtil;
@@ -25,7 +21,6 @@ import jdemic.ui.GlowLineUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
-
 public class MainMenuScene {
 
     private StackPane root;

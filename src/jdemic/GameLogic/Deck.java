@@ -75,26 +75,38 @@ public class Deck {
     }
 
     public void drawHand(PlayerState player) {
-        manager.checkLoseCondition();
-        // send the 2 top cards from deck to player hand.
-        if(!playerCards.isEmpty()){
-            player.addCard(playerCards.get(0));
-            playerCards.remove(0);
-        }
-        else{
-            manager.checkLoseCondition();
-        }
-
-        if(!playerCards.isEmpty()){
-            player.addCard(playerCards.get(0));
-            playerCards.remove(0);
-        }
-        else{
-            manager.checkLoseCondition();
-        }
+        // End-of-turn player draw: the player must draw exactly 2 cards.
+        drawCards(player, 2, true);
 
         //TODO Epidemic Card Case, not relevant for first sprint.
 
+    }
+
+    public void drawInitialHand(PlayerState player, int cardCount) {
+        drawCards(player, cardCount, false);
+    }
+
+    private void drawCards(PlayerState player, int cardCount, boolean allowEpidemic) {
+        for (int i = 0; i < cardCount; i++) {
+            int cardIndex = getNextDrawableCardIndex(allowEpidemic);
+            if(cardIndex < 0){
+                manager.getState().setGameOver(true);
+                manager.getState().setGameWon(false);
+                return;
+            }
+
+            player.addCard(playerCards.remove(cardIndex));
+        }
+    }
+
+    private int getNextDrawableCardIndex(boolean allowEpidemic) {
+        for (int i = 0; i < playerCards.size(); i++) {
+            if (allowEpidemic || playerCards.get(i).getType() != CardType.EPIDEMIC) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     // Discard cards

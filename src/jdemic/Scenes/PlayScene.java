@@ -17,15 +17,22 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import com.fasterxml.jackson.databind.JsonNode;
 import jdemic.ui.ButtonsUtil;
+import jdemic.ui.CardDeckView;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
-import jdemic.GameLogic.Player;
-import jdemic.GameLogic.Card;
 import jdemic.GameLogic.GameManager;
+import jdemic.GameLogic.Card;
+import jdemic.GameLogic.GameClient;
+import jdemic.GameLogic.Player;
+import jdemic.GameLogic.ServerRelatedClasses.*;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.UnaryOperator;
@@ -38,6 +45,8 @@ public class PlayScene {
     private String nickname = "";
     private final String hostCode;
     private Label hostStatusLabel;
+    private GameClient networkGameClient;
+    private Player networkPlayer;
 
     public PlayScene(Stage stage) {
         this.stage = stage;
@@ -45,7 +54,18 @@ public class PlayScene {
         this.hostCode = generateHostCode();
 
         setupBackground();
-        showEntryScreen();
+        showGameplayScreen(createLocalGameManager());
+    }
+
+    public PlayScene(Stage stage, String nickname, GameClient gameClient, JsonNode gameState) {
+        this.stage = stage;
+        this.root = new StackPane();
+        this.hostCode = "";
+        this.nickname = nickname == null || nickname.isBlank() ? "PLAYER" : nickname.toUpperCase();
+        this.networkGameClient = gameClient;
+
+        setupBackground();
+        showNetworkGameplayScreen(gameState);
     }
 
     public StackPane getRoot() {
@@ -284,60 +304,222 @@ public class PlayScene {
         return sb.toString();
     }
 
+    private GameManager createLocalGameManager() {
+        List<PlayerState> players = new ArrayList<>();
+        players.add(new PlayerState("PLAYER"));
+
+        GameManager gameManager = new GameManager(players);
+        gameManager.startGame();
+        return gameManager;
+    }
+
     // --- PLAYER ICON TASK INNOVATIONS (Simplified to Icons Only) ---
 
     public void showGameplayScreen(GameManager gameManager) {
         resetScreen();
+
+        // --- Card deck (bottom-center overlay) ---
+        CardDeckView deckView = new CardDeckView(root.widthProperty(), root.heightProperty());
+        StackPane.setAlignment(deckView, Pos.BOTTOM_CENTER);
+        // Margin-like behavior with responsive translate (keeps deck inside screen)
+        deckView.setTranslateY(-40);
+        root.getChildren().add(deckView);
+
+        // Bind to current player's hand for now (acts as "visible deck" in UI).
+        // TODO: replace with actual "player deck" vs "hand" model once gameplay flow is wired.
+        try {
+            var current = gameManager.getCurrentPlayer();
+            if (current != null && current.getHand() != null) {
+                deckView.setCards(current.getHand());
+            } else {
+                deckView.setCards(Collections.emptyList());
+            }
+        } catch (Exception e) {
+            deckView.setCards(Collections.emptyList());
+        }
+
         VBox playerIconsContainer = new VBox(15);
         playerIconsContainer.setPadding(new Insets(20, 0, 0, 20));
         StackPane.setAlignment(playerIconsContainer, Pos.TOP_LEFT);
         playerIconsContainer.setPickOnBounds(false);
 
-        for (Player p : gameManager.getState().getPlayers()) {
+        for (PlayerState p : gameManager.getState().getPlayers()) {
             playerIconsContainer.getChildren().add(createGameplayPlayerRow(p));
         }
-        root.getChildren().add(playerIconsContainer);
+
+        // --- NEWLY ADDED CODE: Top Right Status Panel ---
+        VBox statsBox = new VBox(12);
+        statsBox.setAlignment(Pos.TOP_LEFT);
+        statsBox.setPadding(new Insets(15, 20, 15, 20));
+
+        // Cyberpunk box design (Dark background, blue border)
+        statsBox.setStyle(
+                "-fx-background-color: rgba(10, 15, 25, 0.85);" +
+                        "-fx-border-color: #00b5d4;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 10;" +
+                        "-fx-background-radius: 10;"
+        );
+        GlowUtil.applyGlow(statsBox, "#00b5d4", 10);
+
+        // Pin the box to the top right corner
+        statsBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        StackPane.setAlignment(statsBox, Pos.TOP_RIGHT);
+        StackPane.setMargin(statsBox, new Insets(20, 20, 0, 0));
+
+        // 1. Title
+        Label statsTitle = TextUtil.createText("GLOBAL STATUS", "hkmodular", 0.02, "#cfc900", root);
+
+        // 2. Outbreaks
+        int outbreaks = gameManager.getState().getDiseaseManager().getOutbreakScore();
+        Label outbreakLabel = TextUtil.createText("OUTBREAKS: " + outbreaks + "/8", "hkmodular", 0.015, "#ff2d2d", root);
+
+        // 3. Infection Rate
+        int infRate = gameManager.getInfectionRate();
+        Label infectionLabel = TextUtil.createText("INFECTION RATE: " + infRate, "hkmodular", 0.015, "#00d9ff", root);
+
+        // 4. Cures Found
+        Label curesTitle = TextUtil.createText("CURES FOUND:", "hkmodular", 0.015, "#ffffff", root);
+        HBox curesBox = new HBox(10);
+        curesBox.setAlignment(Pos.CENTER_LEFT);
+
+        // Check the cure status for each color and add it as a glowing text to the screen
+        jdemic.GameLogic.DiseaseManager diseaseManager = gameManager.getState().getDiseaseManager();
+        for (jdemic.GameLogic.DiseaseColor color : jdemic.GameLogic.DiseaseColor.values()) {
+            if (diseaseManager.isCured(color)) {
+                // If a cure is found, add a glowing text with that color's specific HEX code
+                String hexColor = switch (color) {
+                    case BLUE -> "#00b5d4";
+                    case YELLOW -> "#cfc900";
+                    case BLACK -> "#888888"; // Gray color to make it visible on a dark background
+                    case RED -> "#ff2d2d";
+                };
+                Label curedColorLabel = TextUtil.createText(color.name(), "hkmodular", 0.012, hexColor, root);
+                GlowUtil.applyGlow(curedColorLabel, hexColor, 5);
+                curesBox.getChildren().add(curedColorLabel);
+            }
+        }
+
+        // If no cures are found yet, display "NONE"
+        if (curesBox.getChildren().isEmpty()) {
+            curesBox.getChildren().add(TextUtil.createText("NONE", "hkmodular", 0.012, "#888888", root));
+        }
+
+        // Add all elements to the stats box
+        statsBox.getChildren().addAll(statsTitle, outbreakLabel, infectionLabel, curesTitle, curesBox);
+
+        // --- Add both UI containers to the root screen ---
+        root.getChildren().addAll(playerIconsContainer, statsBox);
     }
 
-    private HBox createGameplayPlayerRow(Player player) {
+    private void showNetworkGameplayScreen(JsonNode gameState) {
+        resetScreen();
+
+        Label title = TextUtil.createText("GAME STARTED", "hkmodular", 0.05, "#d1d412", root);
+        GlowUtil.applyGlow(title, "#d1d412", 12);
+        StackPane.setAlignment(title, Pos.TOP_CENTER);
+        title.translateYProperty().bind(root.heightProperty().multiply(0.06));
+
+        VBox playersBox = new VBox(12);
+        playersBox.setAlignment(Pos.TOP_LEFT);
+        playersBox.paddingProperty().bind(Bindings.createObjectBinding(
+                () -> new Insets(root.getHeight() * 0.18, 0, 0, root.getWidth() * 0.06),
+                root.widthProperty(), root.heightProperty()
+        ));
+
+        JsonNode players = getPlayersArray(gameState);
+        if (players != null && players.isArray()) {
+            for (JsonNode playerNode : players) {
+                String playerName = playerNode.has("playerName") ? playerNode.get("playerName").asText() : "UNKNOWN";
+                String cityName = "Atlanta";
+                JsonNode cityNode = playerNode.get("playerCurrentCity");
+                if (cityNode != null && cityNode.has("name")) {
+                    cityName = cityNode.get("name").asText();
+                }
+
+                Label row = TextUtil.createText(playerName + " - " + cityName, "hkmodular", 0.024, "#00d9ff", root);
+                playersBox.getChildren().add(row);
+
+                if (playerName.equalsIgnoreCase(nickname) && networkPlayer == null) {
+                    PlayerState playerState = new PlayerState(playerName);
+                    networkPlayer = new Player(playerState, networkGameClient);
+                }
+            }
+        }
+
+        if (networkPlayer == null) {
+            PlayerState playerState = new PlayerState(nickname);
+            networkPlayer = new Player(playerState, networkGameClient);
+        }
+
+        ButtonsUtil samplePacketBtn = new ButtonsUtil("SEND TEST PACKET", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.24, 0.07, 0.020, root);
+        samplePacketBtn.setOnMouseClicked(e -> networkPlayer.sendTestPacket());
+        StackPane.setAlignment(samplePacketBtn, Pos.BOTTOM_CENTER);
+        samplePacketBtn.translateYProperty().bind(root.heightProperty().multiply(-0.08));
+
+        root.getChildren().addAll(title, playersBox, samplePacketBtn);
+    }
+
+    private JsonNode getPlayersArray(JsonNode gameState) {
+        if (gameState == null) {
+            return null;
+        }
+        if (gameState.has("players")) {
+            return gameState.get("players");
+        }
+        if (gameState.has("playerArray")) {
+            return gameState.get("playerArray");
+        }
+        return null;
+    }
+
+    private HBox createGameplayPlayerRow(PlayerState player) {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setCursor(javafx.scene.Cursor.HAND);
 
         String roleFileName = "player_placeholder.png";
-        if (player.getState().getPlayerRole() != null) {
-            roleFileName = player.getState().getPlayerRole().toString().toLowerCase() + ".png";
+        if (player.getPlayerRole() != null) {
+            roleFileName = player.getPlayerRole().toString().toLowerCase() + ".png";
         }
 
         Image img = null;
         try {
             var stream = getClass().getResourceAsStream("/elements/" + roleFileName);
-            if (stream == null) throw new Exception("Asıl ikon bulunamadı");
+            if (stream == null) throw new Exception("Main icon not found");
             img = new Image(stream);
         } catch (Exception e) {
             try {
                 var placeholderStream = getClass().getResourceAsStream("/elements/player_placeholder.png");
-                if (placeholderStream == null) throw new Exception("Placeholder da bulunamadı");
+                if (placeholderStream == null) throw new Exception("Placeholder not found either");
                 img = new Image(placeholderStream);
             } catch (Exception ex) {
-                img = new Image(getClass().getResourceAsStream("/elements/redDot.png"));
+                var red = getClass().getResourceAsStream("/elements/redDot.png");
+                if (red != null) {
+                    img = new Image(red);
+                }
             }
         }
 
-        ImageView iconView = new ImageView(img);
-        iconView.setFitWidth(45);
-        iconView.setFitHeight(45);
-        iconView.setPreserveRatio(true);
-
-        GlowUtil.applyGlow(iconView, "#00d9ff", 10);
-
-        row.getChildren().add(iconView);
+        if (img != null && !img.isError()) {
+            ImageView iconView = new ImageView(img);
+            iconView.setFitWidth(45);
+            iconView.setFitHeight(45);
+            iconView.setPreserveRatio(true);
+            GlowUtil.applyGlow(iconView, "#00d9ff", 10);
+            row.getChildren().add(iconView);
+        } else {
+            Circle fallback = new Circle(22, Color.web("#00d9ff"));
+            fallback.setOpacity(0.85);
+            GlowUtil.applyGlow(fallback, "#00d9ff", 10);
+            row.getChildren().add(fallback);
+        }
         row.setOnMouseClicked(e -> showPlayerCardsOverlay(player));
 
         return row;
     }
 
-    private void showPlayerCardsOverlay(Player player) {
+    private void showPlayerCardsOverlay(PlayerState player) {
         StackPane overlay = new StackPane();
         overlay.setStyle("-fx-background-color: rgba(0, 0, 0, 0.75);");
 
@@ -347,14 +529,14 @@ public class PlayScene {
         cardPanel.setStyle("-fx-background-color: rgba(13, 17, 23, 0.95); -fx-border-color: #00d9ff; -fx-border-width: 2; -fx-border-radius: 15; -fx-background-radius: 15;");
         GlowUtil.applyGlow(cardPanel, "#00d9ff", 15);
 
-        Label title = TextUtil.createText(player.getState().getPlayerName() + "'S HAND", "hkmodular", 0.035, "#d1d412", root);
+        Label title = TextUtil.createText(player.getPlayerName() + "'S HAND", "hkmodular", 0.035, "#d1d412", root);
         HBox cardList = new HBox(15);
         cardList.setAlignment(Pos.CENTER);
 
-        if (player.getState().getHand() == null || player.getState().getHand().isEmpty()) {
+        if (player.getHand() == null || player.getHand().isEmpty()) {
             cardList.getChildren().add(TextUtil.createText("NO CARDS IN HAND", "hkmodular", 0.020, "#ff2d2d", root));
         } else {
-            for (Card card : player.getState().getHand()) {
+            for (Card card : player.getHand()) {
                 VBox cardUI = new VBox(5);
                 cardUI.setAlignment(Pos.CENTER);
                 cardUI.setStyle("-fx-border-color: #00b5d4; -fx-padding: 10; -fx-border-radius: 5;");

@@ -13,8 +13,8 @@ public class PrivateSecurityStrategy implements MaskingStrategy {
         for (int i = 0; i < players.length(); i++) {
             JSONObject player = players.getJSONObject(i);
 
-            if (player.has("id")) {
-                String id = player.getString("id");
+            if (player.has("playerName")) {
+                String id = player.getString("playerName");
 
                 // If this is NOT the target player, censor their private info
                 if (!id.equals(targetPlayerId)) {
@@ -22,9 +22,9 @@ public class PrivateSecurityStrategy implements MaskingStrategy {
                     player.remove("ipAddress");
 
                     // Strategy: Hide actual cards, but keep the count for UI rendering
-                    if (player.has("cardsInHand")) {
-                        int cardCount = player.getJSONArray("cardsInHand").length();
-                        player.remove("cardsInHand");
+                    if (player.has("hand")) {
+                        int cardCount = player.getJSONArray("hand").length();
+                        player.remove("hand");
                         player.put("hiddenCardCount", cardCount);
                     }
                 }
