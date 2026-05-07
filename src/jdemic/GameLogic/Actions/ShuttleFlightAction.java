@@ -15,6 +15,7 @@ public class ShuttleFlightAction extends GameAction {
 
     public boolean isValid(GameState state, PlayerState playerState) 
     {
+        if (playerState == null) return false;
         // both cities must have research stations.
         CityNode currentCity = playerState.getPlayerCurrentCity();
         return currentCity.hasResearchStation() && destination.hasResearchStation();

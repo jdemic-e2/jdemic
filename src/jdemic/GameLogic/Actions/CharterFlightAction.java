@@ -19,6 +19,7 @@ public class CharterFlightAction extends GameAction {
 
     public boolean isValid(GameState gameState, PlayerState playerState) 
     {
+        if (playerState == null) return false;
         // Player must have the card matching their CURRENT city
         CityNode currentCity = playerState.getPlayerCurrentCity();
         return playerState.getHand().stream()

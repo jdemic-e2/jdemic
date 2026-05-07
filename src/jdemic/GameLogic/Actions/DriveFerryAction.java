@@ -15,6 +15,7 @@ public class DriveFerryAction extends GameAction {
 
     public boolean isValid(GameState state, PlayerState playerState) 
     {
+        if (playerState == null) return false;
         CityNode currentCity = playerState.getPlayerCurrentCity();
         return currentCity.getConnectedCities().contains(destination);
     }
