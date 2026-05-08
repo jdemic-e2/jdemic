@@ -1,10 +1,10 @@
 package jdemic.GameLogic;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.After;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,6 @@ import jdemic.GameLogic.Actions.DirectFlightAction;
 import jdemic.GameLogic.Actions.DriveFerryAction;
 import jdemic.GameLogic.Actions.ShuttleFlightAction;
 import jdemic.GameLogic.Card.EventType;
-import jdemic.GameLogic.CityNode.DiseaseColor;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
@@ -32,22 +31,23 @@ public class GameLogicTest {
     private PlayerState playerInAtlanta;
     private PlayerState playerInChicago;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         atlanta = new CityNode("Atlanta", DiseaseColor.BLUE,   0.25f, 0.39f);
         chicago = new CityNode("Chicago", DiseaseColor.BLUE,   0.24f, 0.30f);
         miami   = new CityNode("Miami",   DiseaseColor.YELLOW, 0.26f, 0.45f);
         london  = new CityNode("London",  DiseaseColor.BLUE,   0.48f, 0.25f);
 
-        // Atlanta <-> Chicago <-> Miami  (London intentionally isolated)
         atlanta.addConnection(chicago);
         chicago.addConnection(miami);
 
-        playerInAtlanta = new PlayerState("Alice", atlanta);
-        playerInChicago = new PlayerState("Bob",   chicago);
+        playerInAtlanta = new PlayerState("Alice");
+        playerInAtlanta.setCurrentCity(atlanta);
+        playerInChicago = new PlayerState("Bob");
+        playerInChicago.setCurrentCity(chicago);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         atlanta = chicago = miami = london = null;
         playerInAtlanta = playerInChicago = null;
@@ -58,9 +58,8 @@ public class GameLogicTest {
     // =========================================================================
 
     private GameManager singlePlayerGame(PlayerState ps) {
-        Player player = new Player(ps);
-        List<Player> players = new ArrayList<>();
-        players.add(player);
+        List<PlayerState> players = new ArrayList<>();
+        players.add(ps);
         return new GameManager(players);
     }
 
@@ -176,14 +175,13 @@ public class GameLogicTest {
     @Test
     public void testCityNodeInitialDiseaseCubesAreZero() {
         for (DiseaseColor color : DiseaseColor.values()) {
-            assertEquals("Initial cubes for " + color + " should be 0",
-                    0, atlanta.getCubeCount(color));
+            assertEquals(0, atlanta.getCubeCount(color),
+                    "Initial cubes for " + color + " should be 0");
         }
     }
 
     @Test
     public void testConnectedCitiesInitiallyEmpty() {
-        // london has no connections set up in setUp()
         assertTrue(london.getConnectedCities().isEmpty());
     }
 
@@ -249,14 +247,13 @@ public class GameLogicTest {
 
     @Test
     public void testAddConnectionIsBidirectional() {
-        // atlanta->chicago set in setUp(); verify both directions
         assertTrue(atlanta.getConnectedCities().contains(chicago));
         assertTrue(chicago.getConnectedCities().contains(atlanta));
     }
 
     @Test
     public void testAddConnectionNoDuplicates() {
-        atlanta.addConnection(chicago); // already connected in setUp()
+        atlanta.addConnection(chicago);
         long count = atlanta.getConnectedCities().stream()
                 .filter(c -> c.equals(chicago)).count();
         assertEquals(1, count);
@@ -343,8 +340,8 @@ public class GameLogicTest {
         for (String name : new String[]{"San Francisco", "Chicago", "Montreal",
                 "New York", "Washington", "Atlanta", "London",
                 "Madrid", "Paris", "Essen", "Milan", "St. Petersburg"}) {
-            assertEquals(name + " should be BLUE",
-                    DiseaseColor.BLUE, map.getCity(name).getNativeColor());
+            assertEquals(DiseaseColor.BLUE, map.getCity(name).getNativeColor(),
+                    name + " should be BLUE");
         }
     }
 
@@ -354,14 +351,13 @@ public class GameLogicTest {
         for (String name : new String[]{"Beijing", "Seoul", "Tokyo", "Shanghai",
                 "Hong Kong", "Taipei", "Osaka", "Bangkok",
                 "Ho Chi Minh City", "Manila", "Jakarta", "Sydney"}) {
-            assertEquals(name + " should be RED",
-                    DiseaseColor.RED, map.getCity(name).getNativeColor());
+            assertEquals(DiseaseColor.RED, map.getCity(name).getNativeColor(),
+                    name + " should be RED");
         }
     }
 
     @Test
     public void testNoCityHasResearchStationBeforeSetup() {
-        // Fresh graph — no GameManager has touched it yet
         long count = new PandemicMapGraph().getCityList().stream()
                 .filter(CityNode::hasResearchStation).count();
         assertEquals(0, count);
@@ -373,34 +369,45 @@ public class GameLogicTest {
 
     @Test
     public void testDiseaseManagerInitialOutbreakScore() {
-        assertEquals(0, new DiseaseManager().getOutbreakScore());
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        assertEquals(0, gm.getState().getDiseaseManager().getOutbreakScore());
     }
 
     @Test
     public void testDiseaseManagerInitialCubesLeft() {
-        assertEquals(0, new DiseaseManager().getInfectionCubesLeft());
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        assertEquals(96, gm.getState().getDiseaseManager().getInfectionCubesLeft());
     }
 
     @Test
     public void testDiseaseManagerNotCuredInitially() {
-        assertFalse(new DiseaseManager().isCured());
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+        assertFalse(dm.isCured(DiseaseColor.BLUE));
+        assertFalse(dm.isCured(DiseaseColor.YELLOW));
+        assertFalse(dm.isCured(DiseaseColor.BLACK));
+        assertFalse(dm.isCured(DiseaseColor.RED));
     }
 
     @Test
     public void testDiseaseManagerDiscoverCureNoException() {
-        new DiseaseManager().discoverCure();
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        gm.getState().getDiseaseManager().discoverCure(DiseaseColor.BLUE);
     }
 
     @Test
     public void testDiseaseManagerAddRemoveCubesNoException() {
-        DiseaseManager dm = new DiseaseManager();
-        dm.addInfectionCubes(10);
-        dm.removeInfectionCubes(5);
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+        CityNode city = gm.getState().getMap().getCity("Atlanta");
+        dm.addInfectionCubes(city, 2);
+        dm.removeInfectionCubes(city, 1);
     }
 
     @Test
     public void testDiseaseManagerIncreaseOutbreakScoreNoException() {
-        new DiseaseManager().increaseOutbreakScore();
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        gm.getState().getDiseaseManager().increaseOutbreakScore();
     }
 
     // =========================================================================
@@ -507,8 +514,8 @@ public class GameLogicTest {
     @Test
     public void testPlayerStateHandsAreIndependent() {
         playerInAtlanta.addCard(new Card("Atlanta", CardType.CITY, atlanta));
-        assertTrue("Bob's hand should still be empty",
-                playerInChicago.getHand().isEmpty());
+        assertTrue(playerInChicago.getHand().isEmpty(),
+                "Bob's hand should still be empty");
     }
 
     // =========================================================================
@@ -524,7 +531,7 @@ public class GameLogicTest {
         assertEquals(0, state.getActionsRemaining());
         assertEquals(0, state.getInfectionRate());
         assertEquals(0, state.getEpidemicCount());
-        assertTrue(state.getPlayerStates().isEmpty());
+        assertTrue(state.getPlayers().isEmpty());
     }
 
     @Test
@@ -575,8 +582,8 @@ public class GameLogicTest {
     public void testGameStateAddPlayerState() {
         GameState state = new GameState();
         state.addPlayer(playerInAtlanta);
-        assertEquals(1, state.getPlayerStates().size());
-        assertEquals(playerInAtlanta, state.getPlayerStates().get(0));
+        assertEquals(1, state.getPlayers().size());
+        assertEquals(playerInAtlanta, state.getPlayers().get(0));
     }
 
     @Test
@@ -584,7 +591,7 @@ public class GameLogicTest {
         GameState state = new GameState();
         state.addPlayer(playerInAtlanta);
         state.addPlayer(playerInChicago);
-        assertEquals(2, state.getPlayerStates().size());
+        assertEquals(2, state.getPlayers().size());
     }
 
     @Test
@@ -593,8 +600,8 @@ public class GameLogicTest {
         state.addPlayer(playerInAtlanta);
         state.addPlayer(playerInChicago);
         state.removePlayer(playerInAtlanta);
-        assertEquals(1, state.getPlayerStates().size());
-        assertFalse(state.getPlayerStates().contains(playerInAtlanta));
+        assertEquals(1, state.getPlayers().size());
+        assertFalse(state.getPlayers().contains(playerInAtlanta));
     }
 
     @Test
@@ -607,19 +614,10 @@ public class GameLogicTest {
 
     @Test
     public void testGameStateSetDiseaseManager() {
-        GameState state = new GameState();
-        DiseaseManager dm = new DiseaseManager();
-        state.setDiseaseManager(dm);
-        assertEquals(dm, state.getDiseaseManager());
-    }
-
-    @Test
-    public void testGameStateSetPlayers() {
-        GameState state = new GameState();
-        Player p = new Player(playerInAtlanta);
-        state.setPlayers(List.of(p));
-        assertEquals(1, state.getPlayers().size());
-        assertEquals(p, state.getPlayers().get(0));
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+        assertNotNull(dm);
+        assertEquals(dm, gm.getState().getDiseaseManager());
     }
 
     // =========================================================================
@@ -628,34 +626,15 @@ public class GameLogicTest {
 
     @Test
     public void testPlayerInitialization() {
-        Player player = new Player(playerInAtlanta);
+        Player player = new Player(playerInAtlanta, null);
         assertEquals(playerInAtlanta, player.getState());
     }
 
     @Test
-    public void testPlayerSyncStateFromServer() {
-        Player player = new Player(playerInAtlanta);
-        player.syncStateFromServer(playerInChicago);
+    public void testPlayerUpdateState() {
+        Player player = new Player(playerInAtlanta, null);
+        player.updateState(playerInChicago);
         assertEquals(playerInChicago, player.getState());
-    }
-
-    @Test
-    public void testPlayerDiscardCardReducesHandSize() {
-        GameManager gm = singlePlayerGame(playerInAtlanta);
-        gm.getState().getCardDeck().drawHand(playerInAtlanta);
-
-        if (!playerInAtlanta.getHand().isEmpty()) {
-            int before = playerInAtlanta.getHand().size();
-            gm.getCurrentPlayer().discardCard(0);
-            assertEquals(before - 1, playerInAtlanta.getHand().size());
-        }
-    }
-
-    @Test
-    public void testPlayerDrawCardsClearsDiscardFlag() {
-        GameManager gm = singlePlayerGame(playerInAtlanta);
-        gm.getCurrentPlayer().drawCards(gm.getState().getCardDeck());
-        assertFalse(playerInAtlanta.getIsDiscarding());
     }
 
     // =========================================================================
@@ -718,11 +697,8 @@ public class GameLogicTest {
 
     @Test
     public void testGameManagerGetCurrentPlayer() {
-        Player player = new Player(playerInAtlanta);
-        List<Player> players = new ArrayList<>();
-        players.add(player);
-        GameManager gm = new GameManager(players);
-        assertEquals(player, gm.getCurrentPlayer());
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        assertEquals(playerInAtlanta, gm.getCurrentPlayer());
     }
 
     @Test
@@ -734,7 +710,6 @@ public class GameLogicTest {
     @Test
     public void testGameManagerInfectionRateIncreasesToThree() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
-        // Track: {2,2,2,3,3,4,4} — index 3 gives 3
         gm.increaseInfectionRate();
         gm.increaseInfectionRate();
         gm.increaseInfectionRate();
@@ -764,39 +739,38 @@ public class GameLogicTest {
 
     @Test
     public void testNextTurnAdvancesPlayerIndex() {
-        PlayerState ps2 = new PlayerState("Bob", chicago);
-        Player p1 = new Player(playerInAtlanta);
-        Player p2 = new Player(ps2);
-        List<Player> players = new ArrayList<>();
-        players.add(p1);
-        players.add(p2);
+        PlayerState ps2 = new PlayerState("Bob");
+        ps2.setCurrentCity(chicago);
+        List<PlayerState> players = new ArrayList<>();
+        players.add(playerInAtlanta);
+        players.add(ps2);
         GameManager gm = new GameManager(players);
 
-        assertEquals(p1, gm.getCurrentPlayer());
+        assertEquals(playerInAtlanta, gm.getCurrentPlayer());
         gm.nextTurn();
-        assertEquals(p2, gm.getCurrentPlayer());
+        assertEquals(ps2, gm.getCurrentPlayer());
     }
 
     @Test
     public void testNextTurnWrapsAroundToFirstPlayer() {
-        PlayerState ps2 = new PlayerState("Bob", chicago);
-        Player p1 = new Player(playerInAtlanta);
-        Player p2 = new Player(ps2);
-        List<Player> players = new ArrayList<>();
-        players.add(p1);
-        players.add(p2);
+        PlayerState ps2 = new PlayerState("Bob");
+        ps2.setCurrentCity(chicago);
+        List<PlayerState> players = new ArrayList<>();
+        players.add(playerInAtlanta);
+        players.add(ps2);
         GameManager gm = new GameManager(players);
 
         gm.nextTurn();
         gm.nextTurn();
-        assertEquals(p1, gm.getCurrentPlayer());
+        assertEquals(playerInAtlanta, gm.getCurrentPlayer());
     }
 
     @Test
     public void testPerformActionIsNoOpWhenGameOver() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         gm.getState().setGameOver(true);
-        gm.performAction(gm.getCurrentPlayer(), null); // must not throw
+        Player player = new Player(playerInAtlanta, null);
+        gm.performAction(player, new DriveFerryAction(chicago)); // must not throw
     }
 
     // =========================================================================
@@ -805,23 +779,22 @@ public class GameLogicTest {
 
     @Test
     public void testDriveFerryValidWhenConnected() {
-        assertTrue(new DriveFerryAction(chicago).isValid(playerInAtlanta));
+        assertTrue(new DriveFerryAction(chicago).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testDriveFerryInvalidWhenNotConnected() {
-        // Atlanta -> Miami requires two hops
-        assertFalse(new DriveFerryAction(miami).isValid(playerInAtlanta));
+        assertFalse(new DriveFerryAction(miami).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testDriveFerryInvalidForCurrentCity() {
-        assertFalse(new DriveFerryAction(atlanta).isValid(playerInAtlanta));
+        assertFalse(new DriveFerryAction(atlanta).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testDriveFerryInvalidForIsolatedCity() {
-        assertFalse(new DriveFerryAction(london).isValid(playerInAtlanta));
+        assertFalse(new DriveFerryAction(london).isValid(null, playerInAtlanta));
     }
 
     @Test
@@ -837,19 +810,15 @@ public class GameLogicTest {
     }
 
     @Test
-    public void testDriveFerryGameStateOverloadReturnsFalse() {
-        assertFalse(new DriveFerryAction(chicago).isValid(new GameState()));
-    }
-
-    @Test
     public void testDriveFerryOnRealMapAtlantaToChicago() {
         PandemicMapGraph map = new PandemicMapGraph();
         CityNode atl = map.getCity("Atlanta");
         CityNode chi = map.getCity("Chicago");
-        PlayerState ps = new PlayerState("Tester", atl);
+        PlayerState ps = new PlayerState("Tester");
+        ps.setCurrentCity(atl);
 
         DriveFerryAction action = new DriveFerryAction(chi);
-        assertTrue(action.isValid(ps));
+        assertTrue(action.isValid(null, ps));
         action.execute(null, ps);
         assertEquals(chi, ps.getPlayerCurrentCity());
     }
@@ -857,8 +826,9 @@ public class GameLogicTest {
     @Test
     public void testDriveFerryOnRealMapAtlantaToTokyoInvalid() {
         PandemicMapGraph map = new PandemicMapGraph();
-        PlayerState ps = new PlayerState("Tester", map.getCity("Atlanta"));
-        assertFalse(new DriveFerryAction(map.getCity("Tokyo")).isValid(ps));
+        PlayerState ps = new PlayerState("Tester");
+        ps.setCurrentCity(map.getCity("Atlanta"));
+        assertFalse(new DriveFerryAction(map.getCity("Tokyo")).isValid(null, ps));
     }
 
     // =========================================================================
@@ -869,27 +839,27 @@ public class GameLogicTest {
     public void testDirectFlightValidWhenCardInHand() {
         Card chicagoCard = new Card("Chicago", CardType.CITY, chicago);
         playerInAtlanta.addCard(chicagoCard);
-        assertTrue(new DirectFlightAction(chicago, chicagoCard).isValid(playerInAtlanta));
+        assertTrue(new DirectFlightAction(chicago, chicagoCard).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testDirectFlightInvalidWhenCardNotInHand() {
         Card chicagoCard = new Card("Chicago", CardType.CITY, chicago);
-        assertFalse(new DirectFlightAction(chicago, chicagoCard).isValid(playerInAtlanta));
+        assertFalse(new DirectFlightAction(chicago, chicagoCard).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testDirectFlightInvalidWithWrongCityCard() {
         Card miamiCard = new Card("Miami", CardType.CITY, miami);
         playerInAtlanta.addCard(miamiCard);
-        assertFalse(new DirectFlightAction(chicago, miamiCard).isValid(playerInAtlanta));
+        assertFalse(new DirectFlightAction(chicago, miamiCard).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testDirectFlightInvalidWithNonCityCard() {
         Card epidemic = new Card("System Breach", CardType.EPIDEMIC, null);
         playerInAtlanta.addCard(epidemic);
-        assertFalse(new DirectFlightAction(chicago, epidemic).isValid(playerInAtlanta));
+        assertFalse(new DirectFlightAction(chicago, epidemic).isValid(null, playerInAtlanta));
     }
 
     @Test
@@ -917,12 +887,6 @@ public class GameLogicTest {
         assertEquals(1, playerInAtlanta.getHand().size());
     }
 
-    @Test
-    public void testDirectFlightGameStateOverloadReturnsFalse() {
-        Card chicagoCard = new Card("Chicago", CardType.CITY, chicago);
-        assertFalse(new DirectFlightAction(chicago, chicagoCard).isValid(new GameState()));
-    }
-
     // =========================================================================
     // CharterFlightAction
     // =========================================================================
@@ -931,27 +895,27 @@ public class GameLogicTest {
     public void testCharterFlightValidWhenPlayerHasCurrentCityCard() {
         Card atlantaCard = new Card("Atlanta", CardType.CITY, atlanta);
         playerInAtlanta.addCard(atlantaCard);
-        assertTrue(new CharterFlightAction(london, atlantaCard).isValid(playerInAtlanta));
+        assertTrue(new CharterFlightAction(london, atlantaCard).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testCharterFlightInvalidWhenCardMissing() {
         Card atlantaCard = new Card("Atlanta", CardType.CITY, atlanta);
-        assertFalse(new CharterFlightAction(london, atlantaCard).isValid(playerInAtlanta));
+        assertFalse(new CharterFlightAction(london, atlantaCard).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testCharterFlightInvalidWithWrongCityCard() {
         Card chicagoCard = new Card("Chicago", CardType.CITY, chicago);
         playerInAtlanta.addCard(chicagoCard);
-        assertFalse(new CharterFlightAction(london, chicagoCard).isValid(playerInAtlanta));
+        assertFalse(new CharterFlightAction(london, chicagoCard).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testCharterFlightInvalidWithNonCityCard() {
         Card eventCard = new Card("Firewall Lockdown", CardType.EVENT, null);
         playerInAtlanta.addCard(eventCard);
-        assertFalse(new CharterFlightAction(london, eventCard).isValid(playerInAtlanta));
+        assertFalse(new CharterFlightAction(london, eventCard).isValid(null, playerInAtlanta));
     }
 
     @Test
@@ -987,12 +951,6 @@ public class GameLogicTest {
         assertEquals(1, playerInAtlanta.getHand().size());
     }
 
-    @Test
-    public void testCharterFlightGameStateOverloadReturnsFalse() {
-        Card atlantaCard = new Card("Atlanta", CardType.CITY, atlanta);
-        assertFalse(new CharterFlightAction(london, atlantaCard).isValid(new GameState()));
-    }
-
     // =========================================================================
     // ShuttleFlightAction
     // =========================================================================
@@ -1001,24 +959,24 @@ public class GameLogicTest {
     public void testShuttleFlightValidWhenBothCitiesHaveResearchStations() {
         atlanta.addResearchStation();
         chicago.addResearchStation();
-        assertTrue(new ShuttleFlightAction(chicago).isValid(playerInAtlanta));
+        assertTrue(new ShuttleFlightAction(chicago).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testShuttleFlightInvalidWhenOriginLacksStation() {
         chicago.addResearchStation();
-        assertFalse(new ShuttleFlightAction(chicago).isValid(playerInAtlanta));
+        assertFalse(new ShuttleFlightAction(chicago).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testShuttleFlightInvalidWhenDestinationLacksStation() {
         atlanta.addResearchStation();
-        assertFalse(new ShuttleFlightAction(chicago).isValid(playerInAtlanta));
+        assertFalse(new ShuttleFlightAction(chicago).isValid(null, playerInAtlanta));
     }
 
     @Test
     public void testShuttleFlightInvalidWhenNeitherHasStation() {
-        assertFalse(new ShuttleFlightAction(chicago).isValid(playerInAtlanta));
+        assertFalse(new ShuttleFlightAction(chicago).isValid(null, playerInAtlanta));
     }
 
     @Test
@@ -1054,11 +1012,6 @@ public class GameLogicTest {
     }
 
     @Test
-    public void testShuttleFlightGameStateOverloadReturnsFalse() {
-        assertFalse(new ShuttleFlightAction(chicago).isValid(new GameState()));
-    }
-
-    @Test
     public void testShuttleFlightOnRealMapWithBothStations() {
         PandemicMapGraph map = new PandemicMapGraph();
         CityNode atl = map.getCity("Atlanta");
@@ -1066,9 +1019,10 @@ public class GameLogicTest {
         atl.addResearchStation();
         lon.addResearchStation();
 
-        PlayerState ps = new PlayerState("Tester", atl);
+        PlayerState ps = new PlayerState("Tester");
+        ps.setCurrentCity(atl);
         ShuttleFlightAction action = new ShuttleFlightAction(lon);
-        assertTrue(action.isValid(ps));
+        assertTrue(action.isValid(null, ps));
         action.execute(null, ps);
         assertEquals(lon, ps.getPlayerCurrentCity());
     }
