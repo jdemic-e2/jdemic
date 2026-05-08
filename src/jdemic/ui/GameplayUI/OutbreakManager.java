@@ -50,7 +50,7 @@ public class OutbreakManager {
 
         for (int i = 0; i < nodes.length; i++) {
             StackPane containerIcon = new StackPane();
-            ImageView icon = new ImageView(new Image(getClass().getResource("/icons/outbreakIcon.png").toExternalForm()));
+            ImageView icon = new ImageView(new Image(getClass().getResource("/icons/outbreakicon.png").toExternalForm()));
 
             icon.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(28, root.getWidth() * 0.025),root.widthProperty()));
             icon.setPreserveRatio(true);

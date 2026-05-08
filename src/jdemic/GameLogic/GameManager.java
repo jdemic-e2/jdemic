@@ -175,6 +175,36 @@ public class GameManager {
         }
     }
 
+    public void removePlayer(PlayerState playerToRemove) {
+        List<PlayerState> players = state.getPlayers();
+        int removedIndex = players.indexOf(playerToRemove);
+
+        if (removedIndex == -1) return; // Player not found
+
+        players.remove(removedIndex);
+
+        if (players.isEmpty()) {
+            state.setCurrentPlayerIndex(0);
+            state.setGameOver(true);
+        } else {
+            if (removedIndex < state.getCurrentPlayerIndex()) {
+                state.setCurrentPlayerIndex(state.getCurrentPlayerIndex() - 1);
+            }
+
+            if (state.getCurrentPlayerIndex() >= players.size()) {
+                state.setCurrentPlayerIndex(0);
+            }
+        }
+
+        if (!state.isGameStarted()) {
+            state.setLobbyCountdownStartedAt(0);
+        }
+
+        if (state.isGameStarted()) {
+            checkLoseCondition();
+        }
+    }
+
     private void advanceToNextPlayer()
     {
         state.setCurrentPlayerIndex((state.getCurrentPlayerIndex() + 1) % state.getPlayers().size());
@@ -217,9 +247,15 @@ public class GameManager {
         state.setInfectionRate(state.getInfectionRate() + 1);
     }
 
-    public PlayerState getCurrentPlayer()
-    {
-        return state.getPlayers().get(state.getCurrentPlayerIndex());
+    public PlayerState getCurrentPlayer() {
+        List<PlayerState> players = state.getPlayers();
+        if (players.isEmpty()) return null;
+
+        if (state.getCurrentPlayerIndex() >= players.size()) {
+            state.setCurrentPlayerIndex(0);
+        }
+        
+        return players.get(state.getCurrentPlayerIndex());
     }
 
     public GameState getState(){
