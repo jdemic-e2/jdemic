@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.InetAddress;
-import java.util.concurrent.ThreadLocalRandom;
 
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;

@@ -4,7 +4,7 @@ import jdemic.GameLogic.GameManager;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.Player;
 import jdemic.GameLogic.Actions.GameAction;
-import jdemic.GameLogic.Actions.DriveFerryAction; // for example
+import jdemic.GameLogic.Actions.DriveFerryAction;
 import jdemic.GameLogic.Actions.CharterFlightAction;
 import jdemic.GameLogic.Actions.DirectFlightAction;
 import jdemic.GameLogic.Actions.ShuttleFlightAction;
@@ -17,15 +17,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-
-/**
- * PacketProcessor handles packets that have already passed validation and
- * converts them into the appropriate server-side actions. It checks the
- * packet type and routes each packet to the matching handler method, keeping
- * protocol logic separate from raw socket communication. This makes the
- * networking flow easier to maintain, extend, and integrate with other
- * modules such as session management, heartbeat handling, and game logic.
- */
 
 public class PacketProcessor {
 
@@ -79,10 +70,9 @@ public class PacketProcessor {
         System.out.println("[PacketProcessor] Received PONG packet: " + packet);
     }
 
-    // here we do our code
     private void handleGameData(Packet packet) {
         System.out.println("[PacketProcessor] Received GAME_DATA packet: ");
-        JsonNode payload = packet.getPayload();//local
+        JsonNode payload = packet.getPayload();
         String gameAction = payload.has("GameAction") ? payload.get("GameAction").asText() : "";
         if ("TEST_ACTION".equals(gameAction)) {
             String playerId = payload.has("PlayerID") ? payload.get("PlayerID").asText() : "UNKNOWN";
@@ -99,7 +89,6 @@ public class PacketProcessor {
             return;
         }
 
-        // Find PlayerState by playerId
         PlayerState playerState = null;
         for (PlayerState ps : gameManager.getState().getPlayers()) {
             if (ps.getPlayerName().equalsIgnoreCase(playerId)) {
@@ -118,16 +107,13 @@ public class PacketProcessor {
                 System.err.println("[PacketProcessor] Missing or invalid cardIndex for DISCARD_CARD");
                 return;
             }
-
             gameManager.discardCurrentPlayerCard(playerState, payload.get("cardIndex").asInt());
             broadcastGameState();
             return;
         }
 
-        // Create Player object (assuming Player has a constructor with PlayerState and GameClient, but GameClient is null for server)
-        Player player = new Player(playerState, null); // GameClient is null on server
+        Player player = new Player(playerState, null);
 
-        // Create action based on gameAction string
         GameAction action = null;
         switch (gameAction) {
             case "DRIVE_FERRY":
@@ -209,9 +195,7 @@ public class PacketProcessor {
                 return;
         }
 
-        // Perform action
         gameManager.performAction(player, action);
-
         System.out.println("[PacketProcessor] Action performed: " + gameAction + " for player " + playerId);
         broadcastGameState();
     }
@@ -235,26 +219,29 @@ public class PacketProcessor {
 
     private void handleConnect(Packet packet) {
         System.out.println("[PacketProcessor] Received CONNECT packet: " + packet);
-        
+
         try {
             JsonNode payload = packet.getPayload();
             String playerName = payload.has("playerName") ? payload.get("playerName").asText() : "PLAYER";
-            
-            // Register this player with the game manager
+
+            // Reject duplicate player names
+            if (findPlayerState(playerName) != null) {
+                System.err.println("[PacketProcessor] Duplicate player name rejected: " + playerName);
+                return;
+            }
+
             PlayerState newPlayer = new PlayerState(playerName);
             newPlayer.setReady(false);
             gameManager.getState().addPlayer(newPlayer);
             updateLobbyCountdown();
-            
-            // Store player name in client handler so we know who this is
+
             if (clientHandler != null) {
                 clientHandler.setConnectedPlayerName(playerName);
             }
-            
+
             System.out.println("[PacketProcessor] Player registered: " + playerName);
             System.out.println("[PacketProcessor] Total players: " + gameManager.getState().getPlayers().size());
-            
-            // Broadcast updated game state to ALL connected clients
+
             broadcastGameState();
         } catch (Exception e) {
             System.err.println("[PacketProcessor] Error handling CONNECT: " + e.getMessage());
@@ -349,15 +336,20 @@ public class PacketProcessor {
             return;
         }
 
-        boolean removed = gameManager.getState().getPlayers()
-                .removeIf(player -> playerName.equals(player.getPlayerName()));
-
-        if (removed) {
-            System.out.println("[PacketProcessor] Player disconnected: " + playerName);
-            updateLobbyCountdown();
-            clientHandler.clearConnectedPlayerName();
-            broadcastGameState();
+        PlayerState playerToRemove = findPlayerState(playerName);
+        if (playerToRemove == null) {
+            return;
         }
+
+        // Delegate to GameManager so currentPlayerIndex is always kept valid.
+        // The old code called getPlayers().removeIf(...) directly, bypassing the
+        // index-clamping logic inside GameManager.removePlayer().
+        gameManager.removePlayer(playerToRemove);
+
+        System.out.println("[PacketProcessor] Player disconnected: " + playerName);
+        updateLobbyCountdown();
+        clientHandler.clearConnectedPlayerName();
+        broadcastGameState();
     }
 
     private void broadcastGameState() {
@@ -395,7 +387,6 @@ public class PacketProcessor {
                         broadcastGameState();
                         return;
                     }
-
                     gameManager.startGame();
                     System.out.println("[PacketProcessor] Lobby countdown finished. Game started.");
                     broadcastGameState();
@@ -417,7 +408,6 @@ public class PacketProcessor {
         if (gameManager.getState().getPlayers().isEmpty()) {
             return false;
         }
-
         for (PlayerState player : gameManager.getState().getPlayers()) {
             if (!player.isReady()) {
                 return false;

@@ -21,8 +21,6 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
 
-import java.net.InetAddress;
-
 public class JoinCodeScene {
     private final StackPane root;
     private final Stage stage;
