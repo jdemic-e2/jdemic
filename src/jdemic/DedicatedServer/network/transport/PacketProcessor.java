@@ -74,6 +74,7 @@ public class PacketProcessor {
         System.out.println("[PacketProcessor] Received GAME_DATA packet: ");
         JsonNode payload = packet.getPayload();
         String gameAction = payload.has("GameAction") ? payload.get("GameAction").asText() : "";
+
         if ("TEST_ACTION".equals(gameAction)) {
             String playerId = payload.has("PlayerID") ? payload.get("PlayerID").asText() : "UNKNOWN";
             String message = payload.has("message") ? payload.get("message").asText() : "";
@@ -82,12 +83,22 @@ public class PacketProcessor {
             return;
         }
 
-        String playerId = payload.has("PlayerID") ? payload.get("PlayerID").asText()
-                : clientHandler != null ? clientHandler.getConnectedPlayerName() : "UNKNOWN";
-        if (playerId == null || playerId.isBlank()) {
-            System.err.println("[PacketProcessor] Missing PlayerID for GAME_DATA packet.");
+        // --- SECURIZAREA IDENTITĂȚII ---
+        String connectedName = clientHandler != null ? clientHandler.getConnectedPlayerName() : null;
+        if (connectedName == null || connectedName.isBlank()) {
+            System.err.println("[PacketProcessor] GAME_DATA ignored: unregistered client.");
             return;
         }
+
+        String requestedPlayerId = payload.has("PlayerID") ? payload.get("PlayerID").asText() : connectedName;
+        if (!connectedName.equalsIgnoreCase(requestedPlayerId)) {
+            System.err.println("[PacketProcessor] GAME_DATA rejected: PlayerID mismatch. connected="
+                    + connectedName + ", payload=" + requestedPlayerId);
+            return;
+        }
+
+        String playerId = connectedName;
+        // -------------------------------
 
         PlayerState playerState = null;
         for (PlayerState ps : gameManager.getState().getPlayers()) {
@@ -113,8 +124,8 @@ public class PacketProcessor {
         }
 
         Player player = new Player(playerState, null);
-
         GameAction action = null;
+
         switch (gameAction) {
             case "DRIVE_FERRY":
                 if (payload.has("destination") && payload.get("destination").isTextual()) {
@@ -133,7 +144,7 @@ public class PacketProcessor {
                 break;
             case "CHARTER_FLIGHT":
                 if (payload.has("destination") && payload.get("destination").isTextual() &&
-                    payload.has("cardIndex") && payload.get("cardIndex").isInt()) {
+                        payload.has("cardIndex") && payload.get("cardIndex").isInt()) {
                     String destCharter = payload.get("destination").asText();
                     CityNode cityCharter = gameManager.getState().getMap().getCity(destCharter);
                     int cardIndexCharter = payload.get("cardIndex").asInt();
@@ -151,7 +162,7 @@ public class PacketProcessor {
                 break;
             case "DIRECT_FLIGHT":
                 if (payload.has("destination") && payload.get("destination").isTextual() &&
-                    payload.has("cardIndex") && payload.get("cardIndex").isInt()) {
+                        payload.has("cardIndex") && payload.get("cardIndex").isInt()) {
                     String destDirect = payload.get("destination").asText();
                     CityNode cityDirect = gameManager.getState().getMap().getCity(destDirect);
                     int cardIndexDirect = payload.get("cardIndex").asInt();
@@ -224,7 +235,6 @@ public class PacketProcessor {
             JsonNode payload = packet.getPayload();
             String playerName = payload.has("playerName") ? payload.get("playerName").asText() : "PLAYER";
 
-            // Reject duplicate player names
             if (findPlayerState(playerName) != null) {
                 System.err.println("[PacketProcessor] Duplicate player name rejected: " + playerName);
                 return;
@@ -341,9 +351,6 @@ public class PacketProcessor {
             return;
         }
 
-        // Delegate to GameManager so currentPlayerIndex is always kept valid.
-        // The old code called getPlayers().removeIf(...) directly, bypassing the
-        // index-clamping logic inside GameManager.removePlayer().
         gameManager.removePlayer(playerToRemove);
 
         System.out.println("[PacketProcessor] Player disconnected: " + playerName);
