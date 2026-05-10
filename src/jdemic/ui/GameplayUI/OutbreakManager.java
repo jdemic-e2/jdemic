@@ -12,6 +12,7 @@ import javafx.scene.paint.Color;
 import jdemic.GameLogic.GameManager;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
+import java.net.URL;
 
 public class OutbreakManager {
 
@@ -48,9 +49,15 @@ public class OutbreakManager {
         nodes = new StackPane[MAX_OUTBREAKS + 1];
         icons = new ImageView[MAX_OUTBREAKS + 1];
 
+        URL iconUrl = getClass().getResource("/icons/outbreakicon.png");
+        if (iconUrl == null) {
+            System.err.println("[OutbreakManager] Missing outbreak icon resource.");
+            return;
+        }
+
         for (int i = 0; i < nodes.length; i++) {
             StackPane containerIcon = new StackPane();
-            ImageView icon = new ImageView(new Image(getClass().getResource("/icons/outbreakicon.png").toExternalForm()));
+            ImageView icon = new ImageView(new Image(iconUrl.toExternalForm()));
 
             icon.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(28, root.getWidth() * 0.025),root.widthProperty()));
             icon.setPreserveRatio(true);

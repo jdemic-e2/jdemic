@@ -274,7 +274,8 @@ public class PacketProcessor {
 
             String playerName = clientHandler != null ? clientHandler.getConnectedPlayerName() : null;
             if (playerName == null || playerName.isBlank()) {
-                playerName = payload.has("playerName") ? payload.get("playerName").asText() : "PLAYER";
+                System.err.println("[PacketProcessor] Lobby chat rejected because client is not registered.");
+                return;
             }
 
             gameManager.getState().addLobbyChatMessage(
