@@ -28,12 +28,44 @@ jobs:
       - name: Build and Test with Maven
         run: mvn -B clean verify
 
+      - name: Print JaCoCo coverage summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ ! -f target/site/jacoco/jacoco.csv ]]; then
+            echo "JaCoCo CSV report was not generated."
+            exit 0
+          fi
+
+          awk -F, '
+            NR > 1 {
+              missed += $4
+              covered += $5
+            }
+            END {
+              total = missed + covered
+              if (total == 0) {
+                print "Instruction coverage: no instructions found"
+              } else {
+                printf "Instruction coverage: %.2f%% (%d/%d instructions covered)\n", covered * 100 / total, covered, total
+              }
+            }
+          ' target/site/jacoco/jacoco.csv
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: maven-test-reports
           path: target/surefire-reports/
+          if-no-files-found: warn
+
+      - name: Upload JaCoCo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports
+          path: target/site/jacoco/
           if-no-files-found: warn
 
       - name: Upload JAR artifact
@@ -146,6 +178,13 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Download JaCoCo report
+        if: steps.sonar-config.outputs.enabled == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: jacoco-reports
+          path: target/site/jacoco
+
       - name: Run Sonar analysis
         if: steps.sonar-config.outputs.enabled == 'true'
         shell: bash
@@ -155,6 +194,7 @@ jobs:
             "org.sonarsource.scanner.maven:sonar-maven-plugin:5.0.0.4389:sonar"
             "-Dsonar.projectKey=${SONAR_PROJECT_KEY}"
             "-Dsonar.host.url=${sonar_host}"
+            "-Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml"
           )
           if [[ -n "${SONAR_ORGANIZATION}" ]]; then
             args+=("-Dsonar.organization=${SONAR_ORGANIZATION}")
