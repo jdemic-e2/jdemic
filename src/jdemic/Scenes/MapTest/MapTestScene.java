@@ -727,7 +727,12 @@ public class MapTestScene {
         mapPane.prefHeightProperty().bind(mapPane.prefWidthProperty().multiply(0.5));
         mapPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        ImageView mapBg = new ImageView( new Image(getClass().getResource("/backgroundMap.png").toExternalForm()));
+        java.net.URL mapBgUrl = getClass().getResource("/backgroundMap.png");
+        if (mapBgUrl == null) {
+            System.err.println("[MapTestScene] Missing resource: /backgroundMap.png");
+            return;
+        }
+        ImageView mapBg = new ImageView(new Image(mapBgUrl.toExternalForm()));
         mapBg.fitWidthProperty().bind(mapPane.widthProperty());
         mapBg.fitHeightProperty().bind(mapPane.heightProperty());
         mapBg.setPreserveRatio(false);
@@ -866,7 +871,12 @@ public class MapTestScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/bgGame.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/bgGame.png");
+        if (bgUrl == null) {
+            System.err.println("[MapTestScene] Missing resource: /bgGame.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);

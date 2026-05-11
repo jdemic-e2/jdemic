@@ -33,7 +33,12 @@ public class TutorialEpidemicScene {
         StackPane overlay = new StackPane();
         overlay.setStyle("-fx-background-color: rgba(0,0,0,0.7);");
 
-        ImageView card = new ImageView(new Image(getClass().getResource("/epidemicCard/SystemBreach.png").toExternalForm()));
+        java.net.URL cardUrl = getClass().getResource("/epidemicCard/SystemBreach.png");
+        if (cardUrl == null) {
+            System.err.println("[TutorialEpidemicScene] Missing resource: /epidemicCard/SystemBreach.png");
+            return;
+        }
+        ImageView card = new ImageView(new Image(cardUrl.toExternalForm()));
 
         card.setPreserveRatio(true);
         card.fitWidthProperty().bind(root.widthProperty().multiply(0.3));
@@ -115,7 +120,12 @@ public class TutorialEpidemicScene {
         mainLayout.setAlignment(Pos.CENTER);
         mainLayout.spacingProperty().bind(root.widthProperty().multiply(0.03));
 
-        ImageView card = new ImageView(new Image(getClass().getResource("/epidemicCard/SystemBreach.png").toExternalForm()));
+        java.net.URL cardUrl2 = getClass().getResource("/epidemicCard/SystemBreach.png");
+        if (cardUrl2 == null) {
+            System.err.println("[TutorialEpidemicScene] Missing resource: /epidemicCard/SystemBreach.png");
+            return;
+        }
+        ImageView card = new ImageView(new Image(cardUrl2.toExternalForm()));
         card.setPreserveRatio(true);
         card.fitWidthProperty().bind(root.widthProperty().multiply(0.18));
         GlowUtil.applyGlow(card, "#00b5d4", 20);

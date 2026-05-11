@@ -50,7 +50,12 @@ public class DeckManager {
     }
 
     public HBox createCityDeck() {
-        Image verso = new Image(getClass().getResource("/cityCards/cityCardsVerso.png").toExternalForm());
+        java.net.URL cityVersoUrl = getClass().getResource("/cityCards/cityCardsVerso.png");
+        if (cityVersoUrl == null) {
+            System.err.println("[DeckManager] Missing resource: /cityCards/cityCardsVerso.png");
+            return new HBox();
+        }
+        Image verso = new Image(cityVersoUrl.toExternalForm());
         StackPane drawPile = createCardStack(verso, 6);
         Image topCard;
         try {
@@ -115,7 +120,12 @@ public class DeckManager {
     }
 
     public HBox createEpidemicDeck() {
-        Image verso = new Image(getClass().getResource("/epidemicCards/epidemicCardsVerso.png").toExternalForm());
+        java.net.URL epidemicVersoUrl = getClass().getResource("/epidemicCards/epidemicCardsVerso.png");
+        if (epidemicVersoUrl == null) {
+            System.err.println("[DeckManager] Missing resource: /epidemicCards/epidemicCardsVerso.png");
+            return new HBox();
+        }
+        Image verso = new Image(epidemicVersoUrl.toExternalForm());
         StackPane drawPile = createCardStack(verso, 5);
         Image topCard;
         try {

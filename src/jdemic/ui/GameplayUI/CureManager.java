@@ -70,7 +70,14 @@ public class CureManager {
                 icon.setImage(new Image(resource.toExternalForm()));
             }
 
-            ImageView curedIcon = new ImageView(new Image(getClass().getResource("/icons/curedIcon.png").toExternalForm()));
+            java.net.URL curedUrl = getClass().getResource("/icons/curedIcon.png");
+            ImageView curedIcon;
+            if (curedUrl != null) {
+                curedIcon = new ImageView(new Image(curedUrl.toExternalForm()));
+            } else {
+                System.err.println("[CureManager] Missing resource: /icons/curedIcon.png");
+                curedIcon = new ImageView();
+            }
 
             curedIcon.fitWidthProperty().bind(icon.fitWidthProperty());
             curedIcon.setPreserveRatio(true);
