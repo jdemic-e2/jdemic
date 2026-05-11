@@ -54,44 +54,36 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    @Override
+   @Override
     public void run() {
         if (in == null || out == null) {
-            System.err.println("[ClientHandler] Fluxurile I/O sunt nule. Opresc procesarea.");
+            System.err.println("[ClientHandler] I/O streams are null. Stopping execution.");
             inchideConexiunea();
             return;
         }
 
         try {
             String encryptedMessage;
-            System.out.println("[ClientHandler] Astept mesaje criptate de la client...");
+            System.out.println("[ClientHandler] Waiting for encrypted messages from client...");
 
+            // Read incoming messages from the client continuously
             while ((encryptedMessage = in.readLine()) != null) {
+                
+                // Decrypt and parse the incoming message
                 String decryptedMessage = secureSocket.decrypt(encryptedMessage);
-                System.out.println("[ClientHandler] Am primit (decriptat): " + decryptedMessage);
+                System.out.println("[ClientHandler] Received (decrypted): " + decryptedMessage);
+                
                 Packet packetMessage = Packet.fromJson(decryptedMessage);
                 packetReceivedListener.accept(packetMessage);
+                
+                // process packet (PacketProcessor already handles the state broadcast to all clients)
                 packetProcessor.process(packetMessage);
-
-                // Send updated GameState as JSON
-                String gameStateJson;
-                try {
-                    gameStateJson = objectMapper.writeValueAsString(gameManager.getState());
-                } catch (JsonProcessingException e) {
-                    System.err.println("[ClientHandler] Error serializing GameState: " + e.getMessage());
-                    gameStateJson = "{}"; // Fallback
-                }
-
-                // Apply masking and send to this client
-                String targetPlayerId = connectedPlayerName != null ? connectedPlayerName : "UNKNOWN";
-                String maskedResponse = StateMasker.maskStateForPlayer(gameStateJson, targetPlayerId);
-                String encryptedResponse = secureSocket.encrypt(maskedResponse);
-                out.println(encryptedResponse);
             }
 
         } catch (Exception e) {
-            System.out.println("[ClientHandler] Conexiune întrerupta cu clientul sau eroare de decriptare.");
+            System.out.println("[ClientHandler] Connection with client interrupted or decryption failed.");
         } finally {
+            // Ensure resources are freed when the loop ends or an error occurs
             inchideConexiunea();
         }
     }
