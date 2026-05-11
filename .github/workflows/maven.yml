@@ -11,7 +11,8 @@ permissions:
   pull-requests: read
 
 jobs:
-  build:
+  unit-tests:
+    name: Unit tests
     runs-on: ubuntu-latest
 
     steps:
@@ -25,8 +26,94 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and Test with Maven
+      - name: Run unit tests
+        id: unit-tests
+        continue-on-error: true
+        run: mvn -B clean test
+
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: target/surefire-reports/
+          if-no-files-found: warn
+
+      - name: Fail when unit tests fail
+        if: steps.unit-tests.outcome == 'failure'
+        run: exit 1
+
+  integration-tests:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run integration tests
+        id: integration-tests
+        shell: bash
+        continue-on-error: true
+        run: |
+          if ! find test -type f \( -name '*IT.java' -o -name '*ITCase.java' \) | grep -q .; then
+            echo "No integration tests matching *IT.java or *ITCase.java were found."
+            exit 0
+          fi
+
+          mvn -B -Dtest='*IT,*ITCase' test
+
+      - name: Upload integration test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-reports
+          path: target/surefire-reports/
+          if-no-files-found: warn
+
+      - name: Fail when integration tests fail
+        if: steps.integration-tests.outcome == 'failure'
+        run: exit 1
+
+  build-coverage:
+    name: Build and coverage
+    runs-on: ubuntu-latest
+    needs:
+      - unit-tests
+      - integration-tests
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build, test, and check coverage
+        id: build-coverage
+        continue-on-error: true
         run: mvn -B clean verify
+
+      - name: Generate JaCoCo report after failed verify
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f target/jacoco.exec && ! -f target/site/jacoco/jacoco.xml ]]; then
+            mvn -B -DskipTests jacoco:report || true
+          fi
 
       - name: Print JaCoCo coverage summary
         if: always()
@@ -52,11 +139,11 @@ jobs:
             }
           ' target/site/jacoco/jacoco.csv
 
-      - name: Upload test reports
+      - name: Upload build test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maven-test-reports
+          name: build-test-reports
           path: target/surefire-reports/
           if-no-files-found: warn
 
@@ -69,11 +156,16 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload JAR artifact
+        if: steps.build-coverage.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: pandemic-game-artifact
           path: target/*.jar
           if-no-files-found: error
+
+      - name: Fail when upstream QA, build, or coverage fails
+        if: steps.build-coverage.outcome == 'failure' || needs.unit-tests.result != 'success' || needs.integration-tests.result != 'success'
+        run: exit 1
 
   dependency-review:
     name: Dependency review
@@ -90,9 +182,10 @@ jobs:
           fail-on-severity: high
           comment-summary-in-pr: never
 
-  docker-build:
-    name: Docker build and smoke test
+  docker:
+    name: Docker image and smoke test
     runs-on: ubuntu-latest
+    needs: build-coverage
     if: github.event_name == 'pull_request'
 
     steps:
@@ -143,7 +236,7 @@ jobs:
   sonar:
     name: Sonar static analysis
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-coverage
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
