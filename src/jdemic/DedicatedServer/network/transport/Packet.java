@@ -135,3 +135,4 @@ public class Packet {
             throw new RuntimeException("[packet] Error parsing JSON to Packet: " + e.getMessage(), e);
         }
     }
+}
