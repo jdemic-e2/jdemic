@@ -33,7 +33,12 @@ public class MainMenuScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[MainMenuScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -50,7 +55,12 @@ public class MainMenuScene {
         Animations.createPulseAnimation(title, 1.05, 2);
 
 
-        ImageView titleBox = new ImageView(new Image(getClass().getResource("/elements/glowTitleFrame.png").toExternalForm()));
+        java.net.URL titleUrl = getClass().getResource("/elements/glowTitleFrame.png");
+        if (titleUrl == null) {
+            System.err.println("[MainMenuScene] Missing resource: /elements/glowTitleFrame.png");
+            return;
+        }
+        ImageView titleBox = new ImageView(new Image(titleUrl.toExternalForm()));
         titleBox.setPreserveRatio(true);
         titleBox.fitWidthProperty().bind(root.widthProperty().multiply(0.45));
         titleBox.translateYProperty().bind(root.heightProperty().multiply(0.06));
@@ -65,7 +75,12 @@ public class MainMenuScene {
 
         root.getChildren().add(scrollingText);
 
-        Image mapImg = new Image(getClass().getResource("/backgroundMap.png").toExternalForm());
+        java.net.URL mapUrl = getClass().getResource("/backgroundMap.png");
+        if (mapUrl == null) {
+            System.err.println("[MainMenuScene] Missing resource: /backgroundMap.png");
+            return;
+        }
+        Image mapImg = new Image(mapUrl.toExternalForm());
         ImageView map = new ImageView(mapImg);
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.8));

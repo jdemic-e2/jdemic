@@ -29,7 +29,12 @@ public class TutorialVirusCardsScene {
         setupUI();
     }
     private ImageView createCard(String eventCard) {
-        ImageView card = new ImageView(new Image(getClass().getResource("/virusCards/VirusCard" + eventCard + ".png").toExternalForm()));
+        java.net.URL cardUrl = getClass().getResource("/virusCards/VirusCard" + eventCard + ".png");
+        if (cardUrl == null) {
+            System.err.println("[TutorialVirusCardsScene] Missing resource: /virusCards/VirusCard" + eventCard + ".png");
+            return new ImageView();
+        }
+        ImageView card = new ImageView(new Image(cardUrl.toExternalForm()));
         card.setPreserveRatio(true);
         card.fitWidthProperty().bind(root.widthProperty().multiply(0.12));
         GlowUtil.applyGlow(card, "#00b5d4", 10);

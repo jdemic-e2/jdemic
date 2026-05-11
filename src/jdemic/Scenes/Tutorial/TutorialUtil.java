@@ -15,7 +15,12 @@ import jdemic.ui.*;
 public class TutorialUtil {
 
     public static void setBackground(StackPane root) {
-        ImageView background = new ImageView(new Image(TutorialUtil.class.getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = TutorialUtil.class.getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[TutorialUtil] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
