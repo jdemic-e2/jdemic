@@ -47,6 +47,9 @@ public class GameClient {
         listeners.remove(listener);
     }
 
+    public void clearPlayerUpdateListeners() {
+        listeners.clear();
+    }
     private void notifyPlayersUpdated(JsonNode gameState) {
         for (PlayerUpdateListener listener : listeners) {
             listener.onPlayersUpdated(gameState);
@@ -191,6 +194,8 @@ public class GameClient {
 
     public void disconnect() {
         isConnected = false;
+        listeners.clear();
+        latestGameState = null;
         try {
             if (in != null) in.close();
             if (out != null) out.close();

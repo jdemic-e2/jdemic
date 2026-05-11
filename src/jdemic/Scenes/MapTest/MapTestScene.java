@@ -85,6 +85,8 @@ public class MapTestScene {
     private Map<String, PawnUI> playerPawns = new HashMap<>();
     private Map<CityNode, List<String>> cityOccupants = new HashMap<>();
 
+    private GameClient.PlayerUpdateListener playerUpdateListener;
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
@@ -107,9 +109,9 @@ public class MapTestScene {
         initializeScene();
 
         if (this.gameClient != null) {
-            this.gameClient.addPlayerUpdateListener(updatedGameState ->
-                    Platform.runLater(() -> applyGameStateSnapshot(updatedGameState))
-            );
+            playerUpdateListener = updatedGameState ->
+                    Platform.runLater(() -> applyGameStateSnapshot(updatedGameState));
+            this.gameClient.addPlayerUpdateListener(playerUpdateListener);
         }
     }
 
@@ -867,6 +869,7 @@ public class MapTestScene {
     }
 
     private void returnToMainMenu() {
+        cleanupScene();
         SceneManager.switchScene("MAIN_MENU");
     }
 
@@ -881,5 +884,12 @@ public class MapTestScene {
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
         root.getChildren().add(background);
+    }
+
+    private void cleanupScene() {
+        if (gameClient != null && playerUpdateListener != null) {
+            gameClient.removePlayerUpdateListener(playerUpdateListener);
+            playerUpdateListener = null;
+        }
     }
 }
