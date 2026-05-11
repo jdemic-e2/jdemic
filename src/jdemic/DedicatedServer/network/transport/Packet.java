@@ -104,14 +104,42 @@ public class Packet {
 
     public static Packet fromJson(String jsonString)
     {
-        try {
+        try{
+            if(jsonString == null || jsonString.isBlank())
+                return null;
             JsonNode rootNode = objectMapper.readTree(jsonString);
-            PacketType type = PacketType.valueOf(rootNode.get("type").asText());
+
+            if(rootNode == null || !rootNode.has("timestamp") || !rootNode.has("type"))
+            {
+                System.err.println("[packet] Invalid message: required fields missing");
+                return null;
+            }
+
+            String typeStr = rootNode.get("type").asText();
+            PacketType type;
+            try{
+                type = PacketType.valueOf(typeStr);
+            }
+            catch (Exception e)
+            {
+                System.err.println("[packet] Packet type unknown: " + typeStr);
+                return null;
+            }
+
+            if(!rootNode.get("timestamp").isNumber())
+                return null;
             long timestamp = rootNode.get("timestamp").asLong();
+
             JsonNode payload = rootNode.get("payload");
+            if(payload == null || !payload.isObject())
+                payload = objectMapper.createObjectNode();
+
             return new Packet(type, timestamp, payload);
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             throw new RuntimeException("[packet] Error parsing JSON to Packet: " + e.getMessage(), e);
         }
+        
     }
 }

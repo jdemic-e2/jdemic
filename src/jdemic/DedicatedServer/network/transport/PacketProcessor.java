@@ -41,6 +41,12 @@ public class PacketProcessor {
             return;
         }
 
+        if(!packet.isValid())
+        {
+            System.err.println("[PacketProcessor] Packet has valid format but data is invalid.");
+            return;
+        }
+
         if (packet.getType() == PacketType.PING) {
             handlePing(packet);
         } else if (packet.getType() == PacketType.PONG) {
