@@ -109,36 +109,42 @@ public class Packet {
                 return null;
             JsonNode rootNode = objectMapper.readTree(jsonString);
 
-            if(rootNode == null || !rootNode.has("timestamp") || !rootNode.has("type"))
+            if(rootNode == null || !rootNode.isObject())
             {
-                System.err.println("[packet] Invalid message: required fields missing");
+                System.err.println("[packet] Invalid message: root is not an object.");
                 return null;
             }
 
-            String typeStr = rootNode.get("type").asText();
+            JsonNode typeNode = rootNode.get("type");
+            if (typeNode == null || typeNode.isNull()) {
+                System.err.println("[packet] Invalid message: missing 'type'");
+                return null;
+            }
+            
             PacketType type;
             try{
-                type = PacketType.valueOf(typeStr);
+                type = PacketType.valueOf(typeNode.asText());
             }
             catch (Exception e)
             {
-                System.err.println("[packet] Packet type unknown: " + typeStr);
+                System.err.println("[packet] Packet type unknown: " + typeNode.asText());
                 return null;
             }
 
-            if(!rootNode.get("timestamp").isNumber())
-                return null;
-            long timestamp = rootNode.get("timestamp").asLong();
+            JsonNode timestampNode = rootNode.get("timestamp");
+            long timestamp = (timestampNode != null && timestampNode.isNumber()) ? timestampNode.asLong() : System.currentTimeMillis();
 
             JsonNode payload = rootNode.get("payload");
             if(payload == null || !payload.isObject())
                 payload = objectMapper.createObjectNode();
 
             return new Packet(type, timestamp, payload);
+            
         }
         catch (Exception e)
         {
-            throw new RuntimeException("[packet] Error parsing JSON to Packet: " + e.getMessage(), e);
+            System.err.println("[packet] Error parsing JSON to Packet: " + e.getMessage());
+            return null;
         }
         
     }
