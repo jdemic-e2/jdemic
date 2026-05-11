@@ -31,3 +31,31 @@ jobs:
       with:
         name: pandemic-game-artifact
         path: target/*.jar
+        
+# TAREA DE DevOps: Subir el contenedor a GitHub Container Registry (GHCR)
+  deploy-docker-image:
+    runs-on: ubuntu-latest
+    needs: build # Se asegura de que el código base funciona antes de empaquetar
+    permissions:
+      contents: read
+      packages: write # Permiso clave para subir a la pestaña "Packages" de GitHub
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Dedicated Server Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          # Aquí le indicamos el archivo exacto que ha creado tu compañero
+          file: Dockerfile.dedicated-server 
+          push: true
+          tags: ghcr.io/${{ github.repository }}-dedicated-server:latest
