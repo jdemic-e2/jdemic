@@ -102,15 +102,36 @@ public class Packet {
         }
     }
 
-    public static Packet fromJson(String jsonString)
+   public static Packet fromJson(String jsonString)
     {
         try {
             JsonNode rootNode = objectMapper.readTree(jsonString);
-            PacketType type = PacketType.valueOf(rootNode.get("type").asText());
-            long timestamp = rootNode.get("timestamp").asLong();
+            
+            //Null-check the root node
+            if (rootNode == null || !rootNode.isObject()) {
+                throw new IllegalArgumentException("Invalid or empty JSON packet");
+            }
+
+            //Safely extract 'type' to prevent NullPointerException
+            JsonNode typeNode = rootNode.get("type");
+            if (typeNode == null || typeNode.isNull()) {
+                throw new IllegalArgumentException("Packet is missing mandatory 'type' field");
+            }
+            PacketType type = PacketType.valueOf(typeNode.asText());
+
+            // Safely extract 'timestamp', fallback to current time if missing
+            JsonNode timestampNode = rootNode.get("timestamp");
+            long timestamp = (timestampNode != null && !timestampNode.isNull()) 
+                                ? timestampNode.asLong() 
+                                : System.currentTimeMillis();
+
+            // Payload can be empty, but we extract it safely
             JsonNode payload = rootNode.get("payload");
+            
             return new Packet(type, timestamp, payload);
+            
         } catch (Exception e) {
+            // By throwing this cleanly, the catch block in ClientHandler will just drop the bad packet
             throw new RuntimeException("[packet] Error parsing JSON to Packet: " + e.getMessage(), e);
         }
     }
