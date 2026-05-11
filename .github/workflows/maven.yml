@@ -58,6 +58,56 @@ jobs:
           fail-on-severity: high
           comment-summary-in-pr: never
 
+  docker-build:
+    name: Docker build and smoke test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build dedicated server image
+        run: docker build -f Dockerfile.dedicated-server -t jdemic-dedicated-server:ci .
+
+      - name: Start dedicated server container
+        run: |
+          docker run -d \
+            --name jdemic-dedicated-server-ci \
+            -p 19000:9000 \
+            -p 18080:8080 \
+            -e JDEMIC_SERVER_PORT=9000 \
+            -e JDEMIC_STATUS_ENABLED=true \
+            -e JDEMIC_STATUS_HOST=0.0.0.0 \
+            -e JDEMIC_STATUS_PORT=8080 \
+            -e JDEMIC_OPEN_BROWSER=false \
+            jdemic-dedicated-server:ci
+
+      - name: Wait for health endpoint
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if curl -fsS http://localhost:18080/health | grep -q '"status":"ok"'; then
+              exit 0
+            fi
+            docker logs jdemic-dedicated-server-ci || true
+            sleep 2
+          done
+          echo "Dedicated server health endpoint did not become ready."
+          docker logs jdemic-dedicated-server-ci || true
+          exit 1
+
+      - name: Verify game server TCP port
+        shell: bash
+        run: |
+          timeout 5 bash -c '</dev/tcp/127.0.0.1/19000'
+
+      - name: Stop dedicated server container
+        if: always()
+        run: |
+          docker stop --time 10 jdemic-dedicated-server-ci || true
+          docker rm jdemic-dedicated-server-ci || true
+
   sonar:
     name: Sonar static analysis
     runs-on: ubuntu-latest
