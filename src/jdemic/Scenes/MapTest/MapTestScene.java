@@ -84,7 +84,7 @@ public class MapTestScene {
 
     private Map<String, PawnUI> playerPawns = new HashMap<>();
     private Map<CityNode, List<String>> cityOccupants = new HashMap<>();
-
+    private Pane mapPane;
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
@@ -174,11 +174,20 @@ public class MapTestScene {
 
     // Inside setupContent() or initializeScene()
     private void setupPawns(Pane mapPane) {
-        Color[] colors = {Color.CYAN, Color.MAGENTA, Color.LIME, Color.ORANGE};
+        this.mapPane = mapPane;
+        String[] pawnImages = {
+            "/playerPins/PinRoleArtificialIntelligenceAnalyst.png",
+            "/playerPins/PinRoleEncryptionSpecialist.png",
+            "/playerPins/PinRoleFirewallSpecialist.png",
+            "/playerPins/PinRoleIncidentResponder.png",
+            "/playerPins/PinRoleNetworkController.png",
+            "/playerPins/PinRoleSystemEngineer.png",
+            "/playerPins/PinRoleThreatStrategist.png"
+        };
         int i = 0;
 
         for (PlayerState player : gameManager.getState().getPlayers()) {
-            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), colors[i % colors.length]);
+            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), pawnImages[i % pawnImages.length]);
             playerPawns.put(player.getPlayerName(), pawn);
             mapPane.getChildren().add(pawn.getNode());
             i++;
@@ -219,9 +228,10 @@ public class MapTestScene {
                     pawnUI.bindToCenter(cityVisual.centerXProperty(), cityVisual.centerYProperty());
                 } else {
                     // Radial offset to prevent overlapping
+                    double pawnSize = mapPane.getHeight() * 0.08;
+                    double baseOffset = pawnSize * 0.9; 
                     double angle = 2 * Math.PI * i / count;
-                    double offset = 14.0;
-                    pawnUI.bindWithOffset(cityVisual.centerXProperty(), cityVisual.centerYProperty(), angle, offset);
+                    pawnUI.bindWithOffset(cityVisual.centerXProperty(), cityVisual.centerYProperty(), angle, baseOffset);
                 }
             }
         }
