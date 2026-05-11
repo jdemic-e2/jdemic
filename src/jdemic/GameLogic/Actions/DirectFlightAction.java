@@ -17,10 +17,12 @@ public class DirectFlightAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
-    public boolean isValid(GameState state, PlayerState playerState) 
+    public boolean isValid(GameState state, PlayerState playerState)
     {
-        // check if the player has the respective city card.
-        return playerState.getHand().stream().anyMatch(c -> c.getType() == CardType.CITY && c.getTargetCity() == destination);
+        return cardToDiscard != null
+                && playerState.getHand().contains(cardToDiscard)
+                && cardToDiscard.getType() == CardType.CITY
+                && cardToDiscard.getTargetCity() == destination;
     }
 
     @Override public void execute(GameState state, PlayerState playerState) 

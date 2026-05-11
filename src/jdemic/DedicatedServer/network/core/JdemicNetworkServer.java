@@ -67,10 +67,11 @@ public class JdemicNetworkServer {
                                 connectedClients,
                                 latestPacket::set
                         );
+                        connectedClients.add(clientHandler);
                         Thread clientThread = new Thread(clientHandler);
                         clientThread.start();
-                        connectedClients.add(clientHandler);
                         cancelEmptyServerShutdown();
+
                     } else {
                         System.err.println("[SERVER] Handshake esuat! Respingem clientul.");
                         rawSocket.close();
