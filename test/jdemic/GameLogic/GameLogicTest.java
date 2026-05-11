@@ -5,16 +5,37 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
+import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
 import jdemic.GameLogic.Actions.CharterFlightAction;
 import jdemic.GameLogic.Actions.DirectFlightAction;
 import jdemic.GameLogic.Actions.DriveFerryAction;
 import jdemic.GameLogic.Actions.ShuttleFlightAction;
 import jdemic.GameLogic.Card.EventType;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
+import jdemic.GameLogic.ServerRelatedClasses.LobbyChatMessage;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 public class GameLogicTest {
@@ -61,6 +82,46 @@ public class GameLogicTest {
         List<PlayerState> players = new ArrayList<>();
         players.add(ps);
         return new GameManager(players);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void replacePlayerDeck(Deck deck, List<Card> cards) throws Exception {
+        Field playerCardsField = Deck.class.getDeclaredField("playerCards");
+        playerCardsField.setAccessible(true);
+        List<Card> playerCards = (List<Card>) playerCardsField.get(deck);
+        playerCards.clear();
+        playerCards.addAll(cards);
+    }
+
+    private void replaceGameStatePlayers(GameState state, List<PlayerState> players) throws Exception {
+        Field playersField = GameState.class.getDeclaredField("playerArray");
+        playersField.setAccessible(true);
+        playersField.set(state, players);
+    }
+
+    private void setField(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    private SecureSocket newSecureSocket() throws Exception {
+        KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+        keyGenerator.init(128);
+        SecretKey key = keyGenerator.generateKey();
+        return new SecureSocket(null, key);
+    }
+
+    private void invokeHandleIncomingData(GameClient client, String data) throws Exception {
+        Method method = GameClient.class.getDeclaredMethod("handleIncomingData", String.class);
+        method.setAccessible(true);
+        method.invoke(client, data);
+    }
+
+    private void invokeHandleIncomingPacket(GameClient client, Packet packet) throws Exception {
+        Method method = GameClient.class.getDeclaredMethod("handleIncomingPacket", Packet.class);
+        method.setAccessible(true);
+        method.invoke(client, packet);
     }
 
     // =========================================================================
@@ -183,6 +244,38 @@ public class GameLogicTest {
     @Test
     public void testConnectedCitiesInitiallyEmpty() {
         assertTrue(london.getConnectedCities().isEmpty());
+    }
+
+    @Test
+    public void testClickEventPrintsConnectedCities() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        System.setOut(new PrintStream(out));
+
+        try {
+            atlanta.clickEvent();
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        String output = out.toString();
+        assertTrue(output.contains("--- Atlanta ---"));
+        assertTrue(output.contains("Chicago"));
+    }
+
+    @Test
+    public void testClickEventPrintsNoNeighboursForIsolatedCity() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        System.setOut(new PrintStream(out));
+
+        try {
+            london.clickEvent();
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertTrue(out.toString().contains("London has no neighbours."));
     }
 
     @Test
@@ -396,6 +489,23 @@ public class GameLogicTest {
     }
 
     @Test
+    public void testDiseaseManagerDiscoverCureSetsEveryColor() {
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+
+        dm.discoverCure(DiseaseColor.BLUE);
+        dm.discoverCure(DiseaseColor.YELLOW);
+        dm.discoverCure(DiseaseColor.BLACK);
+        dm.discoverCure(DiseaseColor.RED);
+
+        assertTrue(dm.isCured(DiseaseColor.BLUE));
+        assertTrue(dm.isCured(DiseaseColor.YELLOW));
+        assertTrue(dm.isCured(DiseaseColor.BLACK));
+        assertTrue(dm.isCured(DiseaseColor.RED));
+        assertTrue(dm.areAllCured());
+    }
+
+    @Test
     public void testDiseaseManagerAddRemoveCubesNoException() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         DiseaseManager dm = gm.getState().getDiseaseManager();
@@ -408,6 +518,41 @@ public class GameLogicTest {
     public void testDiseaseManagerIncreaseOutbreakScoreNoException() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         gm.getState().getDiseaseManager().increaseOutbreakScore();
+    }
+
+    @Test
+    public void testDiseaseManagerOutbreakIncreasesWhenCityOverflows() {
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+        CityNode city = gm.getState().getMap().getCity("Atlanta");
+
+        dm.addInfectionCubes(city, 3);
+        dm.addInfectionCubes(city, 1);
+
+        assertEquals(1, dm.getOutbreakScore());
+        assertEquals(3, city.getCubeCount(DiseaseColor.BLUE));
+    }
+
+    @Test
+    public void testDiseaseManagerCubesFloorAtZeroAndTriggerLoseCheck() {
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+        CityNode city = gm.getState().getMap().getCity("Atlanta");
+
+        dm.addInfectionCubes(city, 200);
+
+        assertEquals(0, dm.getInfectionCubesLeft());
+    }
+
+    @Test
+    public void testDiseaseManagerRemoveCubesCapsSupplyAtNinetySix() {
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+        CityNode city = gm.getState().getMap().getCity("Atlanta");
+
+        dm.removeInfectionCubes(city, 5);
+
+        assertEquals(96, dm.getInfectionCubesLeft());
     }
 
     // =========================================================================
@@ -451,6 +596,17 @@ public class GameLogicTest {
     @Test
     public void testPlayerStateRoleNullByDefault() {
         assertNull(playerInAtlanta.getPlayerRole());
+    }
+
+    @Test
+    public void testPlayerStateReadyAndPlayerReference() {
+        Player player = new Player(playerInAtlanta, null);
+
+        playerInAtlanta.setReady(true);
+        playerInAtlanta.setPlayer(player);
+
+        assertTrue(playerInAtlanta.isReady());
+        assertEquals(player, playerInAtlanta.getPlayer());
     }
 
     @Test
@@ -587,6 +743,76 @@ public class GameLogicTest {
     }
 
     @Test
+    public void testGameStateLobbyChatAndCountdown() {
+        GameState state = new GameState();
+        LobbyChatMessage message = new LobbyChatMessage("Alice", "Ready", 99L);
+
+        state.addLobbyChatMessage(message);
+        state.setLobbyCountdownStartedAt(1234L);
+
+        assertEquals(1, state.getLobbyChatMessages().size());
+        assertEquals(message, state.getLobbyChatMessages().get(0));
+        assertEquals(1234L, state.getLobbyCountdownStartedAt());
+    }
+
+    @Test
+    public void testGameStateGameStartedFlag() {
+        GameState state = new GameState();
+
+        state.setGameStarted(true);
+
+        assertTrue(state.isGameStarted());
+    }
+
+    @Test
+    public void testGameStateCurrentPlayerReturnsNullWhenEmpty() {
+        GameState state = new GameState();
+
+        assertNull(state.getCurrentPlayer());
+        assertFalse(state.isPlayerTurn(playerInAtlanta));
+    }
+
+    @Test
+    public void testGameStateCurrentPlayerReturnsNullWhenPlayerListIsNull() throws Exception {
+        GameState state = new GameState();
+        replaceGameStatePlayers(state, null);
+
+        assertNull(state.getCurrentPlayer());
+    }
+
+    @Test
+    public void testGameStateCurrentPlayerAndTurnCheck() {
+        GameState state = new GameState();
+        state.addPlayer(playerInAtlanta);
+
+        assertEquals(playerInAtlanta, state.getCurrentPlayer());
+        assertTrue(state.isPlayerTurn(new PlayerState("alice")));
+        assertFalse(state.isPlayerTurn(playerInChicago));
+    }
+
+    @Test
+    public void testLobbyChatMessageDefaultConstructorAndSetters() {
+        LobbyChatMessage message = new LobbyChatMessage();
+
+        message.setPlayerName("Alice");
+        message.setMessage("Ready");
+        message.setTimestamp(99L);
+
+        assertEquals("Alice", message.getPlayerName());
+        assertEquals("Ready", message.getMessage());
+        assertEquals(99L, message.getTimestamp());
+    }
+
+    @Test
+    public void testLobbyChatMessageConstructorSetsFields() {
+        LobbyChatMessage message = new LobbyChatMessage("Bob", "Starting", 123L);
+
+        assertEquals("Bob", message.getPlayerName());
+        assertEquals("Starting", message.getMessage());
+        assertEquals(123L, message.getTimestamp());
+    }
+
+    @Test
     public void testGameStateAddMultiplePlayerStates() {
         GameState state = new GameState();
         state.addPlayer(playerInAtlanta);
@@ -637,6 +863,211 @@ public class GameLogicTest {
         assertEquals(playerInChicago, player.getState());
     }
 
+    @Test
+    public void testPlayerExecuteActionWithoutClientDoesNotThrow() {
+        Player player = new Player(playerInAtlanta, null);
+
+        assertDoesNotThrow(() -> player.executeAction(new DriveFerryAction(chicago)));
+    }
+
+    @Test
+    public void testPlayerSendTestPacketWithoutClientDoesNotThrow() {
+        Player player = new Player(playerInAtlanta, null);
+
+        assertDoesNotThrow(player::sendTestPacket);
+    }
+
+    @Test
+    public void testPlayerExecuteActionSendsPacketThroughClient() {
+        GameClient client = mock(GameClient.class);
+        Player player = new Player(playerInAtlanta, client);
+
+        player.executeAction(new DriveFerryAction(chicago));
+
+        verify(client).sendPacket(any(Packet.class));
+    }
+
+    @Test
+    public void testPlayerSendTestPacketSendsPacketThroughClient() {
+        GameClient client = mock(GameClient.class);
+        Player player = new Player(playerInAtlanta, client);
+
+        player.sendTestPacket();
+
+        verify(client).sendPacket(any(Packet.class));
+    }
+
+    // =========================================================================
+    // GameClient
+    // =========================================================================
+
+    @Test
+    public void testGameClientAddNullListenerDoesNothing() {
+        GameClient client = new GameClient();
+
+        assertDoesNotThrow(() -> client.addPlayerUpdateListener(null));
+    }
+
+    @Test
+    public void testGameClientIncomingDataNotifiesListeners() throws Exception {
+        GameClient client = new GameClient();
+        AtomicInteger updates = new AtomicInteger();
+        AtomicReference<JsonNode> latest = new AtomicReference<>();
+
+        client.addPlayerUpdateListener(gameState -> {
+            updates.incrementAndGet();
+            latest.set(gameState);
+        });
+
+        invokeHandleIncomingData(client, "{\"players\":[{\"playerName\":\"Alice\"}]}");
+
+        assertEquals(1, updates.get());
+        assertEquals("Alice", latest.get().get("players").get(0).get("playerName").asText());
+    }
+
+    @Test
+    public void testGameClientLateListenerReceivesLatestGameState() throws Exception {
+        GameClient client = new GameClient();
+        AtomicReference<JsonNode> latest = new AtomicReference<>();
+
+        invokeHandleIncomingData(client, "{\"turn\":2}");
+        client.addPlayerUpdateListener(latest::set);
+
+        assertEquals(2, latest.get().get("turn").asInt());
+    }
+
+    @Test
+    public void testGameClientRemoveListenerStopsNotifications() throws Exception {
+        GameClient client = new GameClient();
+        AtomicInteger updates = new AtomicInteger();
+        GameClient.PlayerUpdateListener listener = gameState -> updates.incrementAndGet();
+        client.addPlayerUpdateListener(listener);
+        client.removePlayerUpdateListener(listener);
+
+        invokeHandleIncomingData(client, "{\"turn\":3}");
+
+        assertEquals(0, updates.get());
+    }
+
+    @Test
+    public void testGameClientInvalidIncomingDataDoesNotNotifyListeners() throws Exception {
+        GameClient client = new GameClient();
+        AtomicInteger updates = new AtomicInteger();
+        client.addPlayerUpdateListener(gameState -> updates.incrementAndGet());
+
+        invokeHandleIncomingData(client, "{not-json");
+
+        assertEquals(0, updates.get());
+    }
+
+    @Test
+    public void testGameClientSendPacketStringWithoutConnectionDoesNotThrow() {
+        GameClient client = new GameClient();
+
+        assertDoesNotThrow(() -> client.sendPacket("{\"type\":\"PING\"}"));
+    }
+
+    @Test
+    public void testGameClientSendPacketObjectWithoutConnectionDoesNotThrow() {
+        GameClient client = new GameClient();
+
+        assertDoesNotThrow(() -> client.sendPacket(new Packet(PacketType.PING)));
+    }
+
+    @Test
+    public void testGameClientSendPacketEncryptsJsonWhenConnected() throws Exception {
+        GameClient client = new GameClient();
+        SecureSocket secureSocket = newSecureSocket();
+        StringWriter output = new StringWriter();
+        setField(client, "secureSocket", secureSocket);
+        setField(client, "out", new PrintWriter(output, true));
+
+        client.sendPacket("{\"type\":\"PING\"}");
+
+        String encrypted = output.toString().trim();
+        assertFalse(encrypted.isEmpty());
+        assertEquals("{\"type\":\"PING\"}", secureSocket.decrypt(encrypted));
+    }
+
+    @Test
+    public void testGameClientSendPacketObjectSerializesAndEncryptsPacket() throws Exception {
+        GameClient client = new GameClient();
+        SecureSocket secureSocket = newSecureSocket();
+        StringWriter output = new StringWriter();
+        setField(client, "secureSocket", secureSocket);
+        setField(client, "out", new PrintWriter(output, true));
+
+        client.sendPacket(new Packet(PacketType.PING));
+
+        Packet packet = Packet.fromJson(secureSocket.decrypt(output.toString().trim()));
+        assertEquals(PacketType.PING, packet.getType());
+    }
+
+    @Test
+    public void testGameClientReceivePacketReturnsNullWhenDisconnected() {
+        GameClient client = new GameClient();
+
+        assertNull(client.receivePacket());
+    }
+
+    @Test
+    public void testGameClientReceivePacketDecryptsIncomingLine() throws Exception {
+        GameClient client = new GameClient();
+        SecureSocket secureSocket = newSecureSocket();
+        String encrypted = secureSocket.encrypt("{\"type\":\"PONG\"}");
+        setField(client, "secureSocket", secureSocket);
+        setField(client, "in", new BufferedReader(new StringReader(encrypted + System.lineSeparator())));
+
+        assertEquals("{\"type\":\"PONG\"}", client.receivePacket());
+    }
+
+    @Test
+    public void testGameClientReceivePacketReturnsNullForInvalidEncryptedLine() throws Exception {
+        GameClient client = new GameClient();
+        setField(client, "secureSocket", newSecureSocket());
+        setField(client, "in", new BufferedReader(new StringReader("not-encrypted" + System.lineSeparator())));
+
+        assertNull(client.receivePacket());
+    }
+
+    @Test
+    public void testGameClientDisconnectWithoutConnectionDoesNotThrow() {
+        GameClient client = new GameClient();
+
+        assertDoesNotThrow(client::disconnect);
+    }
+
+    @Test
+    public void testGameClientDisconnectFromLobbySendsDisconnectWhenConnected() throws Exception {
+        GameClient client = new GameClient();
+        SecureSocket secureSocket = newSecureSocket();
+        StringWriter output = new StringWriter();
+        setField(client, "secureSocket", secureSocket);
+        setField(client, "out", new PrintWriter(output, true));
+        setField(client, "isConnected", true);
+
+        client.disconnectFromLobby();
+
+        Packet packet = Packet.fromJson(secureSocket.decrypt(output.toString().trim()));
+        assertEquals(PacketType.DISCONNECT, packet.getType());
+    }
+
+    @Test
+    public void testGameClientHandleIncomingPacketKnownTypesDoNotThrow() {
+        GameClient client = new GameClient();
+
+        assertDoesNotThrow(() -> invokeHandleIncomingPacket(client, new Packet(PacketType.GAME_DATA)));
+        assertDoesNotThrow(() -> invokeHandleIncomingPacket(client, new Packet(PacketType.PONG)));
+        assertDoesNotThrow(() -> invokeHandleIncomingPacket(client, new Packet(PacketType.ERROR)));
+    }
+
+    @Test
+    public void testGameClientHandleIncomingPacketDefaultTypeDoesNotThrow() {
+        GameClient client = new GameClient();
+
+        assertDoesNotThrow(() -> invokeHandleIncomingPacket(client, new Packet(PacketType.PING)));
+    }
+
     // =========================================================================
     // Deck
     // =========================================================================
@@ -651,6 +1082,14 @@ public class GameLogicTest {
     public void testDeckIsNotEmptyInitially() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         assertFalse(gm.getState().getCardDeck().isEmpty());
+    }
+
+    @Test
+    public void testDeckTypesEnumValues() {
+        assertEquals(3, Deck.DeckTypes.values().length);
+        assertNotNull(Deck.DeckTypes.valueOf("PLAYER"));
+        assertNotNull(Deck.DeckTypes.valueOf("INFECTION"));
+        assertNotNull(Deck.DeckTypes.valueOf("DISCARD"));
     }
 
     @Test
@@ -678,6 +1117,61 @@ public class GameLogicTest {
         gm.getState().getCardDeck().discard(cityCard);
     }
 
+    @Test
+    public void testDeckDrawInitialHandSkipsEpidemicCards() throws Exception {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        Deck deck = gm.getState().getCardDeck();
+        Card epidemic = new Card("System Breach", CardType.EPIDEMIC, null);
+        Card city = new Card("Atlanta", CardType.CITY, gm.getState().getMap().getCity("Atlanta"));
+        replacePlayerDeck(deck, new ArrayList<>(List.of(epidemic, city)));
+
+        deck.drawInitialHand(playerInAtlanta, 1);
+
+        assertEquals(city, playerInAtlanta.getCard(0));
+        assertEquals(1, deck.getRemainingCardsCount());
+    }
+
+    @Test
+    public void testDeckInitialDrawEndsGameWhenOnlyEpidemicsRemain() throws Exception {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        Deck deck = gm.getState().getCardDeck();
+        replacePlayerDeck(deck, new ArrayList<>(List.of(
+                new Card("System Breach", CardType.EPIDEMIC, null))));
+
+        deck.drawInitialHand(playerInAtlanta, 1);
+
+        assertTrue(gm.isGameOver());
+        assertFalse(gm.isGameWon());
+        assertTrue(playerInAtlanta.getHand().isEmpty());
+    }
+
+    @Test
+    public void testDeckDrawHandEndsGameWhenDeckCannotSupplyTwoCards() throws Exception {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        Deck deck = gm.getState().getCardDeck();
+        replacePlayerDeck(deck, new ArrayList<>(List.of(
+                new Card("Atlanta", CardType.CITY, gm.getState().getMap().getCity("Atlanta")))));
+
+        deck.drawHand(playerInAtlanta);
+
+        assertTrue(gm.isGameOver());
+        assertFalse(gm.isGameWon());
+        assertEquals(1, playerInAtlanta.getHand().size());
+    }
+
+    @Test
+    public void testDeckShuffleDoesNotChangeCardCount() {
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        Deck deck = gm.getState().getCardDeck();
+        List<Card> cards = new ArrayList<>(List.of(
+                new Card("Atlanta", CardType.CITY, atlanta),
+                new Card("Chicago", CardType.CITY, chicago)));
+
+        deck.shuffle(cards);
+
+        assertEquals(2, cards.size());
+    }
+
     // =========================================================================
     // GameManager
     // =========================================================================
@@ -687,6 +1181,40 @@ public class GameLogicTest {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         assertFalse(gm.isGameOver());
         assertFalse(gm.isGameWon());
+    }
+
+    @Test
+    public void testGameManagerStartGameSetsPlayersReadyFalseAndDealsHands() {
+        List<PlayerState> players = new ArrayList<>(List.of(
+                new PlayerState("Alice"),
+                new PlayerState("Bob"),
+                new PlayerState("Cara"),
+                new PlayerState("Dan")));
+        players.forEach(player -> player.setReady(true));
+        GameManager gm = new GameManager(players, false);
+
+        gm.startGame();
+
+        assertTrue(gm.getState().isGameStarted());
+        assertEquals(0, gm.getState().getCurrentPlayerIndex());
+        assertEquals(4, gm.getState().getActionsRemaining());
+        assertEquals(0, gm.getState().getLobbyCountdownStartedAt());
+        for (PlayerState player : players) {
+            assertFalse(player.isReady());
+            assertNotNull(player.getPlayer());
+            assertEquals(gm.getState().getMap().getCity("Atlanta"), player.getPlayerCurrentCity());
+            assertEquals(2, player.getHand().size());
+        }
+    }
+
+    @Test
+    public void testGameManagerStartGameReturnsWhenAlreadyStarted() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        gm.getState().setGameStarted(true);
+
+        gm.startGame();
+
+        assertEquals(0, playerInAtlanta.getHand().size());
     }
 
     @Test
@@ -731,10 +1259,38 @@ public class GameLogicTest {
     }
 
     @Test
+    public void testCheckWinConditionTriggersWhenAllDiseasesCured() {
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+        dm.discoverCure(DiseaseColor.BLUE);
+        dm.discoverCure(DiseaseColor.YELLOW);
+        dm.discoverCure(DiseaseColor.BLACK);
+        dm.discoverCure(DiseaseColor.RED);
+
+        gm.checkWinCondition();
+
+        assertTrue(gm.isGameOver());
+        assertTrue(gm.isGameWon());
+    }
+
+    @Test
     public void testCheckLoseConditionDoesNotTriggerInitially() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         gm.checkLoseCondition();
         assertFalse(gm.isGameOver());
+    }
+
+    @Test
+    public void testCheckLoseConditionTriggersAtEightOutbreaks() {
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+        for (int i = 0; i < 8; i++) {
+            gm.getState().getDiseaseManager().increaseOutbreakScore();
+        }
+
+        gm.checkLoseCondition();
+
+        assertTrue(gm.isGameOver());
+        assertFalse(gm.isGameWon());
     }
 
     @Test
@@ -771,6 +1327,199 @@ public class GameLogicTest {
         gm.getState().setGameOver(true);
         Player player = new Player(playerInAtlanta, null);
         gm.performAction(player, new DriveFerryAction(chicago)); // must not throw
+    }
+
+    @Test
+    public void testPerformActionMovesCurrentPlayerAndConsumesAction() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        CityNode chicagoOnMap = gm.getState().getMap().getCity("Chicago");
+        Player player = new Player(playerInAtlanta, null);
+
+        gm.performAction(player, new DriveFerryAction(chicagoOnMap));
+
+        assertEquals(chicagoOnMap, playerInAtlanta.getPlayerCurrentCity());
+        assertEquals(3, gm.getState().getActionsRemaining());
+    }
+
+    @Test
+    public void testPerformActionDoesNothingForInvalidAction() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        CityNode tokyo = gm.getState().getMap().getCity("Tokyo");
+        Player player = new Player(playerInAtlanta, null);
+
+        gm.performAction(player, new DriveFerryAction(tokyo));
+
+        assertEquals(gm.getState().getMap().getCity("Atlanta"), playerInAtlanta.getPlayerCurrentCity());
+        assertEquals(4, gm.getState().getActionsRemaining());
+    }
+
+    @Test
+    public void testPerformActionDoesNothingForNonCurrentPlayer() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta, playerInChicago)), false);
+        Player nonCurrentPlayer = new Player(playerInChicago, null);
+        CityNode miamiOnMap = gm.getState().getMap().getCity("Miami");
+
+        gm.performAction(nonCurrentPlayer, new DriveFerryAction(miamiOnMap));
+
+        assertEquals(gm.getState().getMap().getCity("Atlanta"), playerInChicago.getPlayerCurrentCity());
+        assertEquals(4, gm.getState().getActionsRemaining());
+    }
+
+    @Test
+    public void testPerformActionDoesNothingWhenActionsAreGone() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        CityNode chicagoOnMap = gm.getState().getMap().getCity("Chicago");
+        gm.getState().setActionsRemaining(0);
+
+        gm.performAction(new Player(playerInAtlanta, null), new DriveFerryAction(chicagoOnMap));
+
+        assertEquals(gm.getState().getMap().getCity("Atlanta"), playerInAtlanta.getPlayerCurrentCity());
+    }
+
+    @Test
+    public void testPerformActionDoesNothingWhileCurrentPlayerDiscards() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        CityNode chicagoOnMap = gm.getState().getMap().getCity("Chicago");
+        playerInAtlanta.setIsDiscarding(true);
+
+        gm.performAction(new Player(playerInAtlanta, null), new DriveFerryAction(chicagoOnMap));
+
+        assertEquals(gm.getState().getMap().getCity("Atlanta"), playerInAtlanta.getPlayerCurrentCity());
+        assertEquals(4, gm.getState().getActionsRemaining());
+    }
+
+    @Test
+    public void testPerformActionAutoAdvancesWhenLastActionConsumed() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta, playerInChicago)), false);
+        CityNode chicagoOnMap = gm.getState().getMap().getCity("Chicago");
+        gm.getState().setActionsRemaining(1);
+
+        gm.performAction(new Player(playerInAtlanta, null), new DriveFerryAction(chicagoOnMap));
+
+        assertEquals(playerInChicago, gm.getCurrentPlayer());
+        assertEquals(4, gm.getState().getActionsRemaining());
+    }
+
+    @Test
+    public void testConsumeActionDecrementsForCurrentPlayer() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+
+        gm.consumeAction(playerInAtlanta);
+
+        assertEquals(3, gm.getState().getActionsRemaining());
+    }
+
+    @Test
+    public void testConsumeActionDoesNothingForNonCurrentPlayer() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta, playerInChicago)), false);
+
+        gm.consumeAction(playerInChicago);
+
+        assertEquals(4, gm.getState().getActionsRemaining());
+    }
+
+    @Test
+    public void testConsumeActionAdvancesOnLastAction() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta, playerInChicago)), false);
+        gm.getState().setActionsRemaining(1);
+
+        gm.consumeAction(playerInAtlanta);
+
+        assertEquals(playerInChicago, gm.getCurrentPlayer());
+        assertEquals(4, gm.getState().getActionsRemaining());
+    }
+
+    @Test
+    public void testNextTurnClearsDiscardingWhenHandIsAtLimit() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta, playerInChicago)), false);
+        playerInAtlanta.setIsDiscarding(true);
+
+        gm.nextTurn();
+
+        assertFalse(playerInAtlanta.getIsDiscarding());
+        assertEquals(playerInChicago, gm.getCurrentPlayer());
+    }
+
+    @Test
+    public void testNextTurnKeepsDiscardingWhenHandIsOverLimit() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta, playerInChicago)), false);
+        for (int i = 0; i < 8; i++) {
+            playerInAtlanta.addCard(new Card("Card " + i, CardType.CITY, atlanta));
+        }
+        playerInAtlanta.setIsDiscarding(true);
+
+        gm.nextTurn();
+
+        assertTrue(playerInAtlanta.getIsDiscarding());
+        assertEquals(playerInAtlanta, gm.getCurrentPlayer());
+    }
+
+    @Test
+    public void testNextTurnSetsDiscardingWhenHandExceedsLimitAfterDraw() throws Exception {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta, playerInChicago)), false);
+        Deck deck = gm.getState().getCardDeck();
+        for (int i = 0; i < 6; i++) {
+            playerInAtlanta.addCard(new Card("Existing " + i, CardType.CITY, atlanta));
+        }
+        replacePlayerDeck(deck, new ArrayList<>(List.of(
+                new Card("Draw 1", CardType.CITY, gm.getState().getMap().getCity("Atlanta")),
+                new Card("Draw 2", CardType.CITY, gm.getState().getMap().getCity("Chicago")))));
+
+        gm.nextTurn();
+
+        assertTrue(playerInAtlanta.getIsDiscarding());
+        assertEquals(0, gm.getState().getActionsRemaining());
+        assertEquals(playerInAtlanta, gm.getCurrentPlayer());
+    }
+
+    @Test
+    public void testDiscardCurrentPlayerCardRemovesCardAndAdvancesAtLimit() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta, playerInChicago)), false);
+        for (int i = 0; i < 8; i++) {
+            playerInAtlanta.addCard(new Card("Card " + i, CardType.CITY, atlanta));
+        }
+        playerInAtlanta.setIsDiscarding(true);
+
+        gm.discardCurrentPlayerCard(playerInAtlanta, 0);
+
+        assertEquals(7, playerInAtlanta.getHand().size());
+        assertFalse(playerInAtlanta.getIsDiscarding());
+        assertEquals(playerInChicago, gm.getCurrentPlayer());
+    }
+
+    @Test
+    public void testDiscardCurrentPlayerCardIgnoresInvalidIndex() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        playerInAtlanta.addCard(new Card("Atlanta", CardType.CITY, atlanta));
+        playerInAtlanta.setIsDiscarding(true);
+
+        gm.discardCurrentPlayerCard(playerInAtlanta, 5);
+
+        assertEquals(1, playerInAtlanta.getHand().size());
+        assertTrue(playerInAtlanta.getIsDiscarding());
+    }
+
+    @Test
+    public void testGetCurrentPlayerResetsOutOfRangeIndex() {
+        GameManager gm = new GameManager(new ArrayList<>(List.of(playerInAtlanta)), false);
+        gm.getState().setCurrentPlayerIndex(99);
+
+        assertEquals(playerInAtlanta, gm.getCurrentPlayer());
+        assertEquals(0, gm.getState().getCurrentPlayerIndex());
+    }
+
+    @Test
+    public void testGetCurrentPlayerReturnsNullWithNoPlayers() {
+        GameManager gm = new GameManager(new ArrayList<>(), false);
+
+        assertNull(gm.getCurrentPlayer());
+    }
+
+    @Test
+    public void testGetInfectionRateTrackReturnsUnderlyingTrack() {
+        GameManager gm = singlePlayerGame(playerInAtlanta);
+
+        assertArrayEquals(new int[]{2, 2, 2, 3, 3, 4, 4}, gm.getInfectionRateTrack());
     }
 
     // =========================================================================
