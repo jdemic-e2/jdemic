@@ -86,6 +86,28 @@ class DataSanitizerTest {
     }
 
     @Test
+    void shouldRejectJsonArrayRoot() {
+        Optional<Packet> result = dataSanitizer.sanitize("[]");
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldRejectExplicitNullRequiredFields() {
+        String raw = """
+                {
+                  "type": null,
+                  "timestamp": null,
+                  "payload": null
+                }
+                """;
+
+        Optional<Packet> result = dataSanitizer.sanitize(raw);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
     void shouldRejectPacketWithoutType() {
         // This test verifies that packets missing the required type field are rejected.
         String raw = """
@@ -170,6 +192,36 @@ class DataSanitizerTest {
                   "type": "PING",
                   "timestamp": 1000,
                   "payload": "not-an-object"
+                }
+                """;
+
+        Optional<Packet> result = dataSanitizer.sanitize(raw);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldRejectPacketWithArrayPayloadField() {
+        String raw = """
+                {
+                  "type": "PING",
+                  "timestamp": 1000,
+                  "payload": []
+                }
+                """;
+
+        Optional<Packet> result = dataSanitizer.sanitize(raw);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldRejectCaseMismatchedPacketType() {
+        String raw = """
+                {
+                  "type": "ping",
+                  "timestamp": 1000,
+                  "payload": {}
                 }
                 """;
 
