@@ -106,19 +106,19 @@ public class Packet {
     {
         try{
             if(jsonString == null || jsonString.isBlank())
-                return null;
+              throw new IllegalArgumentException("[packet] Empty JSON string.");
             JsonNode rootNode = objectMapper.readTree(jsonString);
 
             if(rootNode == null || !rootNode.isObject())
             {
                 System.err.println("[packet] Invalid message: root is not an object.");
-                return null;
+                throw new IllegalArgumentException("Root is not an object.");
             }
 
             JsonNode typeNode = rootNode.get("type");
             if (typeNode == null || typeNode.isNull()) {
                 System.err.println("[packet] Invalid message: missing 'type'");
-                return null;
+                 throw new IllegalArgumentException("Missing 'type'.");
             }
             
             PacketType type;
@@ -128,7 +128,7 @@ public class Packet {
             catch (Exception e)
             {
                 System.err.println("[packet] Packet type unknown: " + typeNode.asText());
-                return null;
+                throw new IllegalArgumentException("Unknown packet type.");
             }
 
             JsonNode timestampNode = rootNode.get("timestamp");
@@ -144,7 +144,7 @@ public class Packet {
         catch (Exception e)
         {
             System.err.println("[packet] Error parsing JSON to Packet: " + e.getMessage());
-            return null;
+            throw new RuntimeException("Parsare esuata", e);
         }
         
     }
