@@ -7,7 +7,7 @@ import jdemic.GameLogic.Actions.GameAction;
 
 public class GameManager {
     GameState state;
-
+    private final Object stateLock = new Object();
     private static final int ACTIONS_PER_TURN = 4;
     private static final int HAND_LIMIT = 7;
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
@@ -248,14 +248,20 @@ public class GameManager {
     }
 
     public PlayerState getCurrentPlayer() {
-        List<PlayerState> players = state.getPlayers();
-        if (players.isEmpty()) return null;
+        synchronized (stateLock) {
+            List<PlayerState> players = state.getPlayers();
+            if (players.isEmpty()) return null;
 
-        if (state.getCurrentPlayerIndex() >= players.size()) {
-            state.setCurrentPlayerIndex(0);
+            if (state.getCurrentPlayerIndex() >= players.size()) {
+                state.setCurrentPlayerIndex(0);
+            }
+
+            return players.get(state.getCurrentPlayerIndex());
         }
-        
-        return players.get(state.getCurrentPlayerIndex());
+    }
+
+    public Object getStateLock() {
+        return stateLock;
     }
 
     public GameState getState(){

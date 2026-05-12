@@ -24,7 +24,12 @@ public class TutorialRulesScene {
     }
 
     private ImageView createThreatIcon(String path) {
-        ImageView img = new ImageView(new Image(getClass().getResource(path).toExternalForm()));
+        java.net.URL iconUrl = getClass().getResource(path);
+        if (iconUrl == null) {
+            System.err.println("[TutorialRulesScene] Missing resource: " + path);
+            return new ImageView();
+        }
+        ImageView img = new ImageView(new Image(iconUrl.toExternalForm()));
         img.fitWidthProperty().bind(root.widthProperty().multiply(0.015));
         img.fitHeightProperty().bind(root.widthProperty().multiply(0.015));
         img.setPreserveRatio(true);

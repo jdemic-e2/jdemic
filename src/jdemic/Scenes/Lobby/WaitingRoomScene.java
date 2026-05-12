@@ -48,6 +48,7 @@ public class WaitingRoomScene {
     private Timeline countdownTimeline;
     private static final int COUNTDOWN_SECONDS = 10;
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private GameClient.PlayerUpdateListener playerUpdateListener;
 
     public WaitingRoomScene(Stage stage, String nickname, String roomCode) {
         this(stage, nickname, roomCode, null);
@@ -64,7 +65,8 @@ public class WaitingRoomScene {
         setupUI();
 
         if (this.gameClient != null) {
-            this.gameClient.addPlayerUpdateListener(gameState -> Platform.runLater(() -> updateLobbyState(gameState)));
+            playerUpdateListener = gameState -> Platform.runLater(() -> updateLobbyState(gameState));
+            this.gameClient.addPlayerUpdateListener(playerUpdateListener);
         }
     }
 
@@ -73,7 +75,12 @@ public class WaitingRoomScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[WaitingRoomScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -322,7 +329,7 @@ public class WaitingRoomScene {
     }
 
     private void leaveWaitingRoom() {
-        stopCountdown();
+        cleanupScene();
         if (gameClient != null) {
             gameClient.disconnectFromLobby();
         }
@@ -334,7 +341,7 @@ public class WaitingRoomScene {
             return;
         }
         transitionedToGame = true;
-        stopCountdown();
+        cleanupScene();
         stage.getScene().setRoot(new MapTestScene(stage, nickname, gameClient, gameState).getRoot());
     }
 
@@ -371,5 +378,12 @@ public class WaitingRoomScene {
 
         row.getChildren().add(inner);
         return row;
+    }
+    private void cleanupScene() {
+        stopCountdown();
+        if (gameClient != null && playerUpdateListener != null) {
+            gameClient.removePlayerUpdateListener(playerUpdateListener);
+            playerUpdateListener = null;
+        }
     }
 }
