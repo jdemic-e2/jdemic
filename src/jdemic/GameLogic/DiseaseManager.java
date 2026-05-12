@@ -1,11 +1,12 @@
 package jdemic.GameLogic;
 
+import java.util.HashSet;
+import java.util.Set;
 
 // Not important for the first sprint, will improve later with more correct gameplay options.
 public class DiseaseManager {
     private int outbreakScore;
     private int infectionCubesLeft;
-
 
     private boolean isBlueCured;
     private boolean isYellowCured;
@@ -32,27 +33,55 @@ public class DiseaseManager {
 
     public void increaseOutbreakScore() {
         this.outbreakScore++;
+        if (this.outbreakScore > 7) {//8 is lose
+            gameManager.checkLoseCondition();
+        }
     }
 
     public int getInfectionCubesLeft() {
         return this.infectionCubesLeft;
     }
 
-    // Adds X amount of infection cubes to a certain city.
+    // Main entry point for adding cubes
     public void addInfectionCubes(CityNode city, int amount) {
         DiseaseColor color = city.getNativeColor();
+        Set<CityNode> alreadyOutbroken = new HashSet<>();
+        infectCity(city, amount, color, alreadyOutbroken);
+    }
+
+    // Recursive method to handle chain reactions
+    private void infectCity(CityNode city, int amount, DiseaseColor color, Set<CityNode> alreadyOutbroken) {
+        if (this.infectionCubesLeft <= 0) {
+            gameManager.checkLoseCondition();
+            return;
+        }
 
         boolean wasAdded = city.addDiseaseCube(color, amount);
 
-        if (!wasAdded) {
-            increaseOutbreakScore();
+        if (wasAdded) {
+            this.infectionCubesLeft -= amount;
+            if (this.infectionCubesLeft <= 0) {
+                this.infectionCubesLeft = 0;
+                gameManager.checkLoseCondition();
+            }
+        } else {
+            // If addDiseaseCube returns false, it means we hit the 3-cube limit
+            triggerOutbreak(city, color, alreadyOutbroken);
+        }
+    }
+
+    private void triggerOutbreak(CityNode originCity, DiseaseColor color, Set<CityNode> alreadyOutbroken) {
+        // Prevent infinite loops during chain reactions
+        if (alreadyOutbroken.contains(originCity)) {
+            return;
         }
 
-        this.infectionCubesLeft -= amount;
+        alreadyOutbroken.add(originCity);
+        increaseOutbreakScore();
 
-        if (this.infectionCubesLeft <= 0) {
-            this.infectionCubesLeft = 0;
-            gameManager.checkLoseCondition();
+        // Spread 1 cube to all connected cities in the graph
+        for (CityNode neighbor : originCity.getConnectedCities()) {
+            infectCity(neighbor, 1, color, alreadyOutbroken);
         }
     }
 
