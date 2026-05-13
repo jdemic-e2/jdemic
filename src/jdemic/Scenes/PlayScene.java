@@ -323,7 +323,6 @@ public class PlayScene {
                 img = new Image(getClass().getResourceAsStream("/elements/redDot.png"));
             }
         }
-
         ImageView iconView = new ImageView(img);
         iconView.setFitWidth(45);
         iconView.setFitHeight(45);
