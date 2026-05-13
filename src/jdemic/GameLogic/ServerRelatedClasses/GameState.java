@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jdemic.GameLogic.Deck;
 import jdemic.GameLogic.DiseaseManager;
 import jdemic.GameLogic.PandemicMapGraph;
-import jdemic.GameLogic.Player;
 
 public class GameState{
 

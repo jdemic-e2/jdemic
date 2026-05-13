@@ -1,8 +1,9 @@
-package jdemic.GameLogic.Actions;
+package jdemic.GameLogic.Actions.Movement;
 
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CardType;
 
