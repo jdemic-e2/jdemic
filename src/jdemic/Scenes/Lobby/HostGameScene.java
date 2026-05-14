@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.InetAddress;
-import java.util.concurrent.ThreadLocalRandom;
 
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
@@ -49,7 +48,12 @@ public class HostGameScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[HostGameScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -87,6 +91,10 @@ public class HostGameScene {
         GlowUtil.applyGlow(codeValue, "#ffffff", 8);
         codeBox.getChildren().add(codeValue);
 
+        //Error message
+        Label errorLabel = TextUtil.createText("", "hkmodular", 0.025, "#ff2d2d", root);
+        errorLabel.setVisible(false);
+
         ButtonsUtil copyBtn = new ButtonsUtil("COPY", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.13, 0.07, 0.020, root);
         ButtonsUtil backBtn = new ButtonsUtil("BACK", "#ff2d2d", "black", "#ff2d2d", "#ff2d2d", 2, 12, 12, 0.13, 0.07, 0.020, root);
         ButtonsUtil hostBtn = new ButtonsUtil("HOST", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.13, 0.07, 0.020, root);
@@ -98,32 +106,45 @@ public class HostGameScene {
         });
 
         backBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
+        
         hostBtn.setOnMouseClicked(e -> {
-            // Start the server in a new thread
-            new Thread(() -> {
-                JdemicNetworkServer.main(new String[]{});
-            }).start();
+            hostBtn.setDisable(true); // Disabling the host button
+            errorLabel.setVisible(false);
+
+            // turning on the server and reserving the port
+            boolean serverStarted = JdemicNetworkServer.startServer();
+
+            if (!serverStarted) {
+                //If the port is not free, we'll show this error and enable the button
+                errorLabel.setText("PORT 9000 IN USE! START FAILED.");
+                errorLabel.setVisible(true);
+                hostBtn.setDisable(false);
+                return;
+            }
             
-            // Wait a bit for server to start, then connect as client
+            // If the server is on, we connect as a client
             new Thread(() -> {
                 try {
-                    Thread.sleep(1500); // Give server time to start
                     GameClient hostClient = new GameClient();
                     hostClient.connectToServer("localhost", 9000);
                     
-                    // Send CONNECT packet
+                    // We send the connection packet
                     ObjectNode payload = objectMapper.createObjectNode();
                     payload.put("playerName", nickname);
                     Packet connectPacket = new Packet(PacketType.CONNECT, payload);
                     hostClient.sendPacket(connectPacket);
                     
-                    // Go to waiting room with connected client
+                    // We change the scene to the Waiting Room on the main thread
                     Platform.runLater(() -> 
                         stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode, hostClient).getRoot())
                     );
                 } catch (Exception ex) {
-                    System.err.println("[HostGameScene] Error connecting as client: " + ex.getMessage());
-                    ex.printStackTrace();
+                    System.err.println("[HostGameScene] Error connecting to local server: " + ex.getMessage());
+                    Platform.runLater(() -> {
+                        errorLabel.setText("CONNECTION ERROR!");
+                        errorLabel.setVisible(true);
+                        hostBtn.setDisable(false);
+                    });
                 }
             }).start();
         });
@@ -132,7 +153,7 @@ public class HostGameScene {
         bottomRow.setAlignment(Pos.CENTER);
         bottomRow.spacingProperty().bind(root.widthProperty().multiply(0.16));
 
-        VBox content = new VBox(codeText, codeBox, copyBtn, bottomRow);
+        VBox content = new VBox(codeText, codeBox, copyBtn, errorLabel, bottomRow);
         content.setAlignment(Pos.TOP_CENTER);
         content.setFillWidth(false);
         content.spacingProperty().bind(root.heightProperty().multiply(0.04));

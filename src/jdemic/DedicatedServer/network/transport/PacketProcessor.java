@@ -346,6 +346,7 @@ public class PacketProcessor {
         }
     }
 
+
     private void handleLobbyChat(Packet packet) {
         System.out.println("[PacketProcessor] Received LOBBY_CHAT packet.");
 
@@ -359,12 +360,16 @@ public class PacketProcessor {
 
             String playerName = clientHandler != null ? clientHandler.getConnectedPlayerName() : null;
             if (playerName == null || playerName.isBlank()) {
-                playerName = payload.has("playerName") ? payload.get("playerName").asText() : "PLAYER";
+                System.err.println("[PacketProcessor] Lobby chat rejected because client is not registered.");
+                return;
             }
 
-            gameManager.getState().addLobbyChatMessage(
-                    new LobbyChatMessage(playerName, message, System.currentTimeMillis())
-            );
+            synchronized (gameManager.getStateLock()) {
+                gameManager.getState().addLobbyChatMessage(
+                        new LobbyChatMessage(playerName, message, System.currentTimeMillis())
+                );
+            }
+
             broadcastGameState();
         } catch (Exception e) {
             System.err.println("[PacketProcessor] Error handling LOBBY_CHAT: " + e.getMessage());
@@ -510,6 +515,12 @@ public class PacketProcessor {
         return null;
     }
 
+    private void broadcastGameState() {
+        if (clientHandler != null) {
+            clientHandler.broadcastGameStateToAll();
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Disconnect / broadcast / lobby countdown
     // ─────────────────────────────────────────────────────────────────────────
@@ -520,21 +531,19 @@ public class PacketProcessor {
         String playerName = clientHandler.getConnectedPlayerName();
         if (playerName == null || playerName.isBlank()) return;
 
-        boolean removed = gameManager.getState().getPlayers()
-                .removeIf(player -> playerName.equals(player.getPlayerName()));
+            PlayerState playerToRemove = findPlayerState(playerName);
+            if (playerToRemove == null) {
+                return;
+            }
 
-        if (removed) {
+            gameManager.removePlayer(playerToRemove);
+
             System.out.println("[PacketProcessor] Player disconnected: " + playerName);
             updateLobbyCountdown();
             clientHandler.clearConnectedPlayerName();
-            broadcastGameState();
         }
-    }
 
-    private void broadcastGameState() {
-        if (clientHandler != null) {
-            clientHandler.broadcastGameStateToAll();
-        }
+        broadcastGameState();
     }
 
     private void updateLobbyCountdown() {
@@ -561,10 +570,13 @@ public class PacketProcessor {
             cancelGameStart();
             gameStartTask = gameStartScheduler.schedule(() -> {
                 synchronized (PacketProcessor.class) {
-                    if (!areAllPlayersReady() || gameManager.getState().isGameStarted()) {
-                        gameManager.getState().setLobbyCountdownStartedAt(0);
-                        broadcastGameState();
-                        return;
+                    synchronized (gameManager.getStateLock()) {
+                        if (!areAllPlayersReady() || gameManager.getState().isGameStarted()) {
+                            gameManager.getState().setLobbyCountdownStartedAt(0);
+                        } else {
+                            gameManager.startGame();
+                            System.out.println("[PacketProcessor] Lobby countdown finished. Game started.");
+                        }
                     }
                     gameManager.startGame();
                     System.out.println("[PacketProcessor] Lobby countdown finished. Game started.");

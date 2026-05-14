@@ -7,13 +7,19 @@ import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 public class GameManager {
     GameState state;
-
+    private final Object stateLock = new Object();
     private static final int ACTIONS_PER_TURN = 4;
+    private static final int HAND_LIMIT = 7;
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
     private static final int MAX_OUTBREAKS = 8;
+    private boolean initialHandsDealt;
 
     public GameManager(List<PlayerState> players) {
-        this.state = new GameState();
+        this(players, true);
+    }
+
+    public GameManager(List<PlayerState> players, boolean dealInitialHands) {
+        this.state = new GameState(); 
         state.setMap(new PandemicMapGraph());
         state.setDiseaseManager(new DiseaseManager(this));
         state.setCardDeck(new Deck(this));
@@ -27,6 +33,9 @@ public class GameManager {
             state.addPlayer(player);
         }
         setupGame();
+        if (dealInitialHands) {
+            dealInitialHands();
+        }
     }
 
     private void setupGame() {
@@ -48,16 +57,62 @@ public class GameManager {
         state.setCurrentPlayerIndex(0);
         state.setActionsRemaining(ACTIONS_PER_TURN);
         state.setLobbyCountdownStartedAt(0);
+        dealInitialHands();
         state.setGameStarted(true);
     }
 
-    public void performAction(Player player, GameAction action) {
-        if (state.isGameOver()) return;
-        if (state.getActionsRemaining() <= 0) return;
+    private void dealInitialHands()
+    {
+        if(initialHandsDealt || state.getPlayers().isEmpty()) return;
+
+        int cardsPerPlayer = getInitialHandSize(state.getPlayers().size());
+        for(PlayerState playerState : state.getPlayers())
+        {
+            state.getCardDeck().drawInitialHand(playerState, cardsPerPlayer);
+            if(state.isGameOver()) return;
+        }
+
+        initialHandsDealt = true;
+    }
+
+    private int getInitialHandSize(int playerCount)
+    {
+        if(playerCount <= 2) return 4;
+        if(playerCount == 3) return 3;
+        return 2;
+    }
+
+    public void performAction(Player player, GameAction action)
+    {
+        if(state.isGameOver()) return;
+        if(state.getActionsRemaining() <= 0) return;
+        if(state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
+        
+        // Only allow the current player to perform actions
+        if(!state.isPlayerTurn(player.getState())) return;
 
         if (action.isValid(state, player.getState())) {
             action.execute(state, player.getState());
             state.setActionsRemaining(state.getActionsRemaining() - 1);
+            
+            // Automatically advance to next turn when actions reach 0
+            if(state.getActionsRemaining() <= 0){
+                nextTurn();
+            }
+        }
+    }
+
+    public void consumeAction(PlayerState playerState)
+    {
+        if(state.isGameOver()) return;
+        if(state.getActionsRemaining() <= 0) return;
+        if(state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
+        if(!state.isPlayerTurn(playerState)) return;
+
+        state.setActionsRemaining(state.getActionsRemaining() - 1);
+
+        if(state.getActionsRemaining() <= 0){
+            nextTurn();
         }
     }
 
@@ -75,29 +130,89 @@ public class GameManager {
     public void nextTurn() {
         if (state.isGameOver()) return;
 
-        // ── Phase 2: Draw player cards ────────────────────────────────────────
-        // drawHand internally handles epidemic cards (Increase → Infect → Intensify)
-        PlayerState currentPlayer = getCurrentPlayer();
-        state.getCardDeck().drawHand(currentPlayer);
+        PlayerState currentPlayer = state.getCurrentPlayer();
+        if(currentPlayer == null) return;
 
-        // Drawing may have emptied the deck → lose
-        if (state.getCardDeck().getRemainingCardsCount() <= 0) {
-            state.setGameOver(true);
-            state.setGameWon(false);
+        if(currentPlayer.getIsDiscarding())
+        {
+            if(currentPlayer.getHand().size() <= HAND_LIMIT) {
+                currentPlayer.setIsDiscarding(false);
+                advanceToNextPlayer();
+            }
             return;
         }
 
-        // ── Phase 3: Infect cities ────────────────────────────────────────────
-        infectCities();
+        state.getCardDeck().drawHand(currentPlayer);
+        if(state.isGameOver()) return;
 
-        // ── Check conditions after infection ──────────────────────────────────
         checkWinCondition();
         checkLoseCondition();
         if (state.isGameOver()) return;
 
-        // ── Advance turn ──────────────────────────────────────────────────────
-        state.setCurrentPlayerIndex(
-                (state.getCurrentPlayerIndex() + 1) % state.getPlayers().size());
+        if(state.isGameOver()) return;
+
+        if(currentPlayer.getHand().size() > HAND_LIMIT)
+        {
+            currentPlayer.setIsDiscarding(true);
+            state.setActionsRemaining(0);
+            return;
+        }
+
+        advanceToNextPlayer();
+    }
+
+    public void discardCurrentPlayerCard(PlayerState playerState, int cardIndex)
+    {
+        if(state.isGameOver()) return;
+        if(!state.isPlayerTurn(playerState)) return;
+
+        PlayerState currentPlayer = state.getCurrentPlayer();
+        if(currentPlayer == null || !currentPlayer.getIsDiscarding()) return;
+        if(cardIndex < 0 || cardIndex >= currentPlayer.getHand().size()) return;
+
+        Card discardedCard = currentPlayer.getHand().remove(cardIndex);
+        state.getCardDeck().discard(discardedCard);
+
+        if(currentPlayer.getHand().size() <= HAND_LIMIT)
+        {
+            currentPlayer.setIsDiscarding(false);
+            advanceToNextPlayer();
+        }
+    }
+
+    public void removePlayer(PlayerState playerToRemove) {
+        List<PlayerState> players = state.getPlayers();
+        int removedIndex = players.indexOf(playerToRemove);
+
+        if (removedIndex == -1) return; // Player not found
+
+        players.remove(removedIndex);
+
+        if (players.isEmpty()) {
+            state.setCurrentPlayerIndex(0);
+            state.setGameOver(true);
+        } else {
+            if (removedIndex < state.getCurrentPlayerIndex()) {
+                state.setCurrentPlayerIndex(state.getCurrentPlayerIndex() - 1);
+            }
+
+            if (state.getCurrentPlayerIndex() >= players.size()) {
+                state.setCurrentPlayerIndex(0);
+            }
+        }
+
+        if (!state.isGameStarted()) {
+            state.setLobbyCountdownStartedAt(0);
+        }
+
+        if (state.isGameStarted()) {
+            checkLoseCondition();
+        }
+    }
+
+    private void advanceToNextPlayer()
+    {
+        state.setCurrentPlayerIndex((state.getCurrentPlayerIndex() + 1) % state.getPlayers().size());
         state.setActionsRemaining(ACTIONS_PER_TURN);
     }
 
@@ -153,10 +268,7 @@ public class GameManager {
             state.setGameWon(false);
         }
 
-        if (state.getCardDeck().getRemainingCardsCount() <= 0) {
-            state.setGameOver(true);
-            state.setGameWon(false);
-        }
+        // Player deck loss is handled when a draw is attempted and cannot be completed.
     }
 
     public int getInfectionRate() {
@@ -174,7 +286,20 @@ public class GameManager {
     }
 
     public PlayerState getCurrentPlayer() {
-        return state.getPlayers().get(state.getCurrentPlayerIndex());
+        synchronized (stateLock) {
+            List<PlayerState> players = state.getPlayers();
+            if (players.isEmpty()) return null;
+
+            if (state.getCurrentPlayerIndex() >= players.size()) {
+                state.setCurrentPlayerIndex(0);
+            }
+
+            return players.get(state.getCurrentPlayerIndex());
+        }
+    }
+
+    public Object getStateLock() {
+        return stateLock;
     }
 
     public GameState getState() {

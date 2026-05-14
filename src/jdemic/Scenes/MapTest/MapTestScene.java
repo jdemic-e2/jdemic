@@ -7,11 +7,13 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -20,16 +22,16 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-import jdemic.GameLogic.CityNode;
-import jdemic.GameLogic.PandemicMapGraph;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
+import jdemic.ui.GlowUtil;
 import jdemic.GameLogic.*;
 import javafx.scene.layout.VBox;
 import jdemic.ui.GameplayUI.*;
+import javafx.scene.Node;
 
 import java.util.*;
 
@@ -46,6 +48,7 @@ public class MapTestScene {
 
     //Variable for ActionMenu
     private ActionMenuManager actionMenuManager;
+    private Set<CityNode> highlightedValidNodes = new HashSet<>();
 
     //Variable for game manager (temp)
     private GameManager gameManager;
@@ -62,21 +65,33 @@ public class MapTestScene {
     //Variable for gameplay chat
     private ChatManager chatManager;
 
+    //Variable for decks
+    private DeckManager deckManager;
+
+    //Variable player hand
+    private HandManager handManager;
+
     // Add to MapTestScene class fields
     private PlayerListUI playerListUI;
 
     //Variables for connected gameplay
     private GameClient gameClient;
+    
+    //Variable for current player display
+    private Label currentPlayerLabel;
     private String playerName = "Tester";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private Map<String, PawnUI> playerPawns = new HashMap<>();
     private Map<CityNode, List<String>> cityOccupants = new HashMap<>();
 
+    private GameClient.PlayerUpdateListener playerUpdateListener;
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
         this.mapGraph = new PandemicMapGraph();
+        addDefaultResearchStationToSceneMap();
 
         this.gameManager = createLocalGameManager();
         initializeScene();
@@ -86,6 +101,7 @@ public class MapTestScene {
         this.stage = stage;
         this.root = new StackPane();
         this.mapGraph = new PandemicMapGraph();
+        addDefaultResearchStationToSceneMap();
         this.gameClient = gameClient;
         this.playerName = playerName == null || playerName.isBlank() ? "PLAYER" : playerName.toUpperCase();
 
@@ -93,9 +109,9 @@ public class MapTestScene {
         initializeScene();
 
         if (this.gameClient != null) {
-            this.gameClient.addPlayerUpdateListener(updatedGameState ->
-                    Platform.runLater(() -> applyGameStateSnapshot(updatedGameState))
-            );
+            playerUpdateListener = updatedGameState ->
+                    Platform.runLater(() -> applyGameStateSnapshot(updatedGameState));
+            this.gameClient.addPlayerUpdateListener(playerUpdateListener);
         }
     }
 
@@ -108,6 +124,9 @@ public class MapTestScene {
         setupActionMenu();
         setupGlobalHUD();
         setupChat();
+        deckManager = new DeckManager(root);
+        handManager = new HandManager(root, deckManager);
+        updateHandUI();
 
         Platform.runLater(() -> {
             updatePawnPositions();
@@ -225,7 +244,7 @@ public class MapTestScene {
             players.add(new PlayerState(playerName));
         }
 
-        GameManager manager = new GameManager(players);
+        GameManager manager = new GameManager(players, false);
         applyGameStateSnapshot(manager, gameState);
         return manager;
     }
@@ -256,6 +275,8 @@ public class MapTestScene {
 
         applyGameStateSnapshot(gameManager, gameState);
         if (actionMenuManager != null) actionMenuManager.updateMenuState();
+        updateCurrentPlayerLabel();
+        updateHandUI();
         if (infectionRateManager != null) infectionRateManager.updateTrack();
         if (outbreakManager != null) outbreakManager.updateTrack();
         if (cureManager != null) cureManager.updateUI();
@@ -298,6 +319,23 @@ public class MapTestScene {
                 CityNode currentCity = getCityFromPlayerNode(playerNode, this.mapGraph);
                 if (currentCity != null) {
                     manager.getState().getPlayers().get(index).setCurrentCity(currentCity);
+                }
+
+                if (playerNode.has("hand") && playerNode.get("hand").isArray()) {
+                    List<Card> hand = manager.getState().getPlayers().get(index).getHand();
+                    hand.clear();
+                    for (JsonNode cardNode : playerNode.get("hand")) {
+                        Card card = getCardFromNode(cardNode, this.mapGraph);
+                        if (card != null) {
+                            hand.add(card);
+                        }
+                    }
+                }
+
+                if (playerNode.has("isDiscarding")) {
+                    manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get("isDiscarding").asBoolean());
+                } else if (playerNode.has("discardingCards")) {
+                    manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get("discardingCards").asBoolean());
                 }
                 index++;
             }
@@ -344,7 +382,57 @@ public class MapTestScene {
             cityName = cityNode.get("name").asText();
         }
 
-        return cityName == null ? null : graph.getCity(cityName);
+        CityNode city = cityName == null ? null : graph.getCity(cityName);
+        if (city != null && cityNode.has("hasResearchStation") && cityNode.get("hasResearchStation").asBoolean()) {
+            city.addResearchStation();
+        }
+        if (city != null && cityNode.has("researchStation") && cityNode.get("researchStation").asBoolean()) {
+            city.addResearchStation();
+        }
+        return city;
+    }
+
+    private Card getCardFromNode(JsonNode cardNode, PandemicMapGraph graph) {
+        if (cardNode == null || !cardNode.has("cardName") || !cardNode.has("type")) {
+            return null;
+        }
+
+        String cardName = cardNode.get("cardName").asText();
+        CardType type;
+        try {
+            type = CardType.valueOf(cardNode.get("type").asText());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+
+        CityNode targetCity = null;
+        JsonNode targetCityNode = cardNode.get("targetCity");
+        if (targetCityNode != null && graph != null) {
+            String cityName = null;
+            if (targetCityNode.isTextual()) {
+                cityName = targetCityNode.asText();
+            } else if (targetCityNode.has("name")) {
+                cityName = targetCityNode.get("name").asText();
+            }
+            targetCity = cityName == null ? null : graph.getCity(cityName);
+        }
+
+        Card card = new Card(cardName, type, targetCity);
+        if (cardNode.has("eventType") && !cardNode.get("eventType").isNull()) {
+            try {
+                card.setEventType(Card.EventType.valueOf(cardNode.get("eventType").asText()));
+            } catch (IllegalArgumentException ignored) {
+                // Event type is optional for non-event cards and older snapshots.
+            }
+        }
+        return card;
+    }
+
+    private void addDefaultResearchStationToSceneMap() {
+        CityNode atlanta = mapGraph.getCity("Atlanta");
+        if (atlanta != null) {
+            atlanta.addResearchStation();
+        }
     }
 
     private void setupUI() {
@@ -378,39 +466,42 @@ public class MapTestScene {
     }
 
     private void setupGlobalHUD() {
-        HBox mainHUD = new HBox();
-        mainHUD.setAlignment(Pos.TOP_CENTER);
-        mainHUD.setPickOnBounds(false);
-
-        mainHUD.setStyle(
-                "-fx-background-color: rgba(0, 0, 0, 0.8); " +
-                        "-fx-background-radius: 15px; " +
-                        "-fx-padding: 10px;"
-        );
-
-        mainHUD.setMaxHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
-
-        mainHUD.maxWidthProperty().bind(root.widthProperty().multiply(0.6));
-        StackPane.setAlignment(mainHUD, Pos.TOP_CENTER);
-        mainHUD.paddingProperty().bind(Bindings.createObjectBinding(() ->
-                        new Insets(root.getHeight() * 0.04, 10, 10, 10),
-                root.heightProperty()
-        ));
-
-        mainHUD.translateXProperty().bind(root.widthProperty().multiply(0.05));
-        mainHUD.spacingProperty().bind(root.widthProperty().multiply(0.03));
 
         this.outbreakManager = new OutbreakManager(root, gameManager);
         this.infectionRateManager = new InfectionRateManager(root, gameManager);
         this.cureManager = new CureManager(root, gameManager);
 
-        mainHUD.getChildren().addAll(
-                outbreakManager.getContainer(),
-                infectionRateManager.getContainer(),
-                cureManager.getContainer()
-        );
+        HBox outbreakBox = new HBox(outbreakManager.getContainer());
+        outbreakBox.setAlignment(Pos.CENTER_LEFT);
+        outbreakBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        root.getChildren().add(mainHUD);
+        StackPane.setAlignment(outbreakBox, Pos.TOP_LEFT);
+        StackPane.setMargin(outbreakBox, new Insets(40, 0, 0, 40));
+
+        HBox infectionBox = new HBox(infectionRateManager.getContainer());
+        infectionBox.setAlignment(Pos.CENTER);
+        infectionBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
+        StackPane.setAlignment(infectionBox, Pos.TOP_CENTER);
+        StackPane.setMargin(infectionBox, new Insets(40, 0, 0, 0));
+
+        VBox curesBox = cureManager.getContainer();
+        curesBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
+        StackPane.setAlignment(curesBox, Pos.TOP_RIGHT);
+        StackPane.setMargin(curesBox, new Insets(100, 40, 0, 0));
+
+        // Create current player display label
+        currentPlayerLabel = new Label();
+        currentPlayerLabel.setFont(Font.font("hkmodular", FontWeight.BOLD, 20));
+        currentPlayerLabel.setTextFill(Color.web("#d1d412"));
+        currentPlayerLabel.setStyle("-fx-effect: dropshadow(gaussian, #d1d412, 10, 0.5, 0, 0);");
+        updateCurrentPlayerLabel();
+        
+        StackPane.setAlignment(currentPlayerLabel, Pos.BOTTOM_CENTER);
+        StackPane.setMargin(currentPlayerLabel, new Insets(0, 0, 40, 0));
+
+        root.getChildren().addAll(outbreakBox, infectionBox, curesBox, currentPlayerLabel);
     }
 
     private void setupNotifications()
@@ -432,15 +523,83 @@ public class MapTestScene {
 
     private void setupActionMenu()
     {
+        // For network games, pass playerName to enforce turn-based validation
+        // For local games, pass null to allow any player to act during their turn
+        String playerNameForMenu = (gameClient != null) ? playerName : null;
+        
         this.actionMenuManager = gameClient == null
-                ? new ActionMenuManager(root, notificationManager, gameManager)
-                : new ActionMenuManager(root, notificationManager, gameManager, this::sendMenuActionPacket);
+                ? new ActionMenuManager(root, notificationManager, gameManager, null, this::highlightValidNodes, playerNameForMenu, this::refreshTurnUI)
+                : new ActionMenuManager(root, notificationManager, gameManager, this::sendMenuActionPacket, this::highlightValidNodes, playerNameForMenu, this::refreshTurnUI);
     }
 
     private void setupChat()
     {
         String playerName = gameManager.getCurrentPlayer().getPlayerName();
         this.chatManager = new ChatManager(root, playerName, notificationManager, gameClient);
+    }
+
+    private void updateHandUI() {
+        if (handManager == null || gameManager == null) {
+            return;
+        }
+
+        PlayerState displayedPlayer = getDisplayedHandPlayer();
+        boolean discardMode = displayedPlayer != null
+                && gameManager.getState().isPlayerTurn(displayedPlayer)
+                && displayedPlayer.getIsDiscarding();
+
+        handManager.updateHand(displayedPlayer, discardMode, this::handleDiscardCardRequest);
+    }
+
+    private void refreshTurnUI() {
+        updateCurrentPlayerLabel();
+        updateHandUI();
+    }
+
+    private PlayerState getDisplayedHandPlayer() {
+        if (gameManager == null || gameManager.getState() == null) {
+            return null;
+        }
+
+        if (gameClient != null) {
+            for (PlayerState player : gameManager.getState().getPlayers()) {
+                if (player.getPlayerName().equalsIgnoreCase(playerName)) {
+                    return player;
+                }
+            }
+        }
+
+        return gameManager.getState().getCurrentPlayer();
+    }
+
+    private void handleDiscardCardRequest(int cardIndex) {
+        PlayerState displayedPlayer = getDisplayedHandPlayer();
+        if (displayedPlayer == null || !displayedPlayer.getIsDiscarding()) {
+            return;
+        }
+
+        if (gameClient != null) {
+            sendDiscardCardPacket(cardIndex);
+            notificationManager.showNotification("Discard request sent");
+        } else {
+            gameManager.discardCurrentPlayerCard(displayedPlayer, cardIndex);
+            notificationManager.showNotification("Card discarded");
+            if (actionMenuManager != null) actionMenuManager.updateMenuState();
+            updateCurrentPlayerLabel();
+            updateHandUI();
+        }
+    }
+
+    /**
+     * Updates the current player label with the name of the player whose turn it is
+     */
+    private void updateCurrentPlayerLabel() {
+        if (currentPlayerLabel != null && gameManager != null) {
+            PlayerState current = gameManager.getState().getCurrentPlayer();
+            if (current != null) {
+                currentPlayerLabel.setText("CURRENT TURN: " + current.getPlayerName().toUpperCase());
+            }
+        }
     }
 
     private void sendMenuActionPacket(String action) {
@@ -464,6 +623,90 @@ public class MapTestScene {
         gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
     }
 
+    private void sendDiscardCardPacket(int cardIndex) {
+        if (gameClient == null) {
+            return;
+        }
+
+        ObjectNode payload = createBaseGameActionPayload();
+        payload.put("GameAction", "DISCARD_CARD");
+        payload.put("cardIndex", cardIndex);
+        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    private void highlightValidNodes(String movementType) {
+        // Clear previous highlights
+        for (CityNode city : highlightedValidNodes) {
+            Circle nodeCircle = nodeVisuals.get(city);
+            if (nodeCircle != null) {
+                Color nativeColor = getFxColor(city.getNativeColor());
+                nodeCircle.setFill(nativeColor);
+                nodeCircle.setEffect(null);
+            }
+        }
+        highlightedValidNodes.clear();
+
+        if (movementType == null || movementType.isEmpty()) {
+            return;
+        }
+
+        // Get current player's city
+        PlayerState currentPlayer = gameManager.getCurrentPlayer();
+        if (currentPlayer == null) {
+            return;
+        }
+
+        CityNode currentCity = currentPlayer.getPlayerCurrentCity();
+        if (currentCity == null) {
+            return;
+        }
+
+        // For DRIVE/FERRY, highlight all connected cities
+        if ("DRIVE_FERRY".equals(movementType)) {
+            for (CityNode neighbor : currentCity.getConnectedCities()) {
+                highlightedValidNodes.add(neighbor);
+                Circle nodeCircle = nodeVisuals.get(neighbor);
+                if (nodeCircle != null) {
+                    nodeCircle.setFill(Color.web("#00ff00"));
+                    
+                    javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
+                    glow.setColor(Color.web("#00ff00"));
+                    glow.setRadius(20);
+                    glow.setSpread(0.6);
+                    nodeCircle.setEffect(glow);
+                    
+                    // Add click handler for movement
+                    nodeCircle.setOnMouseClicked(ev -> {
+                        // Consume an action point
+                        int actionsLeft = gameManager.getState().getActionsRemaining();
+                        if (actionsLeft > 0) {
+                            gameManager.getState().setActionsRemaining(actionsLeft - 1);
+                            if (gameClient == null && gameManager.getState().getActionsRemaining() <= 0) {
+                                gameManager.nextTurn();
+                            }
+                            
+                            sendDriveFerryPacket(neighbor);
+                            notificationManager.showNotification(
+                                    gameClient == null
+                                            ? "Moved to " + neighbor.getName() + ". Actions left: " + gameManager.getState().getActionsRemaining()
+                                            : "Move request sent: " + neighbor.getName()
+                            );
+                            
+                            // Clear highlights and reset movement selection
+                            highlightValidNodes(""); 
+                            if (actionMenuManager != null) {
+                                actionMenuManager.clearSelectedMovementAction();
+                            }
+                            refreshTurnUI();
+                        } else {
+                            notificationManager.showNotification("No actions remaining!");
+                        }
+                    });
+                }
+            }
+        }
+    }
+
     private ObjectNode createBaseGameActionPayload() {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("PlayerID", playerName);
@@ -471,9 +714,31 @@ public class MapTestScene {
     }
 
     private void setupContent() {
+        StackPane mapContainer = new StackPane();
+        mapContainer.setAlignment(Pos.CENTER);
+        mapContainer.translateYProperty().bind(root.heightProperty().multiply(-0.10));
+        mapContainer.prefWidthProperty().bind(root.widthProperty());
+        mapContainer.prefHeightProperty().bind(root.heightProperty());
+        mapContainer.setPickOnBounds(false);
+
         Pane mapPane = new Pane();
-        mapPane.prefWidthProperty().bind(root.widthProperty());
-        mapPane.prefHeightProperty().bind(root.heightProperty());
+        mapPane.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.min(root.getWidth() * 0.70, root.getHeight() * 1.38),
+                root.widthProperty(), root.heightProperty()
+        ));
+        mapPane.prefHeightProperty().bind(mapPane.prefWidthProperty().multiply(0.5));
+        mapPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
+        java.net.URL mapBgUrl = getClass().getResource("/backgroundMap.png");
+        if (mapBgUrl == null) {
+            System.err.println("[MapTestScene] Missing resource: /backgroundMap.png");
+            return;
+        }
+        ImageView mapBg = new ImageView(new Image(mapBgUrl.toExternalForm()));
+        mapBg.fitWidthProperty().bind(mapPane.widthProperty());
+        mapBg.fitHeightProperty().bind(mapPane.heightProperty());
+        mapBg.setPreserveRatio(false);
+        mapPane.getChildren().add(mapBg);
 
         Color defaultLineColor = Color.color(0, 0.7, 1, 0.3);
         Color activeLineColor = Color.web("#00ffea");
@@ -494,7 +759,7 @@ public class MapTestScene {
                     Line line = new Line();
                     line.setStroke(defaultLineColor);
                     line.setStrokeWidth(2);
-
+                    line.setMouseTransparent(true);
                     line.startXProperty().bind(mapPane.widthProperty().multiply(city.getRenderX()));
                     line.startYProperty().bind(mapPane.heightProperty().multiply(city.getRenderY()));
                     line.endXProperty().bind(mapPane.widthProperty().multiply(neighbor.getRenderX()));
@@ -509,7 +774,7 @@ public class MapTestScene {
 
         for (CityNode city : mapGraph.getCityList()) {
             Circle node = new Circle();
-            node.radiusProperty().bind(mapPane.heightProperty().multiply(0.012));
+            node.radiusProperty().bind(mapPane.widthProperty().add(mapPane.heightProperty()).multiply(0.006));
 
             Color nativeColor = getFxColor(city.getNativeColor());
             node.setFill(nativeColor);
@@ -571,13 +836,8 @@ public class MapTestScene {
                 }
             });
 
-            node.setOnMouseClicked(ev -> {city.clickEvent();
-                sendDriveFerryPacket(city);
-                notificationManager.showNotification(
-                        gameClient == null
-                                ? "Selected City: " + city.getName()
-                                : "Move request sent: " + city.getName()
-                );
+            node.setOnMouseClicked(ev -> {
+                city.clickEvent();
             });
 
             Text label = new Text(city.getName());
@@ -585,13 +845,14 @@ public class MapTestScene {
             label.setFont(Font.font("hkmodular", FontWeight.BOLD, 10));
             label.setMouseTransparent(true);
 
-            label.layoutXProperty().bind(node.centerXProperty().subtract(label.getLayoutBounds().getWidth() / 2));
+            label.layoutXProperty().bind(Bindings.createDoubleBinding(() -> node.getCenterX() - label.getLayoutBounds().getWidth() / 2, node.centerXProperty(),label.layoutBoundsProperty()));
             label.layoutYProperty().bind(node.centerYProperty().add(20));
 
             mapPane.getChildren().addAll(node, label);
         }
         setupPawns(mapPane);
-        root.getChildren().add(mapPane);
+        mapContainer.getChildren().add(mapPane);
+        root.getChildren().add(mapContainer);
     }
 
     private Color getFxColor(DiseaseColor color) {
@@ -608,14 +869,27 @@ public class MapTestScene {
     }
 
     private void returnToMainMenu() {
+        cleanupScene();
         SceneManager.switchScene("MAIN_MENU");
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/backgroundMap.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/bgGame.png");
+        if (bgUrl == null) {
+            System.err.println("[MapTestScene] Missing resource: /bgGame.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
         root.getChildren().add(background);
+    }
+
+    private void cleanupScene() {
+        if (gameClient != null && playerUpdateListener != null) {
+            gameClient.removePlayerUpdateListener(playerUpdateListener);
+            playerUpdateListener = null;
+        }
     }
 }

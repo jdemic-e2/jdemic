@@ -29,7 +29,12 @@ public class TutorialCardRolesScene {
         setupUI();
     }
     private ImageView createCard(String role) {
-        ImageView card = new ImageView(new Image(getClass().getResource("/roleCards/Role" + role + ".png").toExternalForm()));
+        java.net.URL cardUrl = getClass().getResource("/roleCards/Role" + role + ".png");
+        if (cardUrl == null) {
+            System.err.println("[TutorialCardRolesScene] Missing resource: /roleCards/Role" + role + ".png");
+            return new ImageView();
+        }
+        ImageView card = new ImageView(new Image(cardUrl.toExternalForm()));
         card.setPreserveRatio(true);
         card.fitWidthProperty().bind(root.widthProperty().multiply(0.12));
         GlowUtil.applyGlow(card, "#00b5d4", 10);

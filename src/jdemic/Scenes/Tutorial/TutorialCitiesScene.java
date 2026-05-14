@@ -126,7 +126,12 @@ public class TutorialCitiesScene {
         TutorialUtil.createTutorialTitle(root,"TUTORIAL",0.02, "#00b5d4", Pos.TOP_LEFT, 0.03, 0.03, null, 0);
         TutorialUtil.createTutorialTitle(root,"2. CITY CARDS",0.05,"#cfc900", Pos.TOP_CENTER,0.14,0.08,"#cfc900",5);
 
-        ImageView map = new ImageView(new Image(getClass().getResource("/backgroundMap.png").toExternalForm()));
+        java.net.URL mapUrl = getClass().getResource("/backgroundMap.png");
+        if (mapUrl == null) {
+            System.err.println("[TutorialCitiesScene] Missing resource: /backgroundMap.png");
+            return;
+        }
+        ImageView map = new ImageView(new Image(mapUrl.toExternalForm()));
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.75));
         StackPane.setAlignment(map, Pos.CENTER);

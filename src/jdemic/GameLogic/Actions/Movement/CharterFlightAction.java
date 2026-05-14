@@ -18,12 +18,13 @@ public class CharterFlightAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
-    public boolean isValid(GameState gameState, PlayerState playerState) 
+    public boolean isValid(GameState gameState, PlayerState playerState)
     {
-        // Player must have the card matching their CURRENT city
         CityNode currentCity = playerState.getPlayerCurrentCity();
-        return playerState.getHand().stream()
-            .anyMatch(c -> c.getType() == CardType.CITY && c.getTargetCity() == currentCity);
+        return cardToDiscard != null
+                && playerState.getHand().contains(cardToDiscard)
+                && cardToDiscard.getType() == CardType.CITY
+                && cardToDiscard.getTargetCity() == currentCity;
     }
 
     @Override 

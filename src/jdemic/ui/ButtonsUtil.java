@@ -119,4 +119,36 @@ public class ButtonsUtil extends StackPane {
     public void setText(String text) {
         label.setText(text);
     }
+
+    /**
+     * Disables the button and applies a greyed-out effect
+     */
+    public void setActionDisabled(boolean disabled) {
+        setMouseTransparent(disabled);
+        setOpacity(disabled ? 0.5 : 1.0);
+        
+        if (disabled) {
+            if (getEffect() instanceof DropShadow) {
+                ((DropShadow) getEffect()).setRadius(0);
+            }
+            border.setStroke(Color.GRAY);
+        } else {
+            if (getEffect() instanceof DropShadow) {
+                ((DropShadow) getEffect()).setRadius(5);
+            }
+            border.setStroke(new LinearGradient(
+                0, 0, 1, 1, true, CycleMethod.NO_CYCLE,
+                new Stop(0.0, Color.web("#00b5d4", 0.4)),
+                new Stop(0.5, Color.WHITE),
+                new Stop(1.0, Color.web("#00b5d4", 0.4))
+            ));
+        }
+    }
+
+    /**
+     * Returns whether this button is currently action-disabled
+     */
+    public boolean isActionDisabled() {
+        return isMouseTransparent();
+    }
 }
