@@ -13,6 +13,10 @@ public class ShuttleFlightAction extends GameAction {
         this.destination = destination;
     }
 
+    public CityNode getDestination() {
+        return this.destination;
+    }
+    
     public boolean isValid(GameState state, PlayerState playerState) 
     {
         // both cities must have research stations.
