@@ -110,7 +110,6 @@ public class CityNode {
     public float getRenderX() { return renderX; }
     public float getRenderY() { return renderY; }
     public boolean hasResearchStation() { return hasResearchStation; }
-    
     public int getCubeCount(DiseaseColor color) 
     {
         return diseaseCubes.get(color);
