@@ -12,8 +12,17 @@ public class GameManager {
     private static final int MAX_OUTBREAKS = 8;
 
     public GameManager(List<Player> players) {
-        this.state = new GameState(); 
-        state.setMap(new PandemicMapGraph());
+        this(players, new PandemicMapGraph());
+    }
+
+    /**
+     * Package-private constructor for tests and future wiring that must share one {@link PandemicMapGraph}
+     * instance with player {@link jdemic.GameLogic.ServerRelatedClasses.PlayerState#getPlayerCurrentCity()} references.
+     * TODO(multiplayer): when server sends authoritative map + players, prefer a single factory path instead of ad-hoc graph sharing.
+     */
+    GameManager(List<Player> players, PandemicMapGraph map) {
+        this.state = new GameState();
+        state.setMap(map);
         state.setDiseaseManager(new DiseaseManager(this));
         state.setPlayers(players);
         state.setCardDeck(new Deck(this));

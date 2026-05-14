@@ -25,6 +25,10 @@ public class PlayerState{
         return this.Role;
     }
 
+    public void setPlayerRole(PlayerRoles role) {
+        this.Role = role;
+    }
+
     public CityNode getPlayerCurrentCity() {
         return this.currentCity;
     }
