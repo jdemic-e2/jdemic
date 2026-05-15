@@ -105,6 +105,26 @@ public class GameManager {
         if(state.getInfectionRate() >= INFECTION_RATE_TRACK.length) return INFECTION_RATE_TRACK[INFECTION_RATE_TRACK.length - 1];
         return INFECTION_RATE_TRACK[state.getInfectionRate()];
     }
+/////
+
+//after each player turn
+    public void executeInfectionPhase(int currentInfectionRate, Deck deck, DiseaseManager diseaseManager) {
+        
+        for (int i = 0; i < currentInfectionRate; i++) {
+            
+            //metoda nou adaugata, check deck.java
+            Card drawnCard = deck.drawInfectionCard(); 
+            
+            if (drawnCard != null) {//iau numele cu getter si il adaug in disease manager
+                CityNode targetCity = drawnCard.getTargetCity(); 
+                diseaseManager.addInfectionCubes(targetCity, 1);
+                
+                deck.discard(drawnCard);
+            }
+        }
+    }
+
+
 
     public void increaseInfectionRate()
     {

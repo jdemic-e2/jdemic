@@ -97,6 +97,16 @@ public class Deck {
 
     }
 
+    //extrage prima carte din pachetul de infectii , pentru infection din game manager
+    public Card drawInfectionCard() {
+        if (!infectionCards.isEmpty()) {
+            Card topCard = infectionCards.get(0);
+            infectionCards.remove(0);
+            return topCard;
+        }
+        return null;
+    }
+
     // Discard cards
     public void discard(Card card) {
         // if the card is of type INFECTION, put it in the infection discard pile, which can be reshuffled.
