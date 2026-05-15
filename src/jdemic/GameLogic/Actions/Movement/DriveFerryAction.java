@@ -1,23 +1,23 @@
-package jdemic.GameLogic.Actions;
+package jdemic.GameLogic.Actions.Movement;
 
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.Actions.GameAction;
 
-public class ShuttleFlightAction extends GameAction {
-    
+public class DriveFerryAction extends GameAction {
+
     private CityNode destination;
 
-    public ShuttleFlightAction(CityNode destination) 
+    public DriveFerryAction(CityNode destination) 
     {
         this.destination = destination;
     }
 
     public boolean isValid(GameState state, PlayerState playerState) 
     {
-        // both cities must have research stations.
         CityNode currentCity = playerState.getPlayerCurrentCity();
-        return currentCity.hasResearchStation() && destination.hasResearchStation();
+        return currentCity.getConnectedCities().contains(destination);
     }
 
     @Override public void execute(GameState state, PlayerState playerState) 
