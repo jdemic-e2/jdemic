@@ -1,4 +1,5 @@
 package jdemic.DedicatedServer.network.transport;
+
 /**
  * Defines all allowed packet types used by the network protocol.
  */
@@ -10,5 +11,6 @@ public enum PacketType {
     LOBBY_CHAT,
     LOBBY_READY,
     DISCONNECT,
-    ERROR
+    ERROR,
+    END_TURN
 }

@@ -1,7 +1,11 @@
 package jdemic.GameLogic;
 
-import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.Actions.GameAction;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+import jdemic.GameLogic.Actions.Movement.DriveFerryAction;
+import jdemic.GameLogic.Actions.Movement.DirectFlightAction;
+import jdemic.GameLogic.Actions.Movement.CharterFlightAction;
+import jdemic.GameLogic.Actions.Movement.ShuttleFlightAction;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,10 +34,30 @@ public class Player {
         payload.put("PlayerID", playerId);
         payload.put("GameAction", actionName);
 
+        if (action instanceof DriveFerryAction) {
+            DriveFerryAction moveAction = (DriveFerryAction) action;
+            payload.put("DestinationCity", moveAction.getDestination().getName());
+        }
+        else if (action instanceof DirectFlightAction) {
+            DirectFlightAction moveAction = (DirectFlightAction) action;
+            payload.put("DestinationCity", moveAction.getDestination().getName());
+        } 
+        else if (action instanceof CharterFlightAction) {
+            CharterFlightAction moveAction = (CharterFlightAction) action;
+            payload.put("DestinationCity", moveAction.getDestination().getName());
+        } 
+        else if (action instanceof ShuttleFlightAction) {
+            ShuttleFlightAction moveAction = (ShuttleFlightAction) action;
+            payload.put("DestinationCity", moveAction.getDestination().getName());
+        }
+
         System.out.println("[Player] Executing action: " + actionName + ". Sending to server...");
 
         if (gameClient != null) {
             gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+        }
+        else {
+            System.err.println("[Player] Cannot send packet without a GameClient.");
         }
     }
 

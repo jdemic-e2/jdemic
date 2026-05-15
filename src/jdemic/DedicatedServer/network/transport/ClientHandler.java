@@ -1,3 +1,4 @@
+
 package jdemic.DedicatedServer.network.transport;
 
 import java.io.BufferedReader;
@@ -5,14 +6,18 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
 import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
 import jdemic.DedicatedServer.network.security.StateMasker;
+import jdemic.DedicatedServer.network.security.DataSanitizer;
+import jdemic.DedicatedServer.network.security.RateLimiter;
 import jdemic.GameLogic.GameManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class ClientHandler implements Runnable {
 
@@ -27,6 +32,8 @@ public class ClientHandler implements Runnable {
     private String connectedPlayerName = null;
     private volatile boolean closed;
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private final DataSanitizer dataSanitizer = new DataSanitizer();
+    private final RateLimiter rateLimiter = new RateLimiter();
 
     public ClientHandler(SecureSocket secureSocket, GameManager gameManager, List<ClientHandler> connectedClients) {
         this(secureSocket, gameManager, connectedClients, packet -> {});
@@ -54,7 +61,7 @@ public class ClientHandler implements Runnable {
         }
     }
 
-   @Override
+    @Override
     public void run() {
         if (in == null || out == null) {
             System.err.println("[ClientHandler] I/O streams are null. Stopping execution.");
@@ -68,14 +75,27 @@ public class ClientHandler implements Runnable {
 
             // Read incoming messages from the client continuously
             while ((encryptedMessage = in.readLine()) != null) {
-                
+
+                if(!rateLimiter.allowPacket()){
+                    if(rateLimiter.shouldDisconnect())
+                    {
+                        System.err.println("[ClientHandler] Client flooding. Disconnecting...");
+                        break;
+                    }
+                    continue;
+                }
+
                 // Decrypt and parse the incoming message
                 String decryptedMessage = secureSocket.decrypt(encryptedMessage);
                 System.out.println("[ClientHandler] Received (decrypted): " + decryptedMessage);
-                
-                Packet packetMessage = Packet.fromJson(decryptedMessage);
+
+                Optional<Packet> sanitized = dataSanitizer.sanitize(decryptedMessage);
+                if(sanitized.isEmpty())
+                    continue;
+
+                Packet packetMessage = sanitized.get();
                 packetReceivedListener.accept(packetMessage);
-                
+
                 // process packet (PacketProcessor already handles the state broadcast to all clients)
                 packetProcessor.process(packetMessage);
             }
@@ -125,15 +145,26 @@ public class ClientHandler implements Runnable {
     }
 
     public void broadcastGameStateToAll() {
+        String gameStateJson;
+
+        synchronized (gameManager.getStateLock()) {
+            try {
+                gameStateJson = objectMapper.writeValueAsString(gameManager.getState());
+            } catch (Exception e) {
+                System.err.println("[ClientHandler] Error broadcasting game state: " + e.getMessage());
+                return;
+            }
+        }
+
         try {
-            String gameStateJson = objectMapper.writeValueAsString(gameManager.getState());
-            // Send to all connected clients
             for (ClientHandler client : connectedClients) {
                 if (client.connectedPlayerName != null) {
                     try {
                         String maskedResponse = StateMasker.maskStateForPlayer(gameStateJson, client.connectedPlayerName);
-                        String encryptedResponse = client.secureSocket.encrypt(maskedResponse);
-                        client.out.println(encryptedResponse);
+                        JsonNode stateNode = objectMapper.readTree(maskedResponse);
+                        Packet statePacket = new Packet(PacketType.GAME_DATA, stateNode);
+                        String finalEncrypted = client.secureSocket.encrypt(statePacket.toJson());
+                        client.out.println(finalEncrypted);
                     } catch (Exception e) {
                         System.err.println("[ClientHandler] Error sending to client: " + e.getMessage());
                     }

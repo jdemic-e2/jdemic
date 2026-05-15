@@ -102,37 +102,50 @@ public class Packet {
         }
     }
 
-   public static Packet fromJson(String jsonString)
+    public static Packet fromJson(String jsonString)
     {
-        try {
+        try{
+            if(jsonString == null || jsonString.isBlank())
+              throw new IllegalArgumentException("[packet] Empty JSON string.");
             JsonNode rootNode = objectMapper.readTree(jsonString);
-            
-            //Null-check the root node
-            if (rootNode == null || !rootNode.isObject()) {
-                throw new IllegalArgumentException("Invalid or empty JSON packet");
+
+            if(rootNode == null || !rootNode.isObject())
+            {
+                System.err.println("[packet] Invalid message: root is not an object.");
+                throw new IllegalArgumentException("Root is not an object.");
             }
 
-            //Safely extract 'type' to prevent NullPointerException
             JsonNode typeNode = rootNode.get("type");
             if (typeNode == null || typeNode.isNull()) {
-                throw new IllegalArgumentException("Packet is missing mandatory 'type' field");
+                System.err.println("[packet] Invalid message: missing 'type'");
+                 throw new IllegalArgumentException("Missing 'type'.");
             }
-            PacketType type = PacketType.valueOf(typeNode.asText());
-
-            // Safely extract 'timestamp', fallback to current time if missing
-            JsonNode timestampNode = rootNode.get("timestamp");
-            long timestamp = (timestampNode != null && !timestampNode.isNull()) 
-                                ? timestampNode.asLong() 
-                                : System.currentTimeMillis();
-
-            // Payload can be empty, but we extract it safely
-            JsonNode payload = rootNode.get("payload");
             
+            PacketType type;
+            try{
+                type = PacketType.valueOf(typeNode.asText());
+            }
+            catch (Exception e)
+            {
+                System.err.println("[packet] Packet type unknown: " + typeNode.asText());
+                throw new IllegalArgumentException("Unknown packet type.");
+            }
+
+            JsonNode timestampNode = rootNode.get("timestamp");
+            long timestamp = (timestampNode != null && timestampNode.isNumber()) ? timestampNode.asLong() : System.currentTimeMillis();
+
+            JsonNode payload = rootNode.get("payload");
+            if(payload == null || !payload.isObject())
+                payload = objectMapper.createObjectNode();
+
             return new Packet(type, timestamp, payload);
             
-        } catch (Exception e) {
-            // By throwing this cleanly, the catch block in ClientHandler will just drop the bad packet
-            throw new RuntimeException("[packet] Error parsing JSON to Packet: " + e.getMessage(), e);
         }
+        catch (Exception e)
+        {
+            System.err.println("[packet] Error parsing JSON to Packet: " + e.getMessage());
+            throw new RuntimeException("Parsare esuata", e);
+        }
+        
     }
 }

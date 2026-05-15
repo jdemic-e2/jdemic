@@ -1612,6 +1612,39 @@ public class GameLogicTest {
     }
 
     @Test
+    public void testDirectFlightInvalidWhenSelectedCardIsNotDestinationCard() {
+        Card chicagoCard = new Card("Chicago", CardType.CITY, chicago);
+        Card miamiCard = new Card("Miami", CardType.CITY, miami);
+
+        playerInAtlanta.addCard(chicagoCard);
+        playerInAtlanta.addCard(miamiCard);
+
+        DirectFlightAction action = new DirectFlightAction(chicago, miamiCard);
+
+        assertFalse(action.isValid(null, playerInAtlanta),
+                "Direct flight must reject a selected card that does not match the destination city");
+    }
+
+    @Test
+    public void testDirectFlightDoesNotDiscardWrongSelectedCard() {
+        Card chicagoCard = new Card("Chicago", CardType.CITY, chicago);
+        Card eventCard = new Card("Firewall Lockdown", CardType.EVENT, null);
+
+        playerInAtlanta.addCard(chicagoCard);
+        playerInAtlanta.addCard(eventCard);
+
+        DirectFlightAction action = new DirectFlightAction(chicago, eventCard);
+        action.execute(null, playerInAtlanta);
+
+        assertEquals(atlanta, playerInAtlanta.getPlayerCurrentCity(),
+                "Player should not move if the selected discard card is invalid");
+        assertTrue(playerInAtlanta.getHand().contains(chicagoCard),
+                "Required destination card should remain in hand");
+        assertTrue(playerInAtlanta.getHand().contains(eventCard),
+                "Wrong selected card should not be discarded");
+    }
+
+    @Test
     public void testDirectFlightExecuteMovesPlayerAndDiscardsCard() {
         Card chicagoCard = new Card("Chicago", CardType.CITY, chicago);
         playerInAtlanta.addCard(chicagoCard);
@@ -1645,6 +1678,39 @@ public class GameLogicTest {
         Card atlantaCard = new Card("Atlanta", CardType.CITY, atlanta);
         playerInAtlanta.addCard(atlantaCard);
         assertTrue(new CharterFlightAction(london, atlantaCard).isValid(null, playerInAtlanta));
+    }
+
+    @Test
+    public void testCharterFlightInvalidWhenSelectedCardIsNotCurrentCityCard() {
+        Card atlantaCard = new Card("Atlanta", CardType.CITY, atlanta);
+        Card chicagoCard = new Card("Chicago", CardType.CITY, chicago);
+
+        playerInAtlanta.addCard(atlantaCard);
+        playerInAtlanta.addCard(chicagoCard);
+
+        CharterFlightAction action = new CharterFlightAction(london, chicagoCard);
+
+        assertFalse(action.isValid(null, playerInAtlanta),
+                "Charter flight must reject a selected card that does not match the current city");
+    }
+
+    @Test
+    public void testCharterFlightDoesNotDiscardWrongSelectedCard() {
+        Card atlantaCard = new Card("Atlanta", CardType.CITY, atlanta);
+        Card eventCard = new Card("Firewall Lockdown", CardType.EVENT, null);
+
+        playerInAtlanta.addCard(atlantaCard);
+        playerInAtlanta.addCard(eventCard);
+
+        CharterFlightAction action = new CharterFlightAction(london, eventCard);
+        action.execute(null, playerInAtlanta);
+
+        assertEquals(atlanta, playerInAtlanta.getPlayerCurrentCity(),
+                "Player should not move if the selected discard card is invalid");
+        assertTrue(playerInAtlanta.getHand().contains(atlantaCard),
+                "Required current-city card should remain in hand");
+        assertTrue(playerInAtlanta.getHand().contains(eventCard),
+                "Wrong selected card should not be discarded");
     }
 
     @Test

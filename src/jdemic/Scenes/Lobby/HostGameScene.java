@@ -108,51 +108,43 @@ public class HostGameScene {
         backBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
         
         hostBtn.setOnMouseClicked(e -> {
+            hostBtn.setDisable(true); // Disabling the host button
+            errorLabel.setVisible(false);
+
+            // turning on the server and reserving the port
+            boolean serverStarted = JdemicNetworkServer.startServer();
+
+            if (!serverStarted) {
+                //If the port is not free, we'll show this error and enable the button
+                errorLabel.setText("PORT 9000 IN USE! START FAILED.");
+                errorLabel.setVisible(true);
+                hostBtn.setDisable(false);
+                return;
+            }
+            
+            // If the server is on, we connect as a client
             new Thread(() -> {
                 try {
-                    //Open a short socket connection to localhost:8080 (the Orchestrator)
-                    System.out.println("[Client] Contacting MasterOrchestrator on 8080...");
-                    java.net.Socket orchestratorSocket = new java.net.Socket("localhost", 8080);
-                    java.io.PrintWriter out = new java.io.PrintWriter(orchestratorSocket.getOutputStream(), true);
-                    java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(orchestratorSocket.getInputStream()));
-
-                    //Send the "HOST" message and wait for the response
-                    out.println("HOST");
-                    String response = in.readLine();
+                    GameClient hostClient = new GameClient();
+                    hostClient.connectToServer("localhost", 9000);
                     
-                    //Close the connection on port 8080 immediately
-                    orchestratorSocket.close(); 
+                    // We send the connection packet
+                    ObjectNode payload = objectMapper.createObjectNode();
+                    payload.put("playerName", nickname);
+                    Packet connectPacket = new Packet(PacketType.CONNECT, payload);
+                    hostClient.sendPacket(connectPacket);
                     
-                    System.out.println("[Client] Response received from Orchestrator: " + response);
-
-                    if (response != null && response.startsWith("SUCCESS:")) {
-                        //Extract the new port provided by the Orchestrator (9001)
-                        int newPort = Integer.parseInt(response.split(":")[1]);
-                        
-                        Thread.sleep(1000); //Give the new server process time to start
-                        
-                        //Start the real game connection on the received port
-                        GameClient hostClient = new GameClient();
-                        hostClient.connectToServer("localhost", newPort);
-                        
-                        //Send CONNECT packet
-                        ObjectNode payload = objectMapper.createObjectNode();
-                        payload.put("playerName", nickname);
-                        Packet connectPacket = new Packet(PacketType.CONNECT, payload);
-                        hostClient.sendPacket(connectPacket);
-                        
-                        //Generate the FULL code (IP:PORT) to pass it to the Waiting Room
-                        String finalCodeWithPort = hostCode + ":" + newPort;
-                        
-                        Platform.runLater(() -> 
-                            stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, finalCodeWithPort, hostClient).getRoot())
-                        );
-                    } else {
-                        System.err.println("[Client] Orchestrator failed to create a new server.");
-                    }
-                    
+                    // We change the scene to the Waiting Room on the main thread
+                    Platform.runLater(() -> 
+                        stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode, hostClient).getRoot())
+                    );
                 } catch (Exception ex) {
-                    System.err.println("[Client] Error contacting Master Server: " + ex.getMessage());
+                    System.err.println("[HostGameScene] Error connecting to local server: " + ex.getMessage());
+                    Platform.runLater(() -> {
+                        errorLabel.setText("CONNECTION ERROR!");
+                        errorLabel.setVisible(true);
+                        hostBtn.setDisable(false);
+                    });
                 }
             }).start();
         });

@@ -31,67 +31,83 @@ public class JdemicNetworkServer {
     private static final ScheduledExecutorService emptyServerScheduler = Executors.newSingleThreadScheduledExecutor();
     private static ScheduledFuture<?> emptyServerShutdownTask;
 
+   
     public static void main(String[] args) {
-        System.out.println("Pornire Jdemic Network Server...");
-        running = true;
+        startServer();
+    }
+    public static boolean startServer() {
+        if (running) {
+            System.out.println("[SERVER] Serverul rulează deja!");
+            return false; 
+        }
 
-        // Start with empty player list - players register when they connect
-        List<PlayerState> players = new ArrayList<>();
-        gameManager = new GameManager(players);
-        new ServerStatusUi(
-                () -> gameManager,
-                () -> connectedClients.size(),
-                latestPacket::get,
-                JdemicNetworkServer::shutdown
-        ).start();
+        try {
+            // Reserving the port,if it is occupied then it just throws the exception
+            serverSocket = new ServerSocket(PORT);
+            running = true;
+            System.out.println("Pornire Jdemic Network Server... Ascultă pe portul " + PORT);
 
-        try (ServerSocket createdServerSocket = new ServerSocket(PORT)) {
-            serverSocket = createdServerSocket;
-            System.out.println("Serverul asculta pe portul " + PORT);
+            // Initializing game logic
+            List<PlayerState> players = new ArrayList<>();
+            gameManager = new GameManager(players);
+            
+            // Start the server monitoring interface
+            new ServerStatusUi(
+                    () -> gameManager,
+                    () -> connectedClients.size(),
+                    latestPacket::get,
+                    JdemicNetworkServer::shutdown
+            ).start();
 
-            while (running) {
-                try {
+            // Start the connection acceptance thread (so as not to block the Host UI)
+            Thread acceptThread = new Thread(() -> {
+                while (running) {
+                    try {
+                        Socket rawSocket = serverSocket.accept();
+                        System.out.println("\n[SERVER] Client conectat: " + rawSocket.getInetAddress().getHostAddress());
+                        
+                        // RSA/AES secure handshake
+                        SecureSocket secureSocket = SecureConnectionManager.wrapSocket(rawSocket);
 
-                    Socket rawSocket = createdServerSocket.accept();
-                    System.out.println("\n[SERVER] Client conectat: " + rawSocket.getInetAddress().getHostAddress());
-                    System.out.println("[SERVER] Initializare handshake RSA/AES...");
+                        if (secureSocket != null) {
+                            System.out.println("[SERVER] Handshake reușit. Delegare către ClientHandler.");
 
-                    SecureSocket secureSocket = SecureConnectionManager.wrapSocket(rawSocket);
-
-                    if (secureSocket != null) {
-                        System.out.println("[SERVER] Handshake reusit. Delegare catre ClientHandler.");
-
-                        ClientHandler clientHandler = new ClientHandler(
-                                secureSocket,
-                                gameManager,
-                                connectedClients,
-                                latestPacket::set
-                        );
-                        Thread clientThread = new Thread(clientHandler);
-                        clientThread.start();
-                        connectedClients.add(clientHandler);
-                        cancelEmptyServerShutdown();
-                    } else {
-                        System.err.println("[SERVER] Handshake esuat! Respingem clientul.");
-                        rawSocket.close();
-                    }
-
-                } catch (IOException e) {
-                    if (running) {
-                        System.err.println("Eroare la acceptarea conexiunii: " + e.getMessage());
+                            ClientHandler clientHandler = new ClientHandler(
+                                    secureSocket,
+                                    gameManager,
+                                    connectedClients,
+                                    latestPacket::set
+                            );
+                            Thread clientThread = new Thread(clientHandler);
+                            clientThread.start();
+                            connectedClients.add(clientHandler);
+                            cancelEmptyServerShutdown();
+                        } else {
+                            System.err.println("[SERVER] Handshake eșuat! Respingem clientul.");
+                            rawSocket.close();
+                        }
+                    } catch (IOException e) {
+                        if (running) {
+                            System.err.println("Eroare la acceptarea conexiunii: " + e.getMessage());
+                        }
                     }
                 }
-            }
+            });
+            acceptThread.setDaemon(true); 
+            acceptThread.start();
 
-        } catch (Exception e) {
-            System.err.println("Eroare fatala: Nu s-a putut porni serverul pe portul " + PORT);
-            e.printStackTrace();
+            return true; //The server was started successfully
+
+        } catch (IOException e) {
+            System.err.println("Eroare fatală: Portul " + PORT + " este deja utilizat!");
+            return false; 
         }
     }
 
     public static void shutdown() {
         running = false;
         cancelEmptyServerShutdown();
+        
         for (ClientHandler client : connectedClients) {
             client.closeConnection();
         }
@@ -101,9 +117,9 @@ public class JdemicNetworkServer {
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
             }
-            System.out.println("[SERVER] Server inchis din UI.");
+            System.out.println("[SERVER] Server închis corect.");
         } catch (IOException e) {
-            System.err.println("[SERVER] Eroare la inchiderea serverului: " + e.getMessage());
+            System.err.println("[SERVER] Eroare la închiderea socket-ului: " + e.getMessage());
         }
     }
 
@@ -126,7 +142,7 @@ public class JdemicNetworkServer {
             emptyServerShutdownTask = emptyServerScheduler.schedule(() -> {
                 synchronized (JdemicNetworkServer.class) {
                     if (running && connectedClients.isEmpty()) {
-                        System.out.println("[SERVER] No players connected. Shutting down in empty-server timeout.");
+                        System.out.println("[SERVER] Niciun jucător conectat. Închidere automată.");
                         shutdown();
                     }
                 }
