@@ -18,6 +18,10 @@ public class CharterFlightAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
+    public CityNode getDestination() {
+        return this.destination;
+    }
+    
     public boolean isValid(GameState gameState, PlayerState playerState)
     {
         CityNode currentCity = playerState.getPlayerCurrentCity();

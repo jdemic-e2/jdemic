@@ -14,6 +14,10 @@ public class DriveFerryAction extends GameAction {
         this.destination = destination;
     }
 
+    public CityNode getDestination() {
+        return this.destination;
+    }
+    
     public boolean isValid(GameState state, PlayerState playerState) 
     {
         CityNode currentCity = playerState.getPlayerCurrentCity();

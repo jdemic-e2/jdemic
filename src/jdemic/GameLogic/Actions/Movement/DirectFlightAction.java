@@ -18,6 +18,10 @@ public class DirectFlightAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
+    public CityNode getDestination() {
+        return this.destination;
+    }
+    
     public boolean isValid(GameState state, PlayerState playerState)
     {
         return cardToDiscard != null
