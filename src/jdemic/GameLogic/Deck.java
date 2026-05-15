@@ -128,6 +128,19 @@ public class Deck {
 
         manager.checkLoseCondition();
     }
+/////
+
+    //extrage prima carte din pachetul de infectii , pentru infection din game manager
+    public Card drawInfectionCard() {
+        if (!infectionCards.isEmpty()) {
+            Card topCard = infectionCards.get(0);
+            infectionCards.remove(0);
+            return topCard;
+        }
+        return null;
+    }
+
+
 
     public void discard(Card card) {
         if (card.getType() == CardType.INFECTION) {
