@@ -108,60 +108,83 @@ public class HostGameScene {
         backBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
         
         hostBtn.setOnMouseClicked(e -> {
-            hostBtn.setDisable(true);
+            hostBtn.setDisable(true); // stop multiple clicks
             errorLabel.setVisible(false);
 
             new Thread(() -> {
                 try {
-                    // 1. Contact the Master Orchestrator on port 8080
+                    //try to call bunduc's master server on 8080
+                    //this is the official way we discussed with the sm
                     java.net.Socket orchestratorSocket = new java.net.Socket("localhost", 8080);
                     java.io.PrintWriter out = new java.io.PrintWriter(orchestratorSocket.getOutputStream(), true);
                     java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(orchestratorSocket.getInputStream()));
 
-                    // 2. Request a new server port
+                    //ask for a new server port
                     out.println("HOST");
                     String response = in.readLine();
-                    orchestratorSocket.close(); 
+                    orchestratorSocket.close(); //close connection right after we get the port
 
                     if (response != null && response.startsWith("SUCCESS:")) {
-                        // 3. Extract the dynamic port (e.g., 9001)
+                        //get the new port from the message
                         int newPort = Integer.parseInt(response.split(":")[1]);
                         
-                        Thread.sleep(1000); // Give the new server process time to start
+                        //wait a bit for the server to actually start
+                        Thread.sleep(1000); 
                         
-                        // 4. Connect the client to the newly assigned port
+                        //setup host client and connect to the new port
                         GameClient hostClient = new GameClient();
                         hostClient.connectToServer("localhost", newPort);
                         
+                        //send connect packet with nickname
                         ObjectNode payload = objectMapper.createObjectNode();
                         payload.put("playerName", nickname);
                         Packet connectPacket = new Packet(PacketType.CONNECT, payload);
                         hostClient.sendPacket(connectPacket);
                         
-                        // 5. Generate the final code with port for the Waiting Room
-                        String finalCodeWithPort = hostCode + ":" + newPort;
-                        
+                        //move to waiting room
                         Platform.runLater(() -> 
-                            stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, finalCodeWithPort, hostClient).getRoot())
+                            stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode + ":" + newPort, hostClient).getRoot())
                         );
-                    } else {
-                        Platform.runLater(() -> {
-                            errorLabel.setText("ORCHESTRATOR ERROR!");
-                            errorLabel.setVisible(true);
-                            hostBtn.setDisable(false);
-                        });
                     }
                 } catch (Exception ex) {
-                    System.err.println("[HostGameScene] Connection error: " + ex.getMessage());
+                    //fallback logic if 8080 is down
+                    //this lets stefan test the frontend without the master server
+                    System.err.println("[fallback] master offline, using port 9000 for local test");
+                    
+                    //try starting the server locally like before
+                    boolean serverStarted = jdemic.DedicatedServer.network.core.JdemicNetworkServer.startServer();
+                    
                     Platform.runLater(() -> {
-                        errorLabel.setText("MASTER SERVER OFFLINE!");
-                        errorLabel.setVisible(true);
-                        hostBtn.setDisable(false);
+                        if (serverStarted) {
+                            try {
+                                //connect to local fallback server
+                                GameClient hostClient = new GameClient();
+                                hostClient.connectToServer("localhost", 9000);
+                                
+                                ObjectNode payload = objectMapper.createObjectNode();
+                                payload.put("playerName", nickname);
+                                Packet connectPacket = new Packet(PacketType.CONNECT, payload);
+                                hostClient.sendPacket(connectPacket);
+
+                                //pass the 9000 port to the lobby
+                                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode + ":9000", hostClient).getRoot());
+                            } catch (Exception e2) {
+                                //everything is dead
+                                errorLabel.setText("CRITICAL ERROR: ALL SYSTEMS OFFLINE!");
+                                errorLabel.setVisible(true);
+                                hostBtn.setDisable(false);
+                            }
+                        } else {
+                            //9000 is probably busy
+                            errorLabel.setText("PORT 9000 IN USE! START FAILED.");
+                            errorLabel.setVisible(true);
+                            hostBtn.setDisable(false);
+                        }
                     });
                 }
             }).start();
         });
-
+        //zi mi te rog ca e ok si ca merge))))
         HBox bottomRow = new HBox(backBtn, hostBtn);
         bottomRow.setAlignment(Pos.CENTER);
         bottomRow.spacingProperty().bind(root.widthProperty().multiply(0.16));
