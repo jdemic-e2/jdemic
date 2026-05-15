@@ -48,7 +48,12 @@ public class HostGameScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[HostGameScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -86,6 +91,10 @@ public class HostGameScene {
         GlowUtil.applyGlow(codeValue, "#ffffff", 8);
         codeBox.getChildren().add(codeValue);
 
+        //Error message
+        Label errorLabel = TextUtil.createText("", "hkmodular", 0.025, "#ff2d2d", root);
+        errorLabel.setVisible(false);
+
         ButtonsUtil copyBtn = new ButtonsUtil("COPY", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.13, 0.07, 0.020, root);
         ButtonsUtil backBtn = new ButtonsUtil("BACK", "#ff2d2d", "black", "#ff2d2d", "#ff2d2d", 2, 12, 12, 0.13, 0.07, 0.020, root);
         ButtonsUtil hostBtn = new ButtonsUtil("HOST", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.13, 0.07, 0.020, root);
@@ -97,6 +106,7 @@ public class HostGameScene {
         });
 
         backBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
+        
         hostBtn.setOnMouseClicked(e -> {
             new Thread(() -> {
                 try {
@@ -151,7 +161,7 @@ public class HostGameScene {
         bottomRow.setAlignment(Pos.CENTER);
         bottomRow.spacingProperty().bind(root.widthProperty().multiply(0.16));
 
-        VBox content = new VBox(codeText, codeBox, copyBtn, bottomRow);
+        VBox content = new VBox(codeText, codeBox, copyBtn, errorLabel, bottomRow);
         content.setAlignment(Pos.TOP_CENTER);
         content.setFillWidth(false);
         content.spacingProperty().bind(root.heightProperty().multiply(0.04));
