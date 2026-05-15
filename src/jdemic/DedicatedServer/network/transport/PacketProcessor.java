@@ -544,6 +544,7 @@ public class PacketProcessor {
         }
 
         broadcastGameState();
+        }
     }
 
     private void updateLobbyCountdown() {
