@@ -1,6 +1,5 @@
 package jdemic.Scenes.Lobby;
 
-import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
 import jdemic.GameLogic.GameClient;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;

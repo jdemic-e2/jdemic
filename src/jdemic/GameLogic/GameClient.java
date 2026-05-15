@@ -68,6 +68,7 @@ public class GameClient {
 
             if (this.secureSocket == null) {
                 System.out.println("[GameClient] Failed to connect securely.");
+
                 return;
             }
 
@@ -243,6 +244,7 @@ public class GameClient {
         Scanner scanner = new Scanner(System.in);
         scanner.nextLine();
 
+        scanner.close();
         client.disconnect();
         System.out.println("[TEST] Client disconnected.");
     }
