@@ -527,7 +527,7 @@ public class PacketProcessor {
 
     public void disconnectCurrentPlayer() {
         if (gameManager == null || clientHandler == null) return;
-
+        else {
         String playerName = clientHandler.getConnectedPlayerName();
         if (playerName == null || playerName.isBlank()) return;
         else {
