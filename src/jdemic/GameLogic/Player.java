@@ -1,7 +1,7 @@
 package jdemic.GameLogic;
 
-import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.Actions.GameAction;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import com.fasterxml.jackson.databind.ObjectMapper;

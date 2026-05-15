@@ -1,33 +1,32 @@
-package jdemic.GameLogic.Actions;
+package jdemic.GameLogic.Actions.Movement;
 
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CardType;
 
-public class CharterFlightAction extends GameAction {
-    //Charter Flight -> Verify if you have the required city.
-    
+public class DirectFlightAction extends GameAction {
+
     private CityNode destination;
     private Card cardToDiscard;
 
-    public CharterFlightAction(CityNode destination, Card cardToDiscard) {
+    public DirectFlightAction(CityNode destination, Card cardToDiscard) 
+    {
         this.destination = destination;
         this.cardToDiscard = cardToDiscard;
     }
 
-    public boolean isValid(GameState gameState, PlayerState playerState)
+    public boolean isValid(GameState state, PlayerState playerState)
     {
-        CityNode currentCity = playerState.getPlayerCurrentCity();
         return cardToDiscard != null
                 && playerState.getHand().contains(cardToDiscard)
                 && cardToDiscard.getType() == CardType.CITY
-                && cardToDiscard.getTargetCity() == currentCity;
+                && cardToDiscard.getTargetCity() == destination;
     }
 
-    @Override 
-    public void execute(GameState state, PlayerState playerState) 
+    @Override public void execute(GameState state, PlayerState playerState) 
     {
         if(isValid(state, playerState))
         {
