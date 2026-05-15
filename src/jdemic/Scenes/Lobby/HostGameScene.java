@@ -98,31 +98,51 @@ public class HostGameScene {
 
         backBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
         hostBtn.setOnMouseClicked(e -> {
-            // Start the server in a new thread
-            new Thread(() -> {
-                JdemicNetworkServer.main(new String[]{});
-            }).start();
-            
-            // Wait a bit for server to start, then connect as client
             new Thread(() -> {
                 try {
-                    Thread.sleep(1500); // Give server time to start
-                    GameClient hostClient = new GameClient();
-                    hostClient.connectToServer("localhost", 9000);
+                    //Open a short socket connection to localhost:8080 (the Orchestrator)
+                    System.out.println("[Client] Contacting MasterOrchestrator on 8080...");
+                    java.net.Socket orchestratorSocket = new java.net.Socket("localhost", 8080);
+                    java.io.PrintWriter out = new java.io.PrintWriter(orchestratorSocket.getOutputStream(), true);
+                    java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(orchestratorSocket.getInputStream()));
+
+                    //Send the "HOST" message and wait for the response
+                    out.println("HOST");
+                    String response = in.readLine();
                     
-                    // Send CONNECT packet
-                    ObjectNode payload = objectMapper.createObjectNode();
-                    payload.put("playerName", nickname);
-                    Packet connectPacket = new Packet(PacketType.CONNECT, payload);
-                    hostClient.sendPacket(connectPacket);
+                    //Close the connection on port 8080 immediately
+                    orchestratorSocket.close(); 
                     
-                    // Go to waiting room with connected client
-                    Platform.runLater(() -> 
-                        stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode, hostClient).getRoot())
-                    );
+                    System.out.println("[Client] Response received from Orchestrator: " + response);
+
+                    if (response != null && response.startsWith("SUCCESS:")) {
+                        //Extract the new port provided by the Orchestrator (9001)
+                        int newPort = Integer.parseInt(response.split(":")[1]);
+                        
+                        Thread.sleep(1000); //Give the new server process time to start
+                        
+                        //Start the real game connection on the received port
+                        GameClient hostClient = new GameClient();
+                        hostClient.connectToServer("localhost", newPort);
+                        
+                        //Send CONNECT packet
+                        ObjectNode payload = objectMapper.createObjectNode();
+                        payload.put("playerName", nickname);
+                        Packet connectPacket = new Packet(PacketType.CONNECT, payload);
+                        hostClient.sendPacket(connectPacket);
+                        
+                        //Generate the FULL code (IP:PORT) to pass it to the Waiting Room
+                        String finalCodeWithPort = hostCode + ":" + newPort;
+                        
+                        Platform.runLater(() -> 
+                            stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, finalCodeWithPort, hostClient).getRoot())
+                        );
+                    } else {
+                        System.err.println("[Client] Orchestrator failed to create a new server.");
+                    }
+                    
                 } catch (Exception ex) {
-                    System.err.println("[HostGameScene] Error connecting as client: " + ex.getMessage());
-                    ex.printStackTrace();
+                    System.err.println("[Client] Error contacting Master Server: " + ex.getMessage());
                 }
             }).start();
         });
@@ -151,9 +171,10 @@ public class HostGameScene {
 
     private String generateHostCode() {
         try {
+            //Only generate the base IP here. The port is added dynamically after clicking HOST.
             return InetAddress.getLocalHost().getHostAddress();
         } catch (Exception e) {
-            return "127.0.0.1"; // Fallback
+            return "127.0.0.1"; //Fallback IP
         }
     }
 }

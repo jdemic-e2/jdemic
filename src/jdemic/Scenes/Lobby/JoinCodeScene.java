@@ -85,15 +85,26 @@ public class JoinCodeScene {
                 return;
             }
             try {
+                // Extract the port from the code 
+                String targetIp = code;
+                int targetPort = 9000; // Default fallback just in case
+                
+                if (code.contains(":")) {
+                    String[] parts = code.split(":");
+                    targetIp = parts[0];
+                    targetPort = Integer.parseInt(parts[1]);
+                }
+                
                 gameClient = new GameClient();
-                gameClient.connectToServer(code, 9000);
+                gameClient.connectToServer(targetIp, targetPort); 
+                
                 // Send CONNECT packet
                 ObjectNode payload = objectMapper.createObjectNode();
                 payload.put("playerName", nickname);
                 Packet connectPacket = new Packet(PacketType.CONNECT, payload);
                 gameClient.sendPacket(connectPacket);
-                // Go to waiting room
-                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, code, gameClient).getRoot());
+                
+                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, targetIp, gameClient).getRoot());
             } catch (Exception ex) {
                 errorLabel.setText("FAILED TO CONNECT");
                 errorLabel.setVisible(true);
