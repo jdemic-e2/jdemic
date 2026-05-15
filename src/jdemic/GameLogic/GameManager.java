@@ -50,7 +50,9 @@ public class GameManager {
         if (state.isGameStarted()) return;
 
         setupGame();
-        for (PlayerState playerState : state.getPlayers()) {
+        RoleManager.assignRandomRoles(state.getPlayers());
+        for(PlayerState playerState : state.getPlayers())
+        {
             playerState.setReady(false);
             playerState.setPlayer(new Player(playerState, null));
         }
