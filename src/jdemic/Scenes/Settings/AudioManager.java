@@ -1,6 +1,5 @@
 package jdemic.Scenes.Settings;
 
-import javafx.scene.Scene;
 import javafx.scene.media.AudioClip;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;

@@ -530,7 +530,7 @@ public class PacketProcessor {
 
         String playerName = clientHandler.getConnectedPlayerName();
         if (playerName == null || playerName.isBlank()) return;
-
+        else {
             PlayerState playerToRemove = findPlayerState(playerName);
             if (playerToRemove == null) {
                 return;

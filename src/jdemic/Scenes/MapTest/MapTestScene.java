@@ -27,11 +27,9 @@ import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
-import jdemic.ui.GlowUtil;
 import jdemic.GameLogic.*;
 import javafx.scene.layout.VBox;
 import jdemic.ui.GameplayUI.*;
-import javafx.scene.Node;
 
 import java.util.*;
 

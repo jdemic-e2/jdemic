@@ -78,6 +78,12 @@ public class Deck {
         drawOneCard(player);
     }
 
+    public void drawInitialHand(PlayerState player, int cardCount) {
+        for (int i = 0; i < cardCount; i++) {
+            drawOneCard(player);
+        }
+    }
+
     private void drawOneCard(PlayerState player) {
         if (playerCards.isEmpty()) {
             manager.checkLoseCondition();

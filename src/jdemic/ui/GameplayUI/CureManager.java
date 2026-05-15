@@ -16,8 +16,6 @@ import jdemic.GameLogic.DiseaseColor;
 import jdemic.GameLogic.GameManager;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
-import javafx.scene.Node;
-
 public class CureManager {
     private final StackPane root;
     private final GameManager gameManager;

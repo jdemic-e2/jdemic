@@ -16,7 +16,6 @@ import jdemic.DedicatedServer.network.security.DataSanitizer;
 import jdemic.DedicatedServer.network.security.RateLimiter;
 import jdemic.GameLogic.GameManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 
 public class ClientHandler implements Runnable {

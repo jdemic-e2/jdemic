@@ -3,8 +3,6 @@ package jdemic.ui;
 import javafx.animation.Animation;
 import javafx.animation.AnimationTimer;
 import javafx.animation.ScaleTransition;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Pane;
