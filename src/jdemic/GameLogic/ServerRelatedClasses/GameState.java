@@ -25,6 +25,7 @@ public class GameState{
     private int actionsRemaining;
     private int infectionRate;
     private int epidemicCount;
+    private boolean skipInfection = false;
 
     // variables to account win/lose and finished/ongoing
 
@@ -144,6 +145,9 @@ public class GameState{
         this.gameStarted = gameStarted;
     }
 
+    public boolean isSkipInfection() { return this.skipInfection; }
+
+    public void setSkipInfection(boolean skipInfection) { this.skipInfection = skipInfection; }
     /**
      * Gets the current player whose turn it is
      * @return the current PlayerState, or null if no players exist

@@ -150,6 +150,21 @@ public class Deck {
         }
     }
 
+    public void removeInfectionCardFromDiscard(Card card) {
+        if (this.infectionDiscardPile.contains(card)) {
+            this.infectionDiscardPile.remove(card);
+        }
+    }
+
+    public void reorderTopInfectionCards(List<Card> rearrangedCards) {
+        for (int i = 0; i < rearrangedCards.size(); i++) {
+            if (!this.infectionCards.isEmpty()) {
+                this.infectionCards.remove(0);
+            }
+        }
+        this.infectionCards.addAll(0, rearrangedCards);
+    }
+
     // Initial shuffle for both piles at the start of the game
     public void initShuffle() {
         Collections.shuffle(playerCards);

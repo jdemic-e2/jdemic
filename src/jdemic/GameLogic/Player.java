@@ -76,6 +76,49 @@ public class Player {
         gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
     }
 
+    public void requestDrawCards() {
+        if (gameClient == null) {
+            System.err.println("[Player] Cannot send DrawCards packet, gameClient is null!");
+            return;
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("PlayerID", state.getPlayerName());
+        payload.put("GameAction", "DrawCards");
+
+        System.out.println("[Player] Requesting to draw 2 city cards...");
+        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    public void requestInfectionPhase() {
+        if (gameClient == null) {
+            System.err.println("[Player] Cannot send Infection packet - gameClient is null!");
+            return;
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("PlayerID", state.getPlayerName());
+        payload.put("GameAction", "DrawInfection");
+
+        System.out.println("[Player] Requesting server to draw infection cards...");
+        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    public void useCard(Card card) {
+        if (gameClient == null) {
+            System.err.println("[Player] Cannot send UseCard packet - gameClient is null!");
+            return;
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("PlayerID", state.getPlayerName());
+        payload.put("GameAction", "UseCard");
+        payload.put("CardName", card.getCardName());
+
+        System.out.println("[Player] Playing card: " + card.getCardName() + "...");
+        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
     public PlayerState getState() {
         return state;
     }
