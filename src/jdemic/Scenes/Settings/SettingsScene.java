@@ -8,8 +8,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import jdemic.Scenes.MainMenuScene;
-import jdemic.Scenes.SceneManager;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
@@ -392,7 +391,12 @@ public class SettingsScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[SettingsScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);

@@ -8,8 +8,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
-import jdemic.Scenes.MainMenuScene;
-import jdemic.Scenes.SceneManager;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
@@ -26,7 +25,12 @@ public class LobbyScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[LobbyScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);

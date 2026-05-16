@@ -101,4 +101,51 @@ public class Packet {
             throw new RuntimeException("[packet] Error converting packet to JSON: " + e.getMessage(), e);
         }
     }
+
+    public static Packet fromJson(String jsonString)
+    {
+        try{
+            if(jsonString == null || jsonString.isBlank())
+              throw new IllegalArgumentException("[packet] Empty JSON string.");
+            JsonNode rootNode = objectMapper.readTree(jsonString);
+
+            if(rootNode == null || !rootNode.isObject())
+            {
+                System.err.println("[packet] Invalid message: root is not an object.");
+                throw new IllegalArgumentException("Root is not an object.");
+            }
+
+            JsonNode typeNode = rootNode.get("type");
+            if (typeNode == null || typeNode.isNull()) {
+                System.err.println("[packet] Invalid message: missing 'type'");
+                 throw new IllegalArgumentException("Missing 'type'.");
+            }
+            
+            PacketType type;
+            try{
+                type = PacketType.valueOf(typeNode.asText());
+            }
+            catch (Exception e)
+            {
+                System.err.println("[packet] Packet type unknown: " + typeNode.asText());
+                throw new IllegalArgumentException("Unknown packet type.");
+            }
+
+            JsonNode timestampNode = rootNode.get("timestamp");
+            long timestamp = (timestampNode != null && timestampNode.isNumber()) ? timestampNode.asLong() : System.currentTimeMillis();
+
+            JsonNode payload = rootNode.get("payload");
+            if(payload == null || !payload.isObject())
+                payload = objectMapper.createObjectNode();
+
+            return new Packet(type, timestamp, payload);
+            
+        }
+        catch (Exception e)
+        {
+            System.err.println("[packet] Error parsing JSON to Packet: " + e.getMessage());
+            throw new RuntimeException("Parsare esuata", e);
+        }
+        
+    }
 }
