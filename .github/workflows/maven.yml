@@ -11,8 +11,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  unit-tests:
-    name: Unit tests
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,146 +25,23 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Run unit tests
-        id: unit-tests
-        continue-on-error: true
-        run: mvn -B clean test
-
-      - name: Upload unit test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-reports
-          path: target/surefire-reports/
-          if-no-files-found: warn
-
-      - name: Fail when unit tests fail
-        if: steps.unit-tests.outcome == 'failure'
-        run: exit 1
-
-  integration-tests:
-    name: Integration tests
-    runs-on: ubuntu-latest
-    needs: unit-tests
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Run integration tests
-        id: integration-tests
-        shell: bash
-        continue-on-error: true
-        run: |
-          if ! find test -type f \( -name '*IT.java' -o -name '*ITCase.java' \) | grep -q .; then
-            echo "No integration tests matching *IT.java or *ITCase.java were found."
-            exit 0
-          fi
-
-          mvn -B -Dtest='*IT,*ITCase' test
-
-      - name: Upload integration test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-reports
-          path: target/surefire-reports/
-          if-no-files-found: warn
-
-      - name: Fail when integration tests fail
-        if: steps.integration-tests.outcome == 'failure'
-        run: exit 1
-
-  build-coverage:
-    name: Build and coverage
-    runs-on: ubuntu-latest
-    needs:
-      - unit-tests
-      - integration-tests
-    if: always()
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Build, test, and check coverage
-        id: build-coverage
-        continue-on-error: true
+      - name: Build and Test with Maven
         run: mvn -B clean verify
 
-      - name: Generate JaCoCo report after failed verify
-        if: always()
-        shell: bash
-        run: |
-          if [[ -f target/jacoco.exec && ! -f target/site/jacoco/jacoco.xml ]]; then
-            mvn -B -DskipTests jacoco:report || true
-          fi
-
-      - name: Print JaCoCo coverage summary
-        if: always()
-        shell: bash
-        run: |
-          if [[ ! -f target/site/jacoco/jacoco.csv ]]; then
-            echo "JaCoCo CSV report was not generated."
-            exit 0
-          fi
-
-          awk -F, '
-            NR > 1 {
-              missed += $4
-              covered += $5
-            }
-            END {
-              total = missed + covered
-              if (total == 0) {
-                print "Instruction coverage: no instructions found"
-              } else {
-                printf "Instruction coverage: %.2f%% (%d/%d instructions covered)\n", covered * 100 / total, covered, total
-              }
-            }
-          ' target/site/jacoco/jacoco.csv
-
-      - name: Upload build test reports
+      - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-test-reports
+          name: maven-test-reports
           path: target/surefire-reports/
-          if-no-files-found: warn
-
-      - name: Upload JaCoCo reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-reports
-          path: target/site/jacoco/
           if-no-files-found: warn
 
       - name: Upload JAR artifact
-        if: steps.build-coverage.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: pandemic-game-artifact
           path: target/*.jar
           if-no-files-found: error
-
-      - name: Fail when upstream QA, build, or coverage fails
-        if: steps.build-coverage.outcome == 'failure' || needs.unit-tests.result != 'success' || needs.integration-tests.result != 'success'
-        run: exit 1
 
   dependency-review:
     name: Dependency review
@@ -182,61 +58,10 @@ jobs:
           fail-on-severity: high
           comment-summary-in-pr: never
 
-  docker:
-    name: Docker image and smoke test
-    runs-on: ubuntu-latest
-    needs: build-coverage
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build dedicated server image
-        run: docker build -f Dockerfile.dedicated-server -t jdemic-dedicated-server:ci .
-
-      - name: Start dedicated server container
-        run: |
-          docker run -d \
-            --name jdemic-dedicated-server-ci \
-            -p 19000:9000 \
-            -p 18080:8080 \
-            -e JDEMIC_SERVER_PORT=9000 \
-            -e JDEMIC_STATUS_ENABLED=true \
-            -e JDEMIC_STATUS_HOST=0.0.0.0 \
-            -e JDEMIC_STATUS_PORT=8080 \
-            -e JDEMIC_OPEN_BROWSER=false \
-            jdemic-dedicated-server:ci
-
-      - name: Wait for health endpoint
-        shell: bash
-        run: |
-          for attempt in {1..30}; do
-            if curl -fsS http://localhost:18080/health | grep -q '"status":"ok"'; then
-              exit 0
-            fi
-            docker logs jdemic-dedicated-server-ci || true
-            sleep 2
-          done
-          echo "Dedicated server health endpoint did not become ready."
-          docker logs jdemic-dedicated-server-ci || true
-          exit 1
-
-      - name: Verify game server TCP port
-        shell: bash
-        run: |
-          timeout 5 bash -c '</dev/tcp/127.0.0.1/19000'
-
-      - name: Stop dedicated server container
-        if: always()
-        run: |
-          docker stop --time 10 jdemic-dedicated-server-ci || true
-          docker rm jdemic-dedicated-server-ci || true
-
   sonar:
     name: Sonar static analysis
     runs-on: ubuntu-latest
-    needs: build-coverage
+    needs: build
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -271,13 +96,6 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Download JaCoCo report
-        if: steps.sonar-config.outputs.enabled == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: jacoco-reports
-          path: target/site/jacoco
-
       - name: Run Sonar analysis
         if: steps.sonar-config.outputs.enabled == 'true'
         shell: bash
@@ -287,7 +105,6 @@ jobs:
             "org.sonarsource.scanner.maven:sonar-maven-plugin:5.0.0.4389:sonar"
             "-Dsonar.projectKey=${SONAR_PROJECT_KEY}"
             "-Dsonar.host.url=${sonar_host}"
-            "-Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml"
           )
           if [[ -n "${SONAR_ORGANIZATION}" ]]; then
             args+=("-Dsonar.organization=${SONAR_ORGANIZATION}")

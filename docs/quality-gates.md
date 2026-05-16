@@ -9,7 +9,6 @@ The main Maven workflow runs on pushes and pull requests targeting `main` or `de
 - Build command: `mvn -B clean verify`
 - Java runtime: Temurin JDK 21
 - Test report artifact: `target/surefire-reports/`
-- Coverage report artifact: `target/site/jacoco/`
 - Build artifact: `target/*.jar`
 
 The workflow now also runs Dependency Review on pull requests. New dependencies with high or critical known vulnerabilities should be fixed before merge.
@@ -29,20 +28,7 @@ If `SONAR_HOST_URL` is not set, the workflow defaults to `https://sonarcloud.io`
 
 ## Coverage
 
-JaCoCo runs during `mvn verify`, generates HTML/XML/CSV reports under `target/site/jacoco/`, and enforces a temporary 15% bundle instruction coverage baseline.
-
-The baseline is intentionally modest because the current test suite is still growing. Its job is to keep coverage from silently regressing while the team adds focused tests for game logic, networking, and security code. Raise the threshold in small steps after meaningful tests land.
-
-Coverage checks exclude non-business-code entry points and UI-only classes:
-
-- `Launcher*`
-- `jdemic/Main*`
-- `jdemic/Scenes/**/*`
-- `jdemic/ui/**/*`
-- legacy executable test harnesses under `jdemic/DedicatedServer/*Test*`
-- `jdemic/DedicatedServer/TestClient*`
-
-Sonar consumes `target/site/jacoco/jacoco.xml` after the Maven build job succeeds.
+JaCoCo coverage thresholds are intentionally not configured here because coverage gating is tracked in PR #39. Once that work is merged, add `target/site/jacoco/**` and `target/site/jacoco/jacoco.xml` as workflow artifacts and document the active threshold here.
 
 ## Branch Protection Recommendations
 
@@ -68,4 +54,4 @@ Run the same Maven gate locally before opening a PR:
 mvn -B clean verify
 ```
 
-Use the generated report at `target/site/jacoco/index.html` to inspect coverage locally.
+After JaCoCo is merged, use the generated report at `target/site/jacoco/index.html` to inspect coverage locally.
