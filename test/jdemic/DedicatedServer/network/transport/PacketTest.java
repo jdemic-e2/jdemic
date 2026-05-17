@@ -50,4 +50,42 @@ class PacketTest {
         assertTrue(result.contains("50"));
         assertTrue(result.contains("payload"));
     }
+
+    @Test
+    void shouldDefaultNullPayloadToEmptyObject() {
+        Packet packet = new Packet(PacketType.PING, 50L, null);
+
+        assertNotNull(packet.getPayload());
+        assertTrue(packet.getPayload().isObject());
+        assertEquals(0, packet.getPayload().size());
+        assertTrue(packet.isValid());
+    }
+
+    @Test
+    void shouldReportInvalidPackets() throws Exception {
+        assertFalse(new Packet(null, 50L, objectMapper.readTree("{}")).isValid());
+        assertFalse(new Packet(PacketType.PING, 0L, objectMapper.readTree("{}")).isValid());
+        assertFalse(new Packet(PacketType.PING, -1L, objectMapper.readTree("{}")).isValid());
+        assertFalse(new Packet(PacketType.PING, 50L, objectMapper.readTree("[]")).isValid());
+    }
+
+    @Test
+    void toJsonShouldSerializePacketFields() throws Exception {
+        Packet packet = new Packet(PacketType.GAME_DATA, 123L, objectMapper.readTree("{\"action\":\"MOVE\"}"));
+
+        JsonNode serialized = objectMapper.readTree(packet.toJson());
+
+        assertEquals("GAME_DATA", serialized.get("type").asText());
+        assertEquals(123L, serialized.get("timestamp").asLong());
+        assertEquals("MOVE", serialized.get("payload").get("action").asText());
+    }
+
+    @Test
+    void toJsonShouldFailForPacketWithoutType() {
+        Packet packet = new Packet(null, 123L, objectMapper.createObjectNode());
+
+        RuntimeException exception = assertThrows(RuntimeException.class, packet::toJson);
+
+        assertTrue(exception.getMessage().contains("Error converting packet to JSON"));
+    }
 }
