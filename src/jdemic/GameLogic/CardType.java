@@ -3,5 +3,6 @@ package jdemic.GameLogic;
 public enum CardType {
     EVENT,
     CITY,
-    INFECTION
+    INFECTION,
+    EPIDEMIC
 }
