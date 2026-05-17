@@ -1,8 +1,9 @@
-package jdemic.GameLogic.Actions;
+package jdemic.GameLogic.Actions.Movement;
 
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CardType;
 
@@ -17,10 +18,16 @@ public class DirectFlightAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
-    public boolean isValid(GameState state, PlayerState playerState) 
+    public CityNode getDestination() {
+        return this.destination;
+    }
+    
+    public boolean isValid(GameState state, PlayerState playerState)
     {
-        // check if the player has the respective city card.
-        return playerState.getHand().stream().anyMatch(c -> c.getType() == CardType.CITY && c.getTargetCity() == destination);
+        return cardToDiscard != null
+                && playerState.getHand().contains(cardToDiscard)
+                && cardToDiscard.getType() == CardType.CITY
+                && cardToDiscard.getTargetCity() == destination;
     }
 
     @Override public void execute(GameState state, PlayerState playerState) 

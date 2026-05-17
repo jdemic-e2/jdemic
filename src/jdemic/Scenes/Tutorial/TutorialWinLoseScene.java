@@ -5,8 +5,7 @@ import javafx.geometry.*;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import jdemic.Scenes.MainMenuScene;
-import jdemic.Scenes.SceneManager;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.*;
 
 public class TutorialWinLoseScene {

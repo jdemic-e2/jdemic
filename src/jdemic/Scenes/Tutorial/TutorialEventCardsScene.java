@@ -14,7 +14,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import jdemic.Scenes.SceneManager;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.*;
 
 public class TutorialEventCardsScene {
@@ -29,7 +29,12 @@ public class TutorialEventCardsScene {
         setupUI();
     }
     private ImageView createCard(String eventCard) {
-        ImageView card = new ImageView(new Image(getClass().getResource("/eventCards/Event" + eventCard + ".png").toExternalForm()));
+        java.net.URL cardUrl = getClass().getResource("/eventCards/Event" + eventCard + ".png");
+        if (cardUrl == null) {
+            System.err.println("[TutorialEventCardsScene] Missing resource: /eventCards/Event" + eventCard + ".png");
+            return new ImageView();
+        }
+        ImageView card = new ImageView(new Image(cardUrl.toExternalForm()));
         card.setPreserveRatio(true);
         card.fitWidthProperty().bind(root.widthProperty().multiply(0.12));
         GlowUtil.applyGlow(card, "#00b5d4", 10);
