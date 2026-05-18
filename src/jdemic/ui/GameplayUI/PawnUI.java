@@ -29,6 +29,7 @@ public class PawnUI {
         pawnImage.setEffect(glow);
 
         root.getChildren().add(pawnImage);
+        this.root.setMouseTransparent(true);
     }
 
     public StackPane getNode() {
