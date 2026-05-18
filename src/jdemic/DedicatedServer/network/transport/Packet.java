@@ -3,6 +3,7 @@ package jdemic.DedicatedServer.network.transport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.logging.Logger;
 
 /**
  * Packet represents the internal model of a valid network message in the server.
@@ -18,6 +19,7 @@ public class Packet {
     private final long timestamp;
     private final JsonNode payload;
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Logger LOGGER = Logger.getLogger(Packet.class.getName());
 
     /**
      * Main constructor with all specific details.
@@ -102,6 +104,19 @@ public class Packet {
         }
     }
 
+    private static PacketType getPacketType(JsonNode typeNode){
+        PacketType type;
+            try{
+                type = PacketType.valueOf(typeNode.asText());
+            }
+            catch (Exception e)
+            {
+                LOGGER.severe("[packet] Packet type unknown: " + typeNode.asText());
+                throw new IllegalArgumentException("Unknown packet type.");
+            }
+            return type;
+    }
+
     public static Packet fromJson(String jsonString)
     {
         try{
@@ -111,25 +126,17 @@ public class Packet {
 
             if(rootNode == null || !rootNode.isObject())
             {
-                System.err.println("[packet] Invalid message: root is not an object.");
+                LOGGER.severe("[packet] Invalid message: root is not an object.");
                 throw new IllegalArgumentException("Root is not an object.");
             }
 
             JsonNode typeNode = rootNode.get("type");
             if (typeNode == null || typeNode.isNull()) {
-                System.err.println("[packet] Invalid message: missing 'type'");
-                 throw new IllegalArgumentException("Missing 'type'.");
+                LOGGER.severe("[packet] Invalid message: missing 'type'");
+                throw new IllegalArgumentException("Missing 'type'.");
             }
             
-            PacketType type;
-            try{
-                type = PacketType.valueOf(typeNode.asText());
-            }
-            catch (Exception e)
-            {
-                System.err.println("[packet] Packet type unknown: " + typeNode.asText());
-                throw new IllegalArgumentException("Unknown packet type.");
-            }
+            PacketType type = getPacketType(typeNode);
 
             JsonNode timestampNode = rootNode.get("timestamp");
             long timestamp = (timestampNode != null && timestampNode.isNumber()) ? timestampNode.asLong() : System.currentTimeMillis();
@@ -143,8 +150,8 @@ public class Packet {
         }
         catch (Exception e)
         {
-            System.err.println("[packet] Error parsing JSON to Packet: " + e.getMessage());
-            throw new RuntimeException("Parsare esuata", e);
+            LOGGER.severe("[packet] Error parsing JSON to Packet: " + e.getMessage());
+            throw new RuntimeException("Failed parsing JSON to Packet", e);
         }
         
     }
