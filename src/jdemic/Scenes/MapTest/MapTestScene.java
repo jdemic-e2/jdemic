@@ -85,6 +85,7 @@ public class MapTestScene {
     private Map<CityNode, List<String>> cityOccupants = new HashMap<>();
 
     private GameClient.PlayerUpdateListener playerUpdateListener;
+    private Pane mapPane;
 
     public MapTestScene(Stage stage) {
         this.stage = stage;
@@ -175,11 +176,20 @@ public class MapTestScene {
 
     // Inside setupContent() or initializeScene()
     private void setupPawns(Pane mapPane) {
-        Color[] colors = {Color.CYAN, Color.MAGENTA, Color.LIME, Color.ORANGE};
+        this.mapPane = mapPane;
+        String[] pawnImages = {
+                "/playerPins/PinRoleArtificialIntelligenceAnalyst.png",
+                "/playerPins/PinRoleEncryptionSpecialist.png",
+                "/playerPins/PinRoleFirewallSpecialist.png",
+                "/playerPins/PinRoleIncidentResponder.png",
+                "/playerPins/PinRoleNetworkController.png",
+                "/playerPins/PinRoleSystemEngineer.png",
+                "/playerPins/PinRoleThreatStrategist.png"
+        };
         int i = 0;
 
         for (PlayerState player : gameManager.getState().getPlayers()) {
-            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), colors[i % colors.length]);
+            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), pawnImages[i % pawnImages.length]);
             playerPawns.put(player.getPlayerName(), pawn);
             mapPane.getChildren().add(pawn.getNode());
             i++;
