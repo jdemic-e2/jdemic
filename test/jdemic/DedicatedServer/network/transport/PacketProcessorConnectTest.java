@@ -133,13 +133,11 @@ public class PacketProcessorConnectTest {
     }
 
     @Test
-    public void testDuplicateNameIsCaseSensitive() {
-        // "alice" and "Alice" are different names — both should be accepted,
-        // because findPlayerState uses equals(), not equalsIgnoreCase().
+    public void testDuplicateNameIsCaseInsensitive() {
         processor.process(connectPacket("alice"));
         processor.process(connectPacket("Alice"));
-        assertEquals(2, playerCount(),
-                "Name comparison is case-sensitive; 'alice' and 'Alice' are different players");
+        assertEquals(1, playerCount(),
+                "Names that differ only by case must not create two identities");
     }
 
     @Test

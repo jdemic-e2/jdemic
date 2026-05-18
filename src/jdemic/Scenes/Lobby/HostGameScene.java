@@ -5,12 +5,15 @@ import jdemic.DedicatedServer.network.core.DedicatedServerConfig;
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
@@ -118,7 +121,7 @@ public class HostGameScene {
                 try {
                     Integer orchestratedPort = requestServerFromOrchestrator();
                     if (orchestratedPort != null) {
-                        connectHostAndOpenWaitingRoom(orchestratedPort);
+                        connectHostAndOpenWaitingRoom(orchestratedPort, false);
                         return;
                     }
 
@@ -136,7 +139,12 @@ public class HostGameScene {
                         return;
                     }
 
-                    connectHostAndOpenWaitingRoom(fallbackPort);
+                    try {
+                        connectHostAndOpenWaitingRoom(fallbackPort, true);
+                    } catch (Exception ex) {
+                        JdemicNetworkServer.shutdown();
+                        throw ex;
+                    }
                 } catch (Exception ex) {
                     System.err.println("[HostGameScene] Failed to host game: " + ex.getMessage());
                     showHostError("CRITICAL ERROR: ALL SYSTEMS OFFLINE!", hostBtn, errorLabel);
@@ -197,19 +205,60 @@ public class HostGameScene {
         }
     }
 
-    private void connectHostAndOpenWaitingRoom(int port) throws InterruptedException {
+    private void connectHostAndOpenWaitingRoom(int port, boolean ownsServer) throws InterruptedException {
         Thread.sleep(250);
 
         GameClient hostClient = new GameClient();
-        hostClient.connectToServer("localhost", port);
-
-        ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("playerName", nickname);
-        hostClient.sendPacket(new Packet(PacketType.CONNECT, payload));
+        if (!connectAndRegister(hostClient, "localhost", port, nickname)) {
+            hostClient.disconnect();
+            throw new IllegalStateException("Host client could not register with the lobby.");
+        }
 
         Platform.runLater(() ->
-                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode + ":" + port, hostClient).getRoot())
+                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode + ":" + port, hostClient, ownsServer).getRoot())
         );
+    }
+
+    private boolean connectAndRegister(GameClient client, String host, int port, String playerName) throws InterruptedException {
+        if (!client.connectToServer(host, port)) {
+            return false;
+        }
+
+        CountDownLatch registered = new CountDownLatch(1);
+        GameClient.PlayerUpdateListener registrationListener = gameState -> {
+            if (containsPlayer(gameState, playerName)) {
+                registered.countDown();
+            }
+        };
+        client.addPlayerUpdateListener(registrationListener);
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("playerName", playerName);
+        client.sendPacket(new Packet(PacketType.CONNECT, payload));
+
+        boolean accepted = registered.await(3, TimeUnit.SECONDS);
+        client.removePlayerUpdateListener(registrationListener);
+        return accepted;
+    }
+
+    private boolean containsPlayer(JsonNode gameState, String playerName) {
+        if (gameState == null || playerName == null) {
+            return false;
+        }
+
+        JsonNode players = gameState.has("players")
+                ? gameState.get("players")
+                : gameState.get("playerArray");
+        if (players == null || !players.isArray()) {
+            return false;
+        }
+
+        for (JsonNode player : players) {
+            if (player.has("playerName") && playerName.equalsIgnoreCase(player.get("playerName").asText())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void showHostError(String message, ButtonsUtil hostBtn, Label errorLabel) {

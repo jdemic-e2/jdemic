@@ -40,12 +40,17 @@ import java.util.concurrent.TimeUnit;
 public class PacketProcessor {
 
     private static final int GAME_START_DELAY_SECONDS = 10;
+    private static final int MIN_PLAYERS_TO_START = 2;
     private static final int MAX_PLAYERS = 4;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final GameManager gameManager;
     private final ClientHandler clientHandler;
-    private final ScheduledExecutorService gameStartScheduler = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService gameStartScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "jdemic-lobby-countdown");
+        thread.setDaemon(true);
+        return thread;
+    });
     private ScheduledFuture<?> gameStartTask;
 
     public PacketProcessor() {
@@ -592,7 +597,7 @@ public class PacketProcessor {
 
     private PlayerState findPlayerState(String playerName) {
         for (PlayerState ps : gameManager.getState().getPlayers()) {
-            if (ps.getPlayerName().equals(playerName)) {
+            if (ps.getPlayerName().equalsIgnoreCase(playerName)) {
                 return ps;
             }
         }
@@ -631,8 +636,8 @@ public class PacketProcessor {
     }
 
     private void updateLobbyCountdown() {
-        boolean hasPlayers = !gameManager.getState().getPlayers().isEmpty();
-        boolean allReady = hasPlayers;
+        boolean enoughPlayers = gameManager.getState().getPlayers().size() >= MIN_PLAYERS_TO_START;
+        boolean allReady = enoughPlayers;
         for (PlayerState player : gameManager.getState().getPlayers()) {
             if (!player.isReady()) {
                 allReady = false;
@@ -676,7 +681,7 @@ public class PacketProcessor {
     }
 
     private boolean areAllPlayersReady() {
-        if (gameManager.getState().getPlayers().isEmpty()) {
+        if (gameManager.getState().getPlayers().size() < MIN_PLAYERS_TO_START) {
             return false;
         }
         for (PlayerState player : gameManager.getState().getPlayers()) {
@@ -685,5 +690,10 @@ public class PacketProcessor {
             }
         }
         return true;
+    }
+
+    public void shutdown() {
+        cancelGameStart();
+        gameStartScheduler.shutdownNow();
     }
 }

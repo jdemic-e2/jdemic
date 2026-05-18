@@ -3,8 +3,11 @@ package jdemic.Scenes.Lobby;
 import jdemic.GameLogic.GameClient;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import javafx.application.Platform;
 import javafx.geometry.Pos;
@@ -140,14 +143,12 @@ public class JoinCodeScene {
                 }
 
                 GameClient client = new GameClient();
-                if (!client.connectToServer(targetIp, targetPort)) {
+                if (!connectAndRegister(client, targetIp, targetPort, nickname)) {
+                    client.disconnect();
                     showJoinError(joinBtn);
                     return;
                 }
 
-                ObjectNode payload = objectMapper.createObjectNode();
-                payload.put("playerName", nickname);
-                client.sendPacket(new Packet(PacketType.CONNECT, payload));
                 gameClient = client;
 
                 String roomCode = targetIp + ":" + targetPort;
@@ -158,6 +159,48 @@ public class JoinCodeScene {
                 showJoinError(joinBtn);
             }
         }, "jdemic-join-server").start();
+    }
+
+    private boolean connectAndRegister(GameClient client, String host, int port, String playerName) throws InterruptedException {
+        if (!client.connectToServer(host, port)) {
+            return false;
+        }
+
+        CountDownLatch registered = new CountDownLatch(1);
+        GameClient.PlayerUpdateListener registrationListener = gameState -> {
+            if (containsPlayer(gameState, playerName)) {
+                registered.countDown();
+            }
+        };
+        client.addPlayerUpdateListener(registrationListener);
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("playerName", playerName);
+        client.sendPacket(new Packet(PacketType.CONNECT, payload));
+
+        boolean accepted = registered.await(3, TimeUnit.SECONDS);
+        client.removePlayerUpdateListener(registrationListener);
+        return accepted;
+    }
+
+    private boolean containsPlayer(JsonNode gameState, String playerName) {
+        if (gameState == null || playerName == null) {
+            return false;
+        }
+
+        JsonNode players = gameState.has("players")
+                ? gameState.get("players")
+                : gameState.get("playerArray");
+        if (players == null || !players.isArray()) {
+            return false;
+        }
+
+        for (JsonNode player : players) {
+            if (player.has("playerName") && playerName.equalsIgnoreCase(player.get("playerName").asText())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void showJoinError(ButtonsUtil joinBtn) {

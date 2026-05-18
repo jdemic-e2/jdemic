@@ -26,10 +26,13 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Install headless UI dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
       - name: Run unit tests
         id: unit-tests
         continue-on-error: true
-        run: xvfb-run mvn -B clean test
+        run: xvfb-run -a mvn -B clean test
 
       - name: Upload unit test reports
         if: always()
@@ -59,6 +62,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Install headless UI dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
       - name: Run integration tests
         id: integration-tests
         shell: bash
@@ -69,7 +75,7 @@ jobs:
             exit 0
           fi
 
-          xvfb-run mvn -B -Dtest='*IT,*ITCase' test
+          xvfb-run -a mvn -B -Dtest='*IT,*ITCase' test
 
       - name: Upload integration test reports
         if: always()
@@ -102,10 +108,13 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Install headless UI dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
       - name: Build, test, and check coverage
         id: build-coverage
         continue-on-error: true
-        run: xvfb-run mvn -B clean verify
+        run: xvfb-run -a mvn -B clean verify
 
       - name: Generate JaCoCo report after failed verify
         if: always()

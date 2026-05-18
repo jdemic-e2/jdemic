@@ -19,14 +19,15 @@ public class JdemicNetworkServerTest {
     public void testStartServerFailsGracefullyWhenPortIsInUse() {
         ServerSocket blockerSocket = null;
         try {
-            // 1. Ocupăm portul 9000 manual (simulăm un alt server care a rămas deschis)
-            blockerSocket = new ServerSocket(9000);
+            blockerSocket = new ServerSocket(0);
+            int blockedPort = blockerSocket.getLocalPort();
+            DedicatedServerConfig blockedConfig = new DedicatedServerConfig(blockedPort, false, "localhost", 0, false);
 
             // 2. Încercăm să pornim serverul Jdemic (acesta ar trebui să eșueze elegant)
-            boolean result = JdemicNetworkServer.startServer();
+            boolean result = JdemicNetworkServer.startServer(blockedConfig);
 
             // 3. Verificăm că a returnat FALSE
-            assertFalse(result, "Serverul ar trebui să returneze FALSE dacă portul 9000 este deja ocupat.");
+            assertFalse(result, "Serverul ar trebui să returneze FALSE dacă portul este deja ocupat.");
 
         } catch (IOException e) {
             fail("Testul a eșuat la configurarea portului blocant: " + e.getMessage());
@@ -42,7 +43,9 @@ public class JdemicNetworkServerTest {
         }
 
         // 5. Acum că portul este liber, încercăm din nou
-        boolean secondResult = JdemicNetworkServer.startServer();
+        boolean secondResult = JdemicNetworkServer.startServer(
+                new DedicatedServerConfig(0, false, "localhost", 0, false)
+        );
 
         // 6. Verificăm că de data asta a reușit (TRUE)
         assertTrue(secondResult, "Serverul ar trebui să pornească cu succes după ce portul a fost eliberat.");

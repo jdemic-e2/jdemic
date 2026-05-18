@@ -193,11 +193,16 @@ public class GameClient {
         
         try {
             String mesajCriptat = in.readLine();
+            if (mesajCriptat == null) {
+                isConnected = false;
+                return null;
+            }
             if (mesajCriptat != null) {
                 return secureSocket.decrypt(mesajCriptat);
             }
         } catch (Exception e) {
             System.err.println("[GameClient] Error receiving packet: " + e.getMessage());
+            isConnected = false;
         }
         return null;
     }

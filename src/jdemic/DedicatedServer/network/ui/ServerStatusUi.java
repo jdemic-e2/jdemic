@@ -1,12 +1,16 @@
 package jdemic.DedicatedServer.network.ui;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import jdemic.DedicatedServer.network.core.DedicatedServerConfig;
 import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.GameManager;
+import jdemic.GameLogic.ServerRelatedClasses.GameState;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 import java.awt.Desktop;
 import java.awt.GraphicsEnvironment;
@@ -90,6 +94,10 @@ public class ServerStatusUi {
     }
 
     private void handleHealth(HttpExchange exchange) throws IOException {
+        if (!requireMethod(exchange, "GET")) {
+            return;
+        }
+
         ObjectNode response = OBJECT_MAPPER.createObjectNode();
         response.put("status", "ok");
         response.put("service", "jdemic-dedicated-server");
@@ -132,16 +140,23 @@ public class ServerStatusUi {
     }
 
     private void handleIndex(HttpExchange exchange) throws IOException {
+        if (!requireMethod(exchange, "GET")) {
+            return;
+        }
         sendResponse(exchange, "text/html; charset=UTF-8", getHtml());
     }
 
     private void handleState(HttpExchange exchange) throws IOException {
+        if (!requireMethod(exchange, "GET")) {
+            return;
+        }
+
         ObjectNode response = OBJECT_MAPPER.createObjectNode();
         response.put("connectedPlayers", connectedPlayerCountSupplier.getAsInt());
 
         GameManager gameManager = gameManagerSupplier.get();
         if (gameManager != null) {
-            response.set("gameState", OBJECT_MAPPER.valueToTree(gameManager.getState()));
+            response.set("gameState", buildGameStateSummary(gameManager));
         } else {
             response.putNull("gameState");
         }
@@ -157,18 +172,83 @@ public class ServerStatusUi {
     }
 
     private void handleShutdown(HttpExchange exchange) throws IOException {
+        if (!requireMethod(exchange, "POST")) {
+            return;
+        }
+        if (!isLocalRequest(exchange)) {
+            sendResponse(exchange, 403, "application/json; charset=UTF-8", "{\"error\":\"forbidden\"}");
+            return;
+        }
+
         sendResponse(exchange, "text/plain; charset=UTF-8", "Server closing");
         new Thread(shutdownAction, "server-ui-shutdown").start();
     }
 
     private void sendResponse(HttpExchange exchange, String contentType, String body) throws IOException {
+        sendResponse(exchange, 200, contentType, body);
+    }
+
+    private void sendResponse(HttpExchange exchange, int statusCode, String contentType, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", contentType);
         exchange.getResponseHeaders().set("Cache-Control", "no-store");
-        exchange.sendResponseHeaders(200, bytes.length);
+        exchange.sendResponseHeaders(statusCode, bytes.length);
         try (OutputStream outputStream = exchange.getResponseBody()) {
             outputStream.write(bytes);
         }
+    }
+
+    private boolean requireMethod(HttpExchange exchange, String method) throws IOException {
+        if (method.equalsIgnoreCase(exchange.getRequestMethod())) {
+            return true;
+        }
+
+        exchange.getResponseHeaders().set("Allow", method.toUpperCase());
+        sendResponse(exchange, 405, "application/json; charset=UTF-8", "{\"error\":\"method_not_allowed\"}");
+        return false;
+    }
+
+    private boolean isLocalRequest(HttpExchange exchange) {
+        if (exchange.getRemoteAddress() == null || exchange.getRemoteAddress().getAddress() == null) {
+            return false;
+        }
+
+        return exchange.getRemoteAddress().getAddress().isLoopbackAddress()
+                || exchange.getRemoteAddress().getAddress().isAnyLocalAddress();
+    }
+
+    ObjectNode buildGameStateSummary(GameManager gameManager) {
+        ObjectNode summary = OBJECT_MAPPER.createObjectNode();
+
+        synchronized (gameManager.getStateLock()) {
+            GameState state = gameManager.getState();
+            summary.put("gameStarted", state.isGameStarted());
+            summary.put("gameOver", state.isGameOver());
+            summary.put("gameWon", state.isGameWon());
+            summary.put("currentPlayerIndex", state.getCurrentPlayerIndex());
+            summary.put("actionsRemaining", state.getActionsRemaining());
+            summary.put("infectionRate", state.getInfectionRate());
+            summary.put("epidemicCount", state.getEpidemicCount());
+            summary.put("lobbyCountdownStartedAt", state.getLobbyCountdownStartedAt());
+            summary.put("playerCount", state.getPlayers().size());
+
+            ArrayNode players = summary.putArray("players");
+            for (PlayerState player : state.getPlayers()) {
+                ObjectNode playerNode = players.addObject();
+                playerNode.put("playerName", player.getPlayerName());
+                playerNode.put("ready", player.isReady());
+                playerNode.put("discardingCards", player.getIsDiscarding());
+                playerNode.put("handCount", player.getHand() == null ? 0 : player.getHand().size());
+                if (player.getPlayerRole() != null) {
+                    playerNode.put("playerRole", player.getPlayerRole().name());
+                }
+
+                CityNode currentCity = player.getPlayerCurrentCity();
+                playerNode.put("currentCity", currentCity == null ? null : currentCity.getName());
+            }
+        }
+
+        return summary;
     }
 
     private String getHtml() {

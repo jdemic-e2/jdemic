@@ -113,7 +113,11 @@ public class ClientHandler implements Runnable {
         }
         closed = true;
         try {
-            packetProcessor.disconnectCurrentPlayer();
+            try {
+                packetProcessor.disconnectCurrentPlayer();
+            } finally {
+                packetProcessor.shutdown();
+            }
             if (in != null) in.close();
             if (out != null) out.close();
             if (rawSocket != null && !rawSocket.isClosed()) {
