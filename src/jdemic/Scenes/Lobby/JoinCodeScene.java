@@ -155,6 +155,9 @@ public class JoinCodeScene {
                 Platform.runLater(() ->
                         stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, roomCode, gameClient).getRoot())
                 );
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                showJoinError(joinBtn);
             } catch (Exception ex) {
                 showJoinError(joinBtn);
             }

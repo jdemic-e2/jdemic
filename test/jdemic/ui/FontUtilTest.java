@@ -5,8 +5,8 @@ import javafx.scene.text.Font;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FontUtilTest {
 
@@ -27,6 +27,6 @@ class FontUtilTest {
 
         // Verify if the font is loaded successfully
         assertNotNull(hkModularFont, "hkmodular font failed to load (returned null).");
-        assertTrue(hkModularFont.getSize() == targetSize, "Font size does not match the target value.");
+        assertEquals(targetSize, hkModularFont.getSize(), "Font size does not match the target value.");
     }
 }

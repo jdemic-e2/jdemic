@@ -40,9 +40,9 @@ public class DeckManager {
             ImageView card = new ImageView(topImage);
             card.setPreserveRatio(true);
             card.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(60, root.getWidth() * 0.06), root.widthProperty()));
-            card.setTranslateX(i * 1);
-            card.setTranslateY(-i * 1);
-            card.setRotate((Math.random() - 0.5) * 2);
+            card.setTranslateX((double) i);
+            card.setTranslateY(-(double) i);
+            card.setRotate(((i % 3) - 1) * 0.75);
             stack.getChildren().add(card);
         }
         return stack;

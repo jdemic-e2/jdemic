@@ -17,9 +17,7 @@ public class JdemicNetworkServerTest {
 
     @Test
     public void testStartServerFailsGracefullyWhenPortIsInUse() {
-        ServerSocket blockerSocket = null;
-        try {
-            blockerSocket = new ServerSocket(0);
+        try (ServerSocket blockerSocket = new ServerSocket(0)) {
             int blockedPort = blockerSocket.getLocalPort();
             DedicatedServerConfig blockedConfig = new DedicatedServerConfig(blockedPort, false, "localhost", 0, false);
 
@@ -31,15 +29,6 @@ public class JdemicNetworkServerTest {
 
         } catch (IOException e) {
             fail("Testul a eșuat la configurarea portului blocant: " + e.getMessage());
-        } finally {
-            // 4. Eliberăm portul
-            if (blockerSocket != null) {
-                try {
-                    blockerSocket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
 
         // 5. Acum că portul este liber, încercăm din nou

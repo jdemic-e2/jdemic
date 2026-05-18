@@ -12,6 +12,9 @@ import java.net.Socket;
 import java.util.Scanner;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -19,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 public class GameClient {
 
+    private static final Logger LOGGER = Logger.getLogger(GameClient.class.getName());
     private SecureSocket secureSocket;
     private PrintWriter out;
     private BufferedReader in;
@@ -26,7 +30,7 @@ public class GameClient {
     private volatile boolean isConnected = false;
     private Thread listeningThread;
     private final List<PlayerUpdateListener> listeners = new CopyOnWriteArrayList<>();
-    private volatile JsonNode latestGameState;
+    private final AtomicReference<JsonNode> latestGameState = new AtomicReference<>();
 
     public interface PlayerUpdateListener {
         void onPlayersUpdated(JsonNode gameState);
@@ -37,7 +41,7 @@ public class GameClient {
             return;
         }
         listeners.add(listener);
-        JsonNode currentGameState = latestGameState;
+        JsonNode currentGameState = latestGameState.get();
         if (currentGameState != null) {
             listener.onPlayersUpdated(currentGameState);
         }
@@ -84,8 +88,7 @@ public class GameClient {
             return true;
 
         } catch (Exception e) {
-            System.err.println("[GameClient] Critical error connecting to server: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Critical error connecting to server.", e);
             return false;
         }
     }
@@ -121,7 +124,7 @@ public class GameClient {
         switch (packet.getType()) {
             case GAME_DATA:
                 System.out.println("[GameClient] Handling GAME_DATA packet.");
-                latestGameState = packet.getPayload();
+                latestGameState.set(packet.getPayload());
                 notifyPlayersUpdated(packet.getPayload());
                 break;
             case PONG:
@@ -144,7 +147,7 @@ public class GameClient {
             JsonNode gameState = root.has("type") && root.has("payload")
                     ? Packet.fromJson(data).getPayload()
                     : root;
-            latestGameState = gameState;
+            latestGameState.set(gameState);
             notifyPlayersUpdated(gameState);
         } catch (Exception e) {
             System.err.println("[GameClient] Error parsing incoming data: " + e.getMessage());
@@ -166,8 +169,7 @@ public class GameClient {
             out.println(mesajCriptat);
             System.out.println("[GameClient] Sent encrypted packet to server.");
         } catch (Exception e) {
-            System.err.println("[GameClient] Error encrypting/sending packet: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Error encrypting or sending packet.", e);
         }
     }
 
@@ -210,7 +212,7 @@ public class GameClient {
     public void disconnect() {
         isConnected = false;
         listeners.clear();
-        latestGameState = null;
+        latestGameState.set(null);
         try {
             if (in != null) in.close();
             if (out != null) out.close();

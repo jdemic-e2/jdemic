@@ -33,6 +33,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Converts validated network packets into game mutations.
@@ -43,6 +45,7 @@ public class PacketProcessor {
     private static final int MIN_PLAYERS_TO_START = 2;
     private static final int MAX_PLAYERS = 4;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Logger LOGGER = Logger.getLogger(PacketProcessor.class.getName());
 
     private final GameManager gameManager;
     private final ClientHandler clientHandler;
@@ -343,8 +346,7 @@ public class PacketProcessor {
                     + " | Total: " + gameManager.getState().getPlayers().size());
             broadcastGameState();
         } catch (Exception e) {
-            System.err.println("[PacketProcessor] Error handling CONNECT: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Error handling CONNECT packet.", e);
         }
     }
 
