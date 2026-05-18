@@ -106,8 +106,6 @@
                         <exclude>jdemic/Main*</exclude>
                         <exclude>jdemic/Scenes/**/*</exclude>
                         <exclude>jdemic/ui/**/*</exclude>
-                        <exclude>jdemic/DedicatedServer/*Test*</exclude>
-                        <exclude>jdemic/DedicatedServer/TestClient*</exclude>
                     </excludes>
                 </configuration>
                 <executions>

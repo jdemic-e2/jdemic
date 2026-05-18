@@ -22,7 +22,7 @@ The workflow jobs are:
 - `Integration tests`
 - `Build and coverage`
 - `Dependency review` on pull requests only
-- `Docker image and smoke test` on pull requests only
+- `Docker image and smoke test` on pull requests and deployable pushes to `main` or `develop`
 - `Sonar static analysis` when configured and not running from a forked pull request
 - `Deploy Docker image to GHCR` on pushes to `main` or `develop` only
 
@@ -60,8 +60,6 @@ Coverage checks exclude non-business-code entry points and UI-only classes:
 - `jdemic/Main*`
 - `jdemic/Scenes/**/*`
 - `jdemic/ui/**/*`
-- legacy executable test harnesses under `jdemic/DedicatedServer/*Test*`
-- `jdemic/DedicatedServer/TestClient*`
 
 Sonar consumes `target/site/jacoco/jacoco.xml` from the `jacoco-reports` artifact after the Maven build job succeeds. The Sonar job fails if that XML report is missing.
 
