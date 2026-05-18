@@ -1,10 +1,14 @@
 # Quality Gates
 
-This project uses GitHub Actions and Maven checks to keep changes reviewable before they reach `main` or `develop`.
+This project uses one canonical GitHub Actions workflow and Maven checks to keep changes reviewable before they reach integration and release branches.
 
 ## Current Pipeline
 
-The main Maven workflow runs on pushes and pull requests targeting `main` or `develop`.
+The canonical Maven workflow is `.github/workflows/maven.yml` (`Java CI with Maven`).
+
+- Pull requests targeting any branch run the QA checks, including integration branches such as `backend-frontend/merger`.
+- Pushes to `main` or `develop` run QA checks and are the only events that can deploy the Docker image to GHCR.
+- Pushes to other branches do not run this workflow unless opened as a pull request.
 
 - Build command: `mvn -B clean verify`
 - Java runtime: Temurin JDK 21
@@ -12,13 +16,25 @@ The main Maven workflow runs on pushes and pull requests targeting `main` or `de
 - Coverage report artifact: `target/site/jacoco/`
 - Build artifact: `target/*.jar`
 
-The workflow now also runs Dependency Review on pull requests. New dependencies with high or critical known vulnerabilities should be fixed before merge.
+The workflow jobs are:
+
+- `Unit tests`
+- `Integration tests`
+- `Build and coverage`
+- `Dependency review` on pull requests only
+- `Docker image and smoke test` on pull requests only
+- `Sonar static analysis` when configured and not running from a forked pull request
+- `Deploy Docker image to GHCR` on pushes to `main` or `develop` only
+
+Dependency Review runs on pull requests. New dependencies with high or critical known vulnerabilities should be fixed before merge.
 
 ## Sonar Static Analysis
 
-The workflow includes SonarQube/SonarCloud support without hardcoding secrets. On same-repository pull requests and pushes, the Sonar job is expected to run and fail clearly if required configuration is missing. Pull requests from forks do not run this job because repository secrets are not exposed to forked workflows.
+The workflow includes SonarQube/SonarCloud support without hardcoding secrets. Pull requests from forks do not run this job because repository secrets are not exposed to forked workflows.
 
-Configure this repository secret:
+On same-repository pull requests and pushes, the `Sonar static analysis` job runs after `Build and coverage`. If `SONAR_TOKEN` is missing, the job exits successfully with a notice and skips analysis. Once the secret is configured, Sonar imports the JaCoCo XML report and waits for the Sonar quality gate result.
+
+Configure this repository secret to enable analysis:
 
 - Secret: `SONAR_TOKEN`
 
@@ -30,7 +46,7 @@ The workflow defaults to the SonarCloud project `jdemic-e2_jdemic` in organizati
 - Variable for SonarCloud: `SONAR_ORGANIZATION`
 - Optional variable for self-hosted SonarQube: `SONAR_HOST_URL`
 
-If `SONAR_HOST_URL` is not set, the workflow uses `https://sonarcloud.io`. Sonar waits for the quality gate result, so a failed quality gate fails CI.
+If `SONAR_HOST_URL` is not set, the workflow uses `https://sonarcloud.io`. Once Sonar is configured, a failed Sonar quality gate fails CI.
 
 ## Coverage
 
@@ -59,9 +75,12 @@ Apply these rules to `main` and `develop` in GitHub branch protection settings:
 - Require conversation resolution before merge.
 - Require status checks to pass before merge.
 - Require branches to be up to date before merge.
-- Require the `build` workflow job.
+- Require `Unit tests`.
+- Require `Integration tests`.
+- Require `Build and coverage`.
 - Require `Dependency review` for pull requests.
-- Require `Sonar static analysis` after the `SONAR_TOKEN` secret is configured.
+- Require `Docker image and smoke test` for pull requests that touch Docker or server runtime behavior.
+- Require `Sonar static analysis` after the `SONAR_TOKEN` secret is configured and the team wants Sonar to block merges.
 - Block force pushes and branch deletion.
 - Restrict direct pushes to maintainers if the team needs tighter release control.
 

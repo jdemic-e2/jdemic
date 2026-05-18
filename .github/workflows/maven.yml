@@ -264,26 +264,33 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Validate Sonar configuration
+      - name: Check Sonar configuration
+        id: sonar-config
         shell: bash
         run: |
           if [[ -z "${SONAR_TOKEN}" ]]; then
-            echo "::error title=Missing SONAR_TOKEN::Configure the SONAR_TOKEN repository secret so the Sonar static analysis job can run."
-            exit 1
+            echo "::notice title=Sonar skipped::Configure the SONAR_TOKEN repository secret to enable Sonar static analysis."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
           if [[ -z "${SONAR_PROJECT_KEY}" ]]; then
-            echo "::error title=Missing Sonar project key::Set SONAR_PROJECT_KEY or keep the workflow default jdemic-e2_jdemic."
-            exit 1
+            echo "::notice title=Sonar skipped::Set SONAR_PROJECT_KEY or keep the workflow default jdemic-e2_jdemic."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
       - name: Download JaCoCo report
+        if: steps.sonar-config.outputs.configured == 'true'
         uses: actions/download-artifact@v4
         with:
           name: jacoco-reports
           path: target/site/jacoco
 
       - name: Verify JaCoCo XML report
+        if: steps.sonar-config.outputs.configured == 'true'
         shell: bash
         run: |
           if [[ ! -s target/site/jacoco/jacoco.xml ]]; then
@@ -292,6 +299,7 @@ jobs:
           fi
 
       - name: Run Sonar analysis
+        if: steps.sonar-config.outputs.configured == 'true'
         shell: bash
         run: |
           args=(
