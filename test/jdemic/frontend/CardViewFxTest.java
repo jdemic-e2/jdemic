@@ -79,6 +79,11 @@ class CardViewFxTest {
     void hoverDriveScalesInnerPastUnityWithoutThrowing(FxRobot robot) throws Exception {
         WaitForAsyncUtils.waitForFxEvents();
         VBox inner = (VBox) cardView.getChildren().get(0);
+
+        assertDoesNotThrow(() -> robot.interact(() -> cardView.getOnMouseExited().handle(null)));
+        waitUntil(() -> Math.abs(inner.getScaleX() - 1.0) <= 0.02
+                && Math.abs(inner.getScaleY() - 1.0) <= 0.02, 3000);
+
         assertEquals(1.0, inner.getScaleX(), 0.02);
         assertEquals(1.0, inner.getScaleY(), 0.02);
 
