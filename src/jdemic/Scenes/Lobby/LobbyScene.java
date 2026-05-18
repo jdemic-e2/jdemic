@@ -11,15 +11,11 @@ import javafx.stage.Stage;
 import javafx.application.Platform;
 import jdemic.DedicatedServer.network.core.DedicatedServerConfig;
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
-import jdemic.DedicatedServer.network.transport.Packet;
-import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.GameLogic.GameClient;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.net.InetAddress;
 
@@ -27,7 +23,6 @@ public class LobbyScene {
     private final StackPane root;
     private final Stage stage;
     private static final int DEFAULT_GAME_PORT = 9000;
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public LobbyScene(Stage stage) {
         this.stage = stage;
@@ -152,14 +147,17 @@ public class LobbyScene {
 
     private GameClient connectAndRegister(String host, int port, String nickname) {
         GameClient client = new GameClient();
-        if (!client.connectToServer(host, port)) {
+        try {
+            if (!LobbyRegistrationHelper.connectAndRegister(client, host, port, nickname)) {
+                client.disconnect();
+                return null;
+            }
+            return client;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            client.disconnect();
             return null;
         }
-
-        ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("playerName", nickname);
-        client.sendPacket(new Packet(PacketType.CONNECT, payload));
-        return client;
     }
 
     private String getLocalHostAddress() {

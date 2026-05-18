@@ -144,9 +144,15 @@ public class GameClient {
         System.out.println("[GameClient] Received data: " + data);
         try {
             JsonNode root = objectMapper.readTree(data);
-            JsonNode gameState = root.has("type") && root.has("payload")
-                    ? Packet.fromJson(data).getPayload()
-                    : root;
+            if (root.has("type") && root.has("payload")) {
+                Packet packet = Packet.fromJson(data);
+                if (packet != null) {
+                    handleIncomingPacket(packet);
+                }
+                return;
+            }
+
+            JsonNode gameState = root;
             latestGameState.set(gameState);
             notifyPlayersUpdated(gameState);
         } catch (Exception e) {

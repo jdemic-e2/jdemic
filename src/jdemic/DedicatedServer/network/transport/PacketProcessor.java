@@ -101,6 +101,11 @@ public class PacketProcessor {
     private void handleGameData(Packet packet) {
         System.out.println("[PacketProcessor] Received GAME_DATA packet.");
         JsonNode payload = packet.getPayload();
+        if (payload == null || payload.isNull()) {
+            System.err.println("[PacketProcessor] GAME_DATA ignored: missing payload.");
+            return;
+        }
+
         String gameAction = payload.has("GameAction") ? payload.get("GameAction").asText() : "";
 
         if ("TEST_ACTION".equals(gameAction)) {
@@ -168,22 +173,24 @@ public class PacketProcessor {
     }
 
     private String resolvePlayerId(JsonNode payload) {
-        if (clientHandler != null && clientHandler.getConnectedPlayerName() != null) {
-            String connectedName = clientHandler.getConnectedPlayerName();
-            if (payload.has("PlayerID")) {
-                String claimedName = payload.get("PlayerID").asText();
-                if (claimedName.isBlank() || !claimedName.equalsIgnoreCase(connectedName)) {
-                    System.err.println("[PacketProcessor] PlayerID spoof rejected. Connected="
-                            + connectedName + ", claimed=" + claimedName);
-                    return null;
-                }
+        if (clientHandler == null) {
+            return null;
+        }
+
+        String connectedName = clientHandler.getConnectedPlayerName();
+        if (connectedName == null || connectedName.isBlank()) {
+            return null;
+        }
+
+        if (payload != null && payload.has("PlayerID")) {
+            String claimedName = payload.get("PlayerID").asText();
+            if (claimedName.isBlank() || !claimedName.equalsIgnoreCase(connectedName)) {
+                System.err.println("[PacketProcessor] PlayerID spoof rejected. Connected="
+                        + connectedName + ", claimed=" + claimedName);
+                return null;
             }
-            return connectedName;
         }
-        if (payload.has("PlayerID") && !payload.get("PlayerID").asText().isBlank()) {
-            return payload.get("PlayerID").asText();
-        }
-        return null;
+        return connectedName;
     }
 
     private boolean isCurrentPlayer(PlayerState playerState) {

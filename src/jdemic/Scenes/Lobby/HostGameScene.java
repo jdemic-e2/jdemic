@@ -3,17 +3,10 @@ package jdemic.Scenes.Lobby;
 import jdemic.GameLogic.GameClient;
 import jdemic.DedicatedServer.network.core.DedicatedServerConfig;
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
-import jdemic.DedicatedServer.network.transport.Packet;
-import jdemic.DedicatedServer.network.transport.PacketType;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
@@ -38,7 +31,6 @@ public class HostGameScene {
     private final Stage stage;
     private final String nickname;
     private final String hostCode;
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public HostGameScene(Stage stage, String nickname) {
         this.stage = stage;
@@ -155,7 +147,6 @@ public class HostGameScene {
                 }
             }, "jdemic-host-game").start();
         });
-        //zi mi te rog ca e ok si ca merge))))
         HBox bottomRow = new HBox(backBtn, hostBtn);
         bottomRow.setAlignment(Pos.CENTER);
         bottomRow.spacingProperty().bind(root.widthProperty().multiply(0.16));
@@ -224,45 +215,7 @@ public class HostGameScene {
     }
 
     private boolean connectAndRegister(GameClient client, String host, int port, String playerName) throws InterruptedException {
-        if (!client.connectToServer(host, port)) {
-            return false;
-        }
-
-        CountDownLatch registered = new CountDownLatch(1);
-        GameClient.PlayerUpdateListener registrationListener = gameState -> {
-            if (containsPlayer(gameState, playerName)) {
-                registered.countDown();
-            }
-        };
-        client.addPlayerUpdateListener(registrationListener);
-
-        ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("playerName", playerName);
-        client.sendPacket(new Packet(PacketType.CONNECT, payload));
-
-        boolean accepted = registered.await(3, TimeUnit.SECONDS);
-        client.removePlayerUpdateListener(registrationListener);
-        return accepted;
-    }
-
-    private boolean containsPlayer(JsonNode gameState, String playerName) {
-        if (gameState == null || playerName == null) {
-            return false;
-        }
-
-        JsonNode players = gameState.has("players")
-                ? gameState.get("players")
-                : gameState.get("playerArray");
-        if (players == null || !players.isArray()) {
-            return false;
-        }
-
-        for (JsonNode player : players) {
-            if (player.has("playerName") && playerName.equalsIgnoreCase(player.get("playerName").asText())) {
-                return true;
-            }
-        }
-        return false;
+        return LobbyRegistrationHelper.connectAndRegister(client, host, port, playerName);
     }
 
     private void showHostError(String message, ButtonsUtil hostBtn, Label errorLabel) {
