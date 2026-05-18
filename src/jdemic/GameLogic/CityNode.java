@@ -2,15 +2,19 @@ package jdemic.GameLogic;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.EnumMap;
+
+import com.fasterxml.jackson.annotation.JsonIgnore; // erori
 
 public class CityNode {
 
     // Static Board Data
     private final String name;
     private final DiseaseColor nativeColor;
+    @JsonIgnore // erori
     private final Set<CityNode> connectedCities; // Represents graph edges
     
     // Rendering coordinates for Vulkan
@@ -107,9 +111,14 @@ public class CityNode {
     public float getRenderX() { return renderX; }
     public float getRenderY() { return renderY; }
     public boolean hasResearchStation() { return hasResearchStation; }
+    public Map<DiseaseColor, Integer> getDiseaseCubes() { return diseaseCubes; }
     
     public int getCubeCount(DiseaseColor color) 
     {
         return diseaseCubes.get(color);
+    }
+
+    public void setDiseaseCubeCount(DiseaseColor color, int amount) {
+        diseaseCubes.put(color, Math.max(0, Math.min(3, amount)));
     }
 }

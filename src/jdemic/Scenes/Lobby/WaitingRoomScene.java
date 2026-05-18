@@ -12,9 +12,22 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import javafx.application.Platform;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import jdemic.Scenes.SceneManager;
+import javafx.util.Duration;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
+import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
+import jdemic.GameLogic.GameClient;
+import jdemic.Scenes.MapTest.MapTestScene;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
@@ -24,16 +37,44 @@ public class WaitingRoomScene {
     private final Stage stage;
     private final String nickname;
     private final String roomCode;
+    private final GameClient gameClient;
+    private final boolean ownsServer;
     private Label hostStatusLabel;
+    private VBox playerList;
+    private TextArea chatArea;
+    private ButtonsUtil readyBtn;
+    private Label countdownLabel;
+    private boolean currentReady;
+    private boolean transitionedToGame;
+    private long countdownStartedAt;
+    private Timeline countdownTimeline;
+    private static final int COUNTDOWN_SECONDS = 10;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private GameClient.PlayerUpdateListener playerUpdateListener;
 
     public WaitingRoomScene(Stage stage, String nickname, String roomCode) {
+        this(stage, nickname, roomCode, null);
+    }
+
+    public WaitingRoomScene(Stage stage, String nickname, String roomCode, GameClient gameClient) {
+        this(stage, nickname, roomCode, gameClient, false);
+    }
+
+    public WaitingRoomScene(Stage stage, String nickname, String roomCode, GameClient gameClient, boolean ownsServer) {
         this.stage = stage;
         this.root = new StackPane();
         this.nickname = nickname == null || nickname.isBlank() ? "PLAYER" : nickname.toUpperCase();
         this.roomCode = roomCode == null ? "----" : roomCode;
+        this.gameClient = gameClient;
+        this.ownsServer = ownsServer;
 
         setupBackground();
         setupUI();
+
+        if (this.gameClient != null) {
+            playerUpdateListener = gameState -> Platform.runLater(() -> updateLobbyState(gameState));
+            this.gameClient.addPlayerUpdateListener(playerUpdateListener);
+        }
     }
 
     public StackPane getRoot() {
@@ -41,7 +82,12 @@ public class WaitingRoomScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[WaitingRoomScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -61,16 +107,12 @@ public class WaitingRoomScene {
         StackPane.setAlignment(headerBox, Pos.TOP_CENTER);
         headerBox.translateYProperty().bind(root.heightProperty().multiply(0.05));
 
-        hostStatusLabel = TextUtil.createText("READY", "hkmodular", 0.024, "#d1d412", root);
+        hostStatusLabel = TextUtil.createText("NOT READY", "hkmodular", 0.024, "#d1d412", root);
 
-        VBox playerList = new VBox(
-                createPlayerRow(nickname.toUpperCase(), hostStatusLabel),
-                createPlayerRow("TREXHERO", TextUtil.createText("WAITING...", "hkmodular", 0.024, "#d1d412", root)),
-                createPlayerRow("TREXHERO", TextUtil.createText("WAITING...", "hkmodular", 0.024, "#d1d412", root)),
-                createPlayerRow("TREXHERO", TextUtil.createText("WAITING...", "hkmodular", 0.024, "#d1d412", root))
-        );
+        playerList = new VBox();
         playerList.spacingProperty().bind(root.heightProperty().multiply(0.012));
         playerList.setAlignment(Pos.TOP_LEFT);
+        playerList.getChildren().add(createPlayerRow(nickname.toUpperCase(), hostStatusLabel));
 
         VBox chatPanel = new VBox();
         chatPanel.setAlignment(Pos.TOP_LEFT);
@@ -93,7 +135,7 @@ public class WaitingRoomScene {
 
         Label chatTitle = TextUtil.createText("PLAYER CHAT:", "hkmodular", 0.028, "#d1d412", root);
 
-        TextArea chatArea = new TextArea();
+        chatArea = new TextArea();
         chatArea.setEditable(false);
         chatArea.setWrapText(true);
         chatArea.setFocusTraversable(false);
@@ -111,13 +153,14 @@ public class WaitingRoomScene {
         chatInput.prefHeightProperty().bind(root.heightProperty().multiply(0.055));
 
         ButtonsUtil sendBtn = new ButtonsUtil("SEND", "#d1d412", "black", "#00b5d4", "#00b5d4", 2, 10, 10, 0.07, 0.055, 0.019, root);
-        sendBtn.setOnMouseClicked(e -> {
+        Runnable sendChat = () -> {
             String msg = chatInput.getText().trim();
             if (msg.isEmpty()) return;
-            if (!chatArea.getText().isEmpty()) chatArea.appendText("\n");
-            chatArea.appendText(nickname + ": " + msg);
+            sendLobbyChat(msg);
             chatInput.clear();
-        });
+        };
+        sendBtn.setOnMouseClicked(e -> sendChat.run());
+        chatInput.setOnAction(e -> sendChat.run());
 
         HBox inputRow = new HBox(chatInput, sendBtn);
         inputRow.setAlignment(Pos.CENTER_LEFT);
@@ -130,26 +173,17 @@ public class WaitingRoomScene {
         upper.spacingProperty().bind(root.widthProperty().multiply(0.015));
 
         ButtonsUtil cancelBtn = new ButtonsUtil("CANCEL", "#ff2d2d", "black", "#ff2d2d", "#ff2d2d", 2, 12, 12, 0.14, 0.07, 0.020, root);
-        ButtonsUtil readyBtn = new ButtonsUtil("READY", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.14, 0.07, 0.020, root);
+        readyBtn = new ButtonsUtil("READY", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.14, 0.07, 0.020, root);
+        readyBtn.setOnMouseClicked(e -> sendReadyState(!currentReady));
 
-        final boolean[] isReady = {true};
-        readyBtn.setText("UNREADY");
-        readyBtn.setOnMouseClicked(e -> {
-            isReady[0] = !isReady[0];
-            if (isReady[0]) {
-                hostStatusLabel.setText("READY");
-                readyBtn.setText("UNREADY");
-            } else {
-                hostStatusLabel.setText("WAITING...");
-                readyBtn.setText("READY");
-            }
-        });
+        cancelBtn.setOnMouseClicked(e -> leaveWaitingRoom());
 
-        cancelBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
+        countdownLabel = TextUtil.createText("", "hkmodular", 0.024, "#ff2d2d", root);
+        countdownLabel.setVisible(false);
 
-        HBox bottom = new HBox(cancelBtn, readyBtn);
+        HBox bottom = new HBox(cancelBtn, readyBtn, countdownLabel);
         bottom.setAlignment(Pos.CENTER);
-        bottom.spacingProperty().bind(root.widthProperty().multiply(0.08));
+        bottom.spacingProperty().bind(root.widthProperty().multiply(0.05));
 
         VBox content = new VBox(upper, bottom);
         content.setAlignment(Pos.TOP_CENTER);
@@ -169,6 +203,159 @@ public class WaitingRoomScene {
         );
     }
 
+    private void updateLobbyState(JsonNode gameState) {
+        if (gameState == null) {
+            System.out.println("[WaitingRoomScene] Received null game state");
+            return;
+        }
+
+        JsonNode playersArray = null;
+        if (gameState.has("players")) {
+            playersArray = gameState.get("players");
+        } else if (gameState.has("playerArray")) {
+            playersArray = gameState.get("playerArray");
+        }
+
+        if (playersArray == null || !playersArray.isArray()) {
+            System.out.println("[WaitingRoomScene] No valid players array in game state");
+            return;
+        }
+
+        if (gameState.has("gameStarted") && gameState.get("gameStarted").asBoolean()) {
+            transitionToGame(gameState);
+            return;
+        }
+
+        playerList.getChildren().clear();
+        boolean foundCurrentPlayer = false;
+        for (JsonNode playerNode : playersArray) {
+            String playerName = playerNode.has("playerName") ? playerNode.get("playerName").asText() : "UNKNOWN";
+            boolean ready = playerNode.has("ready") && playerNode.get("ready").asBoolean();
+            Label statusLabel = TextUtil.createText(ready ? "READY" : "NOT READY", "hkmodular", 0.024, "#d1d412", root);
+            playerList.getChildren().add(createPlayerRow(playerName, statusLabel));
+
+            if (playerName.equalsIgnoreCase(nickname)) {
+                currentReady = ready;
+                foundCurrentPlayer = true;
+            }
+        }
+
+        if (!foundCurrentPlayer) {
+            currentReady = false;
+        }
+        readyBtn.setText(currentReady ? "UNREADY" : "READY");
+        updateChat(gameState);
+        updateCountdown(gameState);
+
+        System.out.println("[WaitingRoomScene] Updated player list with " + playersArray.size() + " players");
+    }
+
+    private void updateChat(JsonNode gameState) {
+        JsonNode messages = gameState.get("lobbyChatMessages");
+        if (messages == null || !messages.isArray()) {
+            chatArea.clear();
+            return;
+        }
+
+        StringBuilder chatText = new StringBuilder();
+        for (JsonNode messageNode : messages) {
+            String playerName = messageNode.has("playerName") ? messageNode.get("playerName").asText() : "PLAYER";
+            String message = messageNode.has("message") ? messageNode.get("message").asText() : "";
+            if (message.isBlank()) {
+                continue;
+            }
+            if (!chatText.isEmpty()) {
+                chatText.append("\n");
+            }
+            chatText.append(playerName).append(": ").append(message);
+        }
+        chatArea.setText(chatText.toString());
+        chatArea.positionCaret(chatArea.getText().length());
+    }
+
+    private void updateCountdown(JsonNode gameState) {
+        long newCountdownStartedAt = gameState.has("lobbyCountdownStartedAt")
+                ? gameState.get("lobbyCountdownStartedAt").asLong()
+                : 0;
+
+        if (newCountdownStartedAt <= 0) {
+            stopCountdown();
+            return;
+        }
+
+        countdownStartedAt = newCountdownStartedAt;
+        if (countdownTimeline == null) {
+            countdownTimeline = new Timeline(new KeyFrame(Duration.millis(250), e -> refreshCountdownLabel()));
+            countdownTimeline.setCycleCount(Timeline.INDEFINITE);
+            countdownTimeline.play();
+        }
+        refreshCountdownLabel();
+    }
+
+    private void refreshCountdownLabel() {
+        long elapsedMillis = System.currentTimeMillis() - countdownStartedAt;
+        int remaining = COUNTDOWN_SECONDS - (int) Math.floor(elapsedMillis / 1000.0);
+        if (remaining <= 0) {
+            countdownLabel.setText("STARTING...");
+            countdownLabel.setVisible(true);
+            return;
+        }
+        countdownLabel.setText("STARTING IN " + remaining);
+        countdownLabel.setVisible(true);
+    }
+
+    private void stopCountdown() {
+        countdownStartedAt = 0;
+        if (countdownTimeline != null) {
+            countdownTimeline.stop();
+            countdownTimeline = null;
+        }
+        countdownLabel.setText("");
+        countdownLabel.setVisible(false);
+    }
+
+    private void sendLobbyChat(String message) {
+        if (gameClient == null) {
+            return;
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("playerName", nickname);
+        payload.put("message", message);
+        gameClient.sendPacket(new Packet(PacketType.LOBBY_CHAT, payload));
+    }
+
+    private void sendReadyState(boolean ready) {
+        if (gameClient == null) {
+            return;
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("ready", ready);
+        gameClient.sendPacket(new Packet(PacketType.LOBBY_READY, payload));
+    }
+
+    private void leaveWaitingRoom() {
+        cleanupScene();
+        if (gameClient != null) {
+            gameClient.disconnectFromLobby();
+        }
+        if (ownsServer) {
+            JdemicNetworkServer.shutdown();
+        }
+        SceneManager.switchScene("LOBBY");
+    }
+
+    private void transitionToGame(JsonNode gameState) {
+        if (transitionedToGame) {
+            return;
+        }
+        transitionedToGame = true;
+        cleanupScene();
+        stage.getScene().setRoot(new MapTestScene(stage, nickname, gameClient, gameState).getRoot());
+    }
+
+    @SuppressWarnings("unused")
     private TextField createCyberInput() {
         TextField field = new TextField();
         field.setStyle(
@@ -202,5 +389,12 @@ public class WaitingRoomScene {
 
         row.getChildren().add(inner);
         return row;
+    }
+    private void cleanupScene() {
+        stopCountdown();
+        if (gameClient != null && playerUpdateListener != null) {
+            gameClient.removePlayerUpdateListener(playerUpdateListener);
+            playerUpdateListener = null;
+        }
     }
 }

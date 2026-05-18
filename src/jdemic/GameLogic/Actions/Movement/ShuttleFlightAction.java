@@ -1,8 +1,9 @@
-package jdemic.GameLogic.Actions;
+package jdemic.GameLogic.Actions.Movement;
 
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.Actions.GameAction;
 
 public class ShuttleFlightAction extends GameAction {
     
@@ -13,6 +14,10 @@ public class ShuttleFlightAction extends GameAction {
         this.destination = destination;
     }
 
+    public CityNode getDestination() {
+        return this.destination;
+    }
+    
     public boolean isValid(GameState state, PlayerState playerState) 
     {
         // both cities must have research stations.

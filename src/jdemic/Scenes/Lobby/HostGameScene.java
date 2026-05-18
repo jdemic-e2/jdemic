@@ -1,10 +1,17 @@
 package jdemic.Scenes.Lobby;
 
-import java.util.concurrent.ThreadLocalRandom;
+import jdemic.GameLogic.GameClient;
+import jdemic.DedicatedServer.network.core.DedicatedServerConfig;
+import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
+
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.application.Platform;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -14,7 +21,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import jdemic.Scenes.SceneManager;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
@@ -39,7 +46,12 @@ public class HostGameScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[HostGameScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -77,6 +89,10 @@ public class HostGameScene {
         GlowUtil.applyGlow(codeValue, "#ffffff", 8);
         codeBox.getChildren().add(codeValue);
 
+        //Error message
+        Label errorLabel = TextUtil.createText("", "hkmodular", 0.025, "#ff2d2d", root);
+        errorLabel.setVisible(false);
+
         ButtonsUtil copyBtn = new ButtonsUtil("COPY", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.13, 0.07, 0.020, root);
         ButtonsUtil backBtn = new ButtonsUtil("BACK", "#ff2d2d", "black", "#ff2d2d", "#ff2d2d", 2, 12, 12, 0.13, 0.07, 0.020, root);
         ButtonsUtil hostBtn = new ButtonsUtil("HOST", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.13, 0.07, 0.020, root);
@@ -88,13 +104,54 @@ public class HostGameScene {
         });
 
         backBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
-        hostBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode).getRoot()));
+        
+        hostBtn.setOnMouseClicked(e -> {
+            hostBtn.setDisable(true); // stop multiple clicks
+            errorLabel.setVisible(false);
 
+            new Thread(() -> {
+                try {
+                    Integer orchestratedPort = requestServerFromOrchestrator();
+                    if (orchestratedPort != null) {
+                        connectHostAndOpenWaitingRoom(orchestratedPort, false);
+                        return;
+                    }
+
+                    int fallbackPort = 9000;
+                    DedicatedServerConfig embeddedConfig = new DedicatedServerConfig(
+                            fallbackPort,
+                            true,
+                            DedicatedServerConfig.DEFAULT_STATUS_HOST,
+                            DedicatedServerConfig.DEFAULT_STATUS_PORT,
+                            false
+                    );
+                    boolean serverStarted = JdemicNetworkServer.startServer(embeddedConfig);
+                    if (!serverStarted) {
+                        showHostError("PORT 9000 IN USE! START FAILED.", hostBtn, errorLabel);
+                        return;
+                    }
+
+                    try {
+                        connectHostAndOpenWaitingRoom(fallbackPort, true);
+                    } catch (Exception ex) {
+                        JdemicNetworkServer.shutdown();
+                        throw ex;
+                    }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    System.err.println("[HostGameScene] Hosting interrupted: " + ex.getMessage());
+                    showHostError("CRITICAL ERROR: ALL SYSTEMS OFFLINE!", hostBtn, errorLabel);
+                } catch (Exception ex) {
+                    System.err.println("[HostGameScene] Failed to host game: " + ex.getMessage());
+                    showHostError("CRITICAL ERROR: ALL SYSTEMS OFFLINE!", hostBtn, errorLabel);
+                }
+            }, "jdemic-host-game").start();
+        });
         HBox bottomRow = new HBox(backBtn, hostBtn);
         bottomRow.setAlignment(Pos.CENTER);
         bottomRow.spacingProperty().bind(root.widthProperty().multiply(0.16));
 
-        VBox content = new VBox(codeText, codeBox, copyBtn, bottomRow);
+        VBox content = new VBox(codeText, codeBox, copyBtn, errorLabel, bottomRow);
         content.setAlignment(Pos.TOP_CENTER);
         content.setFillWidth(false);
         content.spacingProperty().bind(root.heightProperty().multiply(0.04));
@@ -113,13 +170,59 @@ public class HostGameScene {
     }
 
     private String generateHostCode() {
-        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        ThreadLocalRandom rnd = ThreadLocalRandom.current();
-        StringBuilder sb = new StringBuilder(8);
-        for (int i = 0; i < 8; i++) {
-            sb.append(chars.charAt(rnd.nextInt(chars.length())));
-            if (i == 3 && i < 7) sb.append('-');
+        try {
+            //Only generate the base IP here. The port is added dynamically after clicking HOST.
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            return "127.0.0.1"; //Fallback IP
         }
-        return sb.toString();
+    }
+
+    private Integer requestServerFromOrchestrator() {
+        try (Socket orchestratorSocket = new Socket()) {
+            orchestratorSocket.connect(new InetSocketAddress("localhost", 8080), 500);
+            orchestratorSocket.setSoTimeout(1000);
+
+            java.io.PrintWriter out = new java.io.PrintWriter(orchestratorSocket.getOutputStream(), true);
+            java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(orchestratorSocket.getInputStream()));
+
+            out.println("HOST");
+            String response = in.readLine();
+            if (response == null || !response.startsWith("SUCCESS:")) {
+                System.err.println("[HostGameScene] Orchestrator unavailable or invalid response: " + response);
+                return null;
+            }
+
+            return Integer.parseInt(response.split(":")[1]);
+        } catch (Exception ex) {
+            System.err.println("[HostGameScene] Orchestrator unavailable: " + ex.getMessage());
+            return null;
+        }
+    }
+
+    private void connectHostAndOpenWaitingRoom(int port, boolean ownsServer) throws InterruptedException {
+        Thread.sleep(250);
+
+        GameClient hostClient = new GameClient();
+        if (!connectAndRegister(hostClient, "localhost", port, nickname)) {
+            hostClient.disconnect();
+            throw new IllegalStateException("Host client could not register with the lobby.");
+        }
+
+        Platform.runLater(() ->
+                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, hostCode + ":" + port, hostClient, ownsServer).getRoot())
+        );
+    }
+
+    private boolean connectAndRegister(GameClient client, String host, int port, String playerName) throws InterruptedException {
+        return LobbyRegistrationHelper.connectAndRegister(client, host, port, playerName);
+    }
+
+    private void showHostError(String message, ButtonsUtil hostBtn, Label errorLabel) {
+        Platform.runLater(() -> {
+            errorLabel.setText(message);
+            errorLabel.setVisible(true);
+            hostBtn.setDisable(false);
+        });
     }
 }

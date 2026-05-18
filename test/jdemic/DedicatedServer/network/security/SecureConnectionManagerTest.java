@@ -13,9 +13,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -74,6 +76,176 @@ class SecureConnectionManagerTest {
                 serverOutput.flush();
 
                 assertNull(handshake.get(5, TimeUnit.SECONDS));
+            } finally {
+                executor.shutdownNow();
+            }
+        }
+    }
+
+    @Test
+    void handshakeShouldCreateSecureSocketsOnBothSides() throws Exception {
+        try (ServerSocket listener = new ServerSocket(0)) {
+            int port = listener.getLocalPort();
+
+            AtomicReference<SecureSocket> serverSecureSocketRef = new AtomicReference<>();
+            AtomicReference<Exception> serverExceptionRef = new AtomicReference<>();
+
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            try {
+                Future<?> serverFuture = executor.submit(() -> {
+                    try {
+                        Socket serverSocket = listener.accept();
+                        SecureSocket serverSecureSocket = SecureConnectionManager.wrapSocket(serverSocket);
+                        serverSecureSocketRef.set(serverSecureSocket);
+                    } catch (Exception e) {
+                        serverExceptionRef.set(e);
+                    }
+                });
+
+                Socket clientSocket = new Socket("localhost", port);
+                SecureSocket clientSecureSocket = SecureConnectionManager.wrapClientSocket(clientSocket);
+
+                serverFuture.get(5, TimeUnit.SECONDS);
+
+                assertNull(serverExceptionRef.get());
+                assertNotNull(clientSecureSocket);
+                assertNotNull(serverSecureSocketRef.get());
+
+                clientSocket.close();
+                serverSecureSocketRef.get().getRawSocket().close();
+            } finally {
+                executor.shutdownNow();
+            }
+        }
+    }
+
+    @Test
+    void clientEncryptedMessageShouldBeDecryptedByServer() throws Exception {
+        try (ServerSocket listener = new ServerSocket(0)) {
+            int port = listener.getLocalPort();
+
+            AtomicReference<SecureSocket> serverSecureSocketRef = new AtomicReference<>();
+            AtomicReference<Exception> serverExceptionRef = new AtomicReference<>();
+
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            try {
+                Future<?> serverFuture = executor.submit(() -> {
+                    try {
+                        Socket serverSocket = listener.accept();
+                        SecureSocket serverSecureSocket = SecureConnectionManager.wrapSocket(serverSocket);
+                        serverSecureSocketRef.set(serverSecureSocket);
+                    } catch (Exception e) {
+                        serverExceptionRef.set(e);
+                    }
+                });
+
+                Socket clientSocket = new Socket("localhost", port);
+                SecureSocket clientSecureSocket = SecureConnectionManager.wrapClientSocket(clientSocket);
+
+                serverFuture.get(5, TimeUnit.SECONDS);
+
+                assertNull(serverExceptionRef.get());
+                assertNotNull(clientSecureSocket);
+                assertNotNull(serverSecureSocketRef.get());
+
+                String originalMessage = "CARTE_JOC:AS_INIMA_ROSIE:ID_77";
+                String encryptedMessage = clientSecureSocket.encrypt(originalMessage);
+                String decryptedMessage = serverSecureSocketRef.get().decrypt(encryptedMessage);
+
+                assertNotEquals(originalMessage, encryptedMessage);
+                assertEquals(originalMessage, decryptedMessage);
+
+                clientSocket.close();
+                serverSecureSocketRef.get().getRawSocket().close();
+            } finally {
+                executor.shutdownNow();
+            }
+        }
+    }
+
+    @Test
+    void serverEncryptedMessageShouldBeDecryptedByClient() throws Exception {
+        try (ServerSocket listener = new ServerSocket(0)) {
+            int port = listener.getLocalPort();
+
+            AtomicReference<SecureSocket> serverSecureSocketRef = new AtomicReference<>();
+            AtomicReference<Exception> serverExceptionRef = new AtomicReference<>();
+
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            try {
+                Future<?> serverFuture = executor.submit(() -> {
+                    try {
+                        Socket serverSocket = listener.accept();
+                        SecureSocket serverSecureSocket = SecureConnectionManager.wrapSocket(serverSocket);
+                        serverSecureSocketRef.set(serverSecureSocket);
+                    } catch (Exception e) {
+                        serverExceptionRef.set(e);
+                    }
+                });
+
+                Socket clientSocket = new Socket("localhost", port);
+                SecureSocket clientSecureSocket = SecureConnectionManager.wrapClientSocket(clientSocket);
+
+                serverFuture.get(5, TimeUnit.SECONDS);
+
+                assertNull(serverExceptionRef.get());
+                assertNotNull(clientSecureSocket);
+                assertNotNull(serverSecureSocketRef.get());
+
+                String originalMessage = "SERVER_RESPONSE_OK";
+                String encryptedMessage = serverSecureSocketRef.get().encrypt(originalMessage);
+                String decryptedMessage = clientSecureSocket.decrypt(encryptedMessage);
+
+                assertNotEquals(originalMessage, encryptedMessage);
+                assertEquals(originalMessage, decryptedMessage);
+
+                clientSocket.close();
+                serverSecureSocketRef.get().getRawSocket().close();
+            } finally {
+                executor.shutdownNow();
+            }
+        }
+    }
+
+    @Test
+    void tamperedCiphertextShouldFailDecryption() throws Exception {
+        try (ServerSocket listener = new ServerSocket(0)) {
+            int port = listener.getLocalPort();
+
+            AtomicReference<SecureSocket> serverSecureSocketRef = new AtomicReference<>();
+            AtomicReference<Exception> serverExceptionRef = new AtomicReference<>();
+
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            try {
+                Future<?> serverFuture = executor.submit(() -> {
+                    try {
+                        Socket serverSocket = listener.accept();
+                        SecureSocket serverSecureSocket = SecureConnectionManager.wrapSocket(serverSocket);
+                        serverSecureSocketRef.set(serverSecureSocket);
+                    } catch (Exception e) {
+                        serverExceptionRef.set(e);
+                    }
+                });
+
+                Socket clientSocket = new Socket("localhost", port);
+                SecureSocket clientSecureSocket = SecureConnectionManager.wrapClientSocket(clientSocket);
+
+                serverFuture.get(5, TimeUnit.SECONDS);
+
+                assertNull(serverExceptionRef.get());
+                assertNotNull(clientSecureSocket);
+                assertNotNull(serverSecureSocketRef.get());
+
+                String encryptedMessage = clientSecureSocket.encrypt("IMPORTANT_GAME_MOVE");
+
+                char lastChar = encryptedMessage.charAt(encryptedMessage.length() - 1);
+                char replacement = (lastChar == 'A') ? 'B' : 'A';
+                String tamperedMessage = encryptedMessage.substring(0, encryptedMessage.length() - 1) + replacement;
+
+                assertThrows(Exception.class, () -> serverSecureSocketRef.get().decrypt(tamperedMessage));
+
+                clientSocket.close();
+                serverSecureSocketRef.get().getRawSocket().close();
             } finally {
                 executor.shutdownNow();
             }

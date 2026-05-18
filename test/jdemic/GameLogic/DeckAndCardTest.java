@@ -16,7 +16,7 @@ class DeckAndCardTest {
     void shouldCreateDeckAndDrawTwoCardsIntoPlayerHand() {
         GameManager manager = newManager();
         Deck deck = manager.getState().getCardDeck();
-        PlayerState playerState = manager.getCurrentPlayer().getState();
+        PlayerState playerState = manager.getCurrentPlayer();
         int startingCards = deck.getRemainingCardsCount();
 
         deck.drawHand(playerState);
@@ -46,19 +46,18 @@ class DeckAndCardTest {
     @Test
     void playerDiscardShouldRemoveCardAndUseDeckReference() {
         GameManager manager = newManager();
-        Player player = manager.getCurrentPlayer();
+        PlayerState playerState = manager.getCurrentPlayer();
         CityNode atlanta = manager.getState().getMap().getCity("Atlanta");
         Card atlantaCard = new Card("Atlanta", CardType.CITY, atlanta);
-        player.getState().addCard(atlantaCard);
+        playerState.addCard(atlantaCard);
 
-        player.discardCard(0);
+        Card discardedCard = playerState.getHand().remove(0);
+        manager.getState().getCardDeck().discard(discardedCard);
 
-        assertTrue(player.getState().getHand().isEmpty());
+        assertTrue(playerState.getHand().isEmpty());
     }
 
     private GameManager newManager() {
-        CityNode atlanta = new CityNode("Atlanta", DiseaseColor.BLUE, 0.25f, 0.39f);
-        Player player = new Player(new PlayerState("Ruben", atlanta));
-        return new GameManager(List.of(player));
+        return new GameManager(List.of(new PlayerState("Ruben")));
     }
 }

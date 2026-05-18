@@ -1,8 +1,9 @@
-package jdemic.GameLogic.Actions;
+package jdemic.GameLogic.Actions.Movement;
 
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CardType;
 
@@ -17,12 +18,21 @@ public class CharterFlightAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
-    public boolean isValid(GameState gameState, PlayerState playerState) 
+    public CityNode getDestination() {
+        return this.destination;
+    }
+
+    public Card getCardToDiscard() {
+        return this.cardToDiscard;
+    }
+    
+    public boolean isValid(GameState gameState, PlayerState playerState)
     {
-        // Player must have the card matching their CURRENT city
         CityNode currentCity = playerState.getPlayerCurrentCity();
-        return playerState.getHand().stream()
-            .anyMatch(c -> c.getType() == CardType.CITY && c.getTargetCity() == currentCity);
+        return cardToDiscard != null
+                && playerState.getHand().contains(cardToDiscard)
+                && cardToDiscard.getType() == CardType.CITY
+                && cardToDiscard.getTargetCity() == currentCity;
     }
 
     @Override 
@@ -31,6 +41,9 @@ public class CharterFlightAction extends GameAction {
         if(isValid(state, playerState))
         {
             playerState.getHand().remove(cardToDiscard);
+            if (state != null && state.getCardDeck() != null) {
+                state.getCardDeck().discard(cardToDiscard);
+            }
             playerState.setCurrentCity(destination);
         }
     }

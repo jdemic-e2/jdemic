@@ -26,8 +26,11 @@ class DiseaseManagerTest {
         diseaseManager.addInfectionCubes(atlanta, 2);
 
         assertEquals(3, atlanta.getCubeCount(DiseaseColor.BLUE));
-        assertEquals(92, diseaseManager.getInfectionCubesLeft());
+        assertEquals(96 - 2 - 1 - atlanta.getConnectedCities().size(), diseaseManager.getInfectionCubesLeft());
         assertEquals(1, diseaseManager.getOutbreakScore());
+        for (CityNode connectedCity : atlanta.getConnectedCities()) {
+            assertEquals(1, connectedCity.getCubeCount(DiseaseColor.BLUE));
+        }
 
         diseaseManager.removeInfectionCubes(atlanta, 10);
 
@@ -50,9 +53,17 @@ class DiseaseManagerTest {
         assertTrue(diseaseManager.areAllCured());
     }
 
+    @Test
+    void shouldExposeCuresAsSerializableColorMap() {
+        DiseaseManager diseaseManager = newManager().getState().getDiseaseManager();
+
+        diseaseManager.discoverCure(DiseaseColor.BLUE);
+
+        assertTrue(diseaseManager.getCuredDiseases().get(DiseaseColor.BLUE));
+        assertFalse(diseaseManager.getCuredDiseases().get(DiseaseColor.RED));
+    }
+
     private GameManager newManager() {
-        CityNode atlanta = new CityNode("Atlanta", DiseaseColor.BLUE, 0.25f, 0.39f);
-        Player player = new Player(new PlayerState("Ruben", atlanta));
-        return new GameManager(List.of(player));
+        return new GameManager(List.of(new PlayerState("Ruben")));
     }
 }

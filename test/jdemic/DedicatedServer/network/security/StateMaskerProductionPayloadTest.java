@@ -26,14 +26,14 @@ class StateMaskerProductionPayloadTest {
 
         String rawGameState = OBJECT_MAPPER.writeValueAsString(state);
         JSONObject raw = new JSONObject(rawGameState);
-        JSONArray rawPlayers = raw.getJSONArray("playerStates");
+        JSONArray rawPlayers = raw.getJSONArray("players");
 
         assertTrue(findPlayer(rawPlayers, "Player_1").has("hand"));
         assertTrue(findPlayer(rawPlayers, "Player_2").has("hand"));
 
         String maskedGameState = StateMasker.maskStateForPlayer(rawGameState, "Player_1");
         JSONObject masked = new JSONObject(maskedGameState);
-        JSONArray maskedPlayers = masked.getJSONArray("playerStates");
+        JSONArray maskedPlayers = masked.getJSONArray("players");
         JSONObject targetPlayer = findPlayer(maskedPlayers, "Player_1");
         JSONObject otherPlayer = findPlayer(maskedPlayers, "Player_2");
 
@@ -48,18 +48,14 @@ class StateMaskerProductionPayloadTest {
     }
 
     @Test
-    void serializedGameStateWithNullPlayersFieldStillMasksPlayerStates() throws Exception {
-        GameState state = new GameState();
-        state.addPlayer(playerState("Player_1", "Atlanta"));
-        state.addPlayer(playerState("Player_2", "Paris"));
+    void stateWithNullPlayersFieldStillMasksPlayerStates() throws Exception {
+        JSONObject raw = new JSONObject();
+        raw.put("players", JSONObject.NULL);
+        raw.put("playerStates", new JSONArray()
+                .put(playerJson("Player_1", "Atlanta"))
+                .put(playerJson("Player_2", "Paris")));
 
-        String rawGameState = OBJECT_MAPPER.writeValueAsString(state);
-        JSONObject raw = new JSONObject(rawGameState);
-
-        assertTrue(raw.has("players"), "The production GameState serializer emits a players field.");
-        assertTrue(raw.isNull("players"), "The production players field can be null before action players are built.");
-
-        String maskedGameState = StateMasker.maskStateForPlayer(rawGameState, "Player_1");
+        String maskedGameState = StateMasker.maskStateForPlayer(raw.toString(), "Player_1");
         JSONObject masked = new JSONObject(maskedGameState);
         JSONObject otherPlayer = findPlayer(masked.getJSONArray("playerStates"), "Player_2");
 
@@ -69,11 +65,21 @@ class StateMaskerProductionPayloadTest {
     }
 
     private static PlayerState playerState(String playerName, String... cardNames) {
-        PlayerState playerState = new PlayerState(playerName, null);
+        PlayerState playerState = new PlayerState(playerName);
         for (String cardName : cardNames) {
             playerState.addCard(new Card(cardName, CardType.CITY, null));
         }
         return playerState;
+    }
+
+    private static JSONObject playerJson(String playerName, String... cardNames) {
+        JSONArray hand = new JSONArray();
+        for (String cardName : cardNames) {
+            hand.put(new JSONObject().put("cardName", cardName));
+        }
+        return new JSONObject()
+                .put("playerName", playerName)
+                .put("hand", hand);
     }
 
     private static JSONObject findPlayer(JSONArray players, String playerName) {

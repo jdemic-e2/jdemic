@@ -3,7 +3,6 @@ package jdemic.Scenes;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -14,10 +13,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
-import jdemic.Scenes.Lobby.LobbyScene;
-import jdemic.Scenes.MapTest.MapTestScene;
-import jdemic.Scenes.Settings.SettingsScene;
-import jdemic.Scenes.Tutorial.TutorialRulesScene;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.Animations;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.DotUtil;
@@ -25,7 +21,6 @@ import jdemic.ui.GlowLineUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
-
 public class MainMenuScene {
 
     private StackPane root;
@@ -38,7 +33,12 @@ public class MainMenuScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource("/background.png").toExternalForm()));
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[MainMenuScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -55,7 +55,12 @@ public class MainMenuScene {
         Animations.createPulseAnimation(title, 1.05, 2);
 
 
-        ImageView titleBox = new ImageView(new Image(getClass().getResource("/elements/glowTitleFrame.png").toExternalForm()));
+        java.net.URL titleUrl = getClass().getResource("/elements/glowTitleFrame.png");
+        if (titleUrl == null) {
+            System.err.println("[MainMenuScene] Missing resource: /elements/glowTitleFrame.png");
+            return;
+        }
+        ImageView titleBox = new ImageView(new Image(titleUrl.toExternalForm()));
         titleBox.setPreserveRatio(true);
         titleBox.fitWidthProperty().bind(root.widthProperty().multiply(0.45));
         titleBox.translateYProperty().bind(root.heightProperty().multiply(0.06));
@@ -70,7 +75,12 @@ public class MainMenuScene {
 
         root.getChildren().add(scrollingText);
 
-        Image mapImg = new Image(getClass().getResource("/backgroundMap.png").toExternalForm());
+        java.net.URL mapUrl = getClass().getResource("/backgroundMap.png");
+        if (mapUrl == null) {
+            System.err.println("[MainMenuScene] Missing resource: /backgroundMap.png");
+            return;
+        }
+        Image mapImg = new Image(mapUrl.toExternalForm());
         ImageView map = new ImageView(mapImg);
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.8));
@@ -190,7 +200,7 @@ public class MainMenuScene {
         });
 
         playBtn.setOnMouseClicked(e -> {
-            SceneManager.switchScene("LOBBY");
+            SceneManager.switchScene("HOST_SCREEN");
         });
 
         settingsBtn.setOnMouseClicked(e -> {

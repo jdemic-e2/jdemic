@@ -16,16 +16,21 @@ The workflow now also runs Dependency Review on pull requests. New dependencies 
 
 ## Sonar Static Analysis
 
-The workflow includes SonarQube/SonarCloud support without hardcoding secrets. The Sonar job skips cleanly when configuration is missing.
+The workflow includes SonarQube/SonarCloud support without hardcoding secrets. On same-repository pull requests and pushes, the Sonar job is expected to run and fail clearly if required configuration is missing. Pull requests from forks do not run this job because repository secrets are not exposed to forked workflows.
 
-Configure these repository settings to enable it:
+Configure this repository secret:
 
 - Secret: `SONAR_TOKEN`
+
+Generate the token from a SonarCloud user that can run analysis on the `jdemic-e2_jdemic` project. If Sonar analysis fails with a 401/403/404 after the token is present, regenerate the token from a user that belongs to the `jdemic-e2` SonarCloud organization and has permission to execute analysis for the project.
+
+The workflow defaults to the SonarCloud project `jdemic-e2_jdemic` in organization `jdemic-e2`. Override these only if the Sonar project changes:
+
 - Variable: `SONAR_PROJECT_KEY`
 - Variable for SonarCloud: `SONAR_ORGANIZATION`
 - Optional variable for self-hosted SonarQube: `SONAR_HOST_URL`
 
-If `SONAR_HOST_URL` is not set, the workflow defaults to `https://sonarcloud.io`.
+If `SONAR_HOST_URL` is not set, the workflow uses `https://sonarcloud.io`. Sonar waits for the quality gate result, so a failed quality gate fails CI.
 
 ## Coverage
 
@@ -42,7 +47,7 @@ Coverage checks exclude non-business-code entry points and UI-only classes:
 - legacy executable test harnesses under `jdemic/DedicatedServer/*Test*`
 - `jdemic/DedicatedServer/TestClient*`
 
-Sonar consumes `target/site/jacoco/jacoco.xml` after the Maven build job succeeds.
+Sonar consumes `target/site/jacoco/jacoco.xml` from the `jacoco-reports` artifact after the Maven build job succeeds. The Sonar job fails if that XML report is missing.
 
 ## Branch Protection Recommendations
 
@@ -56,7 +61,7 @@ Apply these rules to `main` and `develop` in GitHub branch protection settings:
 - Require branches to be up to date before merge.
 - Require the `build` workflow job.
 - Require `Dependency review` for pull requests.
-- Require `Sonar static analysis` after Sonar secrets and variables are configured.
+- Require `Sonar static analysis` after the `SONAR_TOKEN` secret is configured.
 - Block force pushes and branch deletion.
 - Restrict direct pushes to maintainers if the team needs tighter release control.
 

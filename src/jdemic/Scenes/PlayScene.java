@@ -22,11 +22,7 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
-import jdemic.GameLogic.Player;
-import jdemic.GameLogic.Card;
-import jdemic.GameLogic.GameManager;
 
-import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.UnaryOperator;
 
@@ -282,93 +278,5 @@ public class PlayScene {
         StringBuilder sb = new StringBuilder(10);
         for (int i = 0; i < 10; i++) { sb.append(chars.charAt(rnd.nextInt(chars.length()))); }
         return sb.toString();
-    }
-
-    // --- PLAYER ICON TASK INNOVATIONS (Simplified to Icons Only) ---
-
-    public void showGameplayScreen(GameManager gameManager) {
-        resetScreen();
-        VBox playerIconsContainer = new VBox(15);
-        playerIconsContainer.setPadding(new Insets(20, 0, 0, 20));
-        StackPane.setAlignment(playerIconsContainer, Pos.TOP_LEFT);
-        playerIconsContainer.setPickOnBounds(false);
-
-        for (Player p : gameManager.getState().getPlayers()) {
-            playerIconsContainer.getChildren().add(createGameplayPlayerRow(p));
-        }
-        root.getChildren().add(playerIconsContainer);
-    }
-
-    private HBox createGameplayPlayerRow(Player player) {
-        HBox row = new HBox(12);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setCursor(javafx.scene.Cursor.HAND);
-
-        String roleFileName = "player_placeholder.png";
-        if (player.getState().getPlayerRole() != null) {
-            roleFileName = player.getState().getPlayerRole().toString().toLowerCase() + ".png";
-        }
-
-        Image img = null;
-        try {
-            var stream = getClass().getResourceAsStream("/elements/" + roleFileName);
-            if (stream == null) throw new Exception("Asıl ikon bulunamadı");
-            img = new Image(stream);
-        } catch (Exception e) {
-            try {
-                var placeholderStream = getClass().getResourceAsStream("/elements/player_placeholder.png");
-                if (placeholderStream == null) throw new Exception("Placeholder da bulunamadı");
-                img = new Image(placeholderStream);
-            } catch (Exception ex) {
-                img = new Image(getClass().getResourceAsStream("/elements/redDot.png"));
-            }
-        }
-
-        ImageView iconView = new ImageView(img);
-        iconView.setFitWidth(45);
-        iconView.setFitHeight(45);
-        iconView.setPreserveRatio(true);
-
-        GlowUtil.applyGlow(iconView, "#00d9ff", 10);
-
-        row.getChildren().add(iconView);
-        row.setOnMouseClicked(e -> showPlayerCardsOverlay(player));
-
-        return row;
-    }
-
-    private void showPlayerCardsOverlay(Player player) {
-        StackPane overlay = new StackPane();
-        overlay.setStyle("-fx-background-color: rgba(0, 0, 0, 0.75);");
-
-        VBox cardPanel = new VBox(20);
-        cardPanel.setAlignment(Pos.CENTER);
-        cardPanel.setMaxSize(700, 450);
-        cardPanel.setStyle("-fx-background-color: rgba(13, 17, 23, 0.95); -fx-border-color: #00d9ff; -fx-border-width: 2; -fx-border-radius: 15; -fx-background-radius: 15;");
-        GlowUtil.applyGlow(cardPanel, "#00d9ff", 15);
-
-        Label title = TextUtil.createText(player.getState().getPlayerName() + "'S HAND", "hkmodular", 0.035, "#d1d412", root);
-        HBox cardList = new HBox(15);
-        cardList.setAlignment(Pos.CENTER);
-
-        if (player.getState().getHand() == null || player.getState().getHand().isEmpty()) {
-            cardList.getChildren().add(TextUtil.createText("NO CARDS IN HAND", "hkmodular", 0.020, "#ff2d2d", root));
-        } else {
-            for (Card card : player.getState().getHand()) {
-                VBox cardUI = new VBox(5);
-                cardUI.setAlignment(Pos.CENTER);
-                cardUI.setStyle("-fx-border-color: #00b5d4; -fx-padding: 10; -fx-border-radius: 5;");
-                Label cardName = TextUtil.createText(card.getCardName(), "hkmodular", 0.016, "#ffffff", root);
-                cardUI.getChildren().add(cardName);
-                cardList.getChildren().add(cardUI);
-            }
-        }
-
-        ButtonsUtil closeBtn = new ButtonsUtil("CLOSE", "#ff2d2d", "black", "#ff2d2d", "#ff2d2d", 2, 12, 12, 0.12, 0.06, 0.018, root);
-        closeBtn.setOnMouseClicked(e -> root.getChildren().remove(overlay));
-
-        cardPanel.getChildren().addAll(title, cardList, closeBtn);
-        overlay.getChildren().add(cardPanel);
-        root.getChildren().add(overlay);
     }
 }
