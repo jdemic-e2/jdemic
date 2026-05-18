@@ -80,6 +80,7 @@ class CardViewFxTest {
         WaitForAsyncUtils.waitForFxEvents();
         VBox inner = (VBox) cardView.getChildren().get(0);
 
+        robot.interact(() -> cardView.setMouseTransparent(true));
         assertDoesNotThrow(() -> robot.interact(() -> cardView.getOnMouseExited().handle(null)));
         waitUntil(() -> Math.abs(inner.getScaleX() - 1.0) <= 0.02
                 && Math.abs(inner.getScaleY() - 1.0) <= 0.02, 3000);
@@ -92,6 +93,8 @@ class CardViewFxTest {
         waitUntil(() -> inner.getScaleX() >= 1.04, 3000);
 
         assertDoesNotThrow(() -> robot.interact(() -> cardView.getOnMouseExited().handle(null)));
+        waitUntil(() -> Math.abs(inner.getScaleX() - 1.0) <= 0.02
+                && Math.abs(inner.getScaleY() - 1.0) <= 0.02, 3000);
     }
 
     private static void waitUntil(java.util.function.BooleanSupplier condition, long timeoutMs) throws InterruptedException {
