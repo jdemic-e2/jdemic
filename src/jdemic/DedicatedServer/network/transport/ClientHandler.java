@@ -8,6 +8,7 @@ import java.net.Socket;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
 import jdemic.DedicatedServer.network.security.SecureConnectionManager.SecureSocket;
@@ -34,6 +35,8 @@ public class ClientHandler implements Runnable {
     private final DataSanitizer dataSanitizer = new DataSanitizer();
     private final RateLimiter rateLimiter = new RateLimiter();
 
+    private static final Logger LOGGER = Logger.getLogger(ClientHandler.class.getName());
+
     public ClientHandler(SecureSocket secureSocket, GameManager gameManager, List<ClientHandler> connectedClients) {
         this(secureSocket, gameManager, connectedClients, packet -> {});
     }
@@ -55,7 +58,7 @@ public class ClientHandler implements Runnable {
             this.in = new BufferedReader(new InputStreamReader(rawSocket.getInputStream()));
             this.out = new PrintWriter(rawSocket.getOutputStream(), true);
         } catch (Exception e) {
-            System.err.println("Eroare la initializarea fluxurilor I/O pentru client.");
+            LOGGER.severe("Eroare la initializarea fluxurilor I/O pentru client.");
             e.printStackTrace();
         }
     }
@@ -63,14 +66,14 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         if (in == null || out == null) {
-            System.err.println("[ClientHandler] I/O streams are null. Stopping execution.");
+            LOGGER.severe("[ClientHandler] I/O streams are null. Stopping execution.");
             inchideConexiunea();
             return;
         }
 
         try {
             String encryptedMessage;
-            System.out.println("[ClientHandler] Waiting for encrypted messages from client...");
+            LOGGER.info("[ClientHandler] Waiting for encrypted messages from client...");
 
             // Read incoming messages from the client continuously
             while ((encryptedMessage = in.readLine()) != null) {
@@ -78,7 +81,7 @@ public class ClientHandler implements Runnable {
                 if(!rateLimiter.allowPacket()){
                     if(rateLimiter.shouldDisconnect())
                     {
-                        System.err.println("[ClientHandler] Client flooding. Disconnecting...");
+                        LOGGER.severe("[ClientHandler] Client flooding. Disconnecting...");
                         break;
                     }
                     continue;
@@ -86,21 +89,20 @@ public class ClientHandler implements Runnable {
 
                 // Decrypt and parse the incoming message
                 String decryptedMessage = secureSocket.decrypt(encryptedMessage);
-                System.out.println("[ClientHandler] Received (decrypted): " + decryptedMessage);
+                LOGGER.info("[ClientHandler] Received (decrypted): " + decryptedMessage);
 
                 Optional<Packet> sanitized = dataSanitizer.sanitize(decryptedMessage);
-                if(sanitized.isEmpty())
-                    continue;
+                if(sanitized.isPresent()) {
+                    Packet packetMessage = sanitized.get();
+                    packetReceivedListener.accept(packetMessage);
 
-                Packet packetMessage = sanitized.get();
-                packetReceivedListener.accept(packetMessage);
-
-                // process packet (PacketProcessor already handles the state broadcast to all clients)
-                packetProcessor.process(packetMessage);
+                    // process packet (PacketProcessor already handles the state broadcast to all clients)
+                    packetProcessor.process(packetMessage);
+                }         
             }
 
         } catch (Exception e) {
-            System.out.println("[ClientHandler] Connection with client interrupted or decryption failed.");
+            LOGGER.info("[ClientHandler] Connection with client interrupted or decryption failed.");
         } finally {
             // Ensure resources are freed when the loop ends or an error occurs
             inchideConexiunea();
@@ -125,9 +127,9 @@ public class ClientHandler implements Runnable {
             }
             connectedClients.remove(this);
             JdemicNetworkServer.removeClient(this);
-            System.out.println("[ClientHandler] Resurse eliberate si conexiune inchisa.");
+            LOGGER.info("[ClientHandler] Resurse eliberate si conexiune inchisa.");
         } catch (Exception e) {
-            System.err.println("[ClientHandler] Eroare la închiderea resurselor.");
+            LOGGER.severe("[ClientHandler] Eroare la închiderea resurselor.");
         }
     }
 
@@ -154,7 +156,7 @@ public class ClientHandler implements Runnable {
             try {
                 gameStateJson = objectMapper.writeValueAsString(gameManager.getState());
             } catch (Exception e) {
-                System.err.println("[ClientHandler] Error broadcasting game state: " + e.getMessage());
+                LOGGER.severe("[ClientHandler] Error broadcasting game state: " + e.getMessage());
                 return;
             }
         }
@@ -162,20 +164,24 @@ public class ClientHandler implements Runnable {
         try {
             for (ClientHandler client : connectedClients) {
                 if (client.connectedPlayerName != null) {
-                    try {
-                        String maskedResponse = StateMasker.maskStateForPlayer(gameStateJson, client.connectedPlayerName);
-                        JsonNode stateNode = objectMapper.readTree(maskedResponse);
-                        Packet statePacket = new Packet(PacketType.GAME_DATA, stateNode);
-                        String finalEncrypted = client.secureSocket.encrypt(statePacket.toJson());
-                        client.out.println(finalEncrypted);
-                    } catch (Exception e) {
-                        System.err.println("[ClientHandler] Error sending to client: " + e.getMessage());
-                    }
+                    broadcastGameStateToClient(gameStateJson, client);
                 }
             }
-            System.out.println("[ClientHandler] Broadcast game state to " + connectedClients.size() + " clients");
+            LOGGER.info("[ClientHandler] Broadcast game state to " + connectedClients.size() + " clients");
         } catch (Exception e) {
-            System.err.println("[ClientHandler] Error broadcasting game state: " + e.getMessage());
+            LOGGER.severe("[ClientHandler] Error broadcasting game state: " + e.getMessage());
+        }
+    }
+
+    private void broadcastGameStateToClient(String gameStateJson, ClientHandler client) {
+        try {
+            String maskedResponse = StateMasker.maskStateForPlayer(gameStateJson, client.connectedPlayerName);
+            JsonNode stateNode = objectMapper.readTree(maskedResponse);
+            Packet statePacket = new Packet(PacketType.GAME_DATA, stateNode);
+            String finalEncrypted = client.secureSocket.encrypt(statePacket.toJson());
+            client.out.println(finalEncrypted);
+        } catch (Exception e) {
+            LOGGER.severe("[ClientHandler] Error sending to client: " + e.getMessage());
         }
     }
 
@@ -188,7 +194,7 @@ public class ClientHandler implements Runnable {
             String finalEncrypted = secureSocket.encrypt(packet.toJson());
             out.println(finalEncrypted);
         } catch (Exception e) {
-            System.err.println("[ClientHandler] Error sending packet to client: " + e.getMessage());
+            LOGGER.severe("[ClientHandler] Error sending packet to client: " + e.getMessage());
         }
     }
 }

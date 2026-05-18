@@ -7,14 +7,17 @@ package jdemic.DedicatedServer.network.transport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PacketProcessorTest {
+
+    private static final Logger PACKET_PROCESSOR_LOGGER = Logger.getLogger(PacketProcessor.class.getName());
 
     private final PacketProcessor packetProcessor = new PacketProcessor();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -75,7 +78,7 @@ class PacketProcessorTest {
 
     @Test
     void shouldRoutePingPongAndGameDataPackets() throws Exception {
-        String output = captureStdout(() -> {
+        String output = capturePacketProcessorLog(() -> {
             packetProcessor.process(new Packet(PacketType.PING, 1L, objectMapper.createObjectNode()));
             packetProcessor.process(new Packet(PacketType.PONG, 2L, objectMapper.createObjectNode()));
             packetProcessor.process(new Packet(PacketType.GAME_DATA, 3L, objectMapper.createObjectNode().put("action", "MOVE")));
@@ -89,7 +92,7 @@ class PacketProcessorTest {
 
     @Test
     void shouldRouteConnectionLifecyclePackets() throws Exception {
-        String output = captureStdout(() -> {
+        String output = capturePacketProcessorLog(() -> {
             packetProcessor.process(new Packet(PacketType.CONNECT, 4L, objectMapper.createObjectNode().put("player", "P2")));
             packetProcessor.process(new Packet(PacketType.DISCONNECT, 5L, objectMapper.createObjectNode()));
         });
@@ -103,7 +106,7 @@ class PacketProcessorTest {
     void shouldRouteErrorPacketsToErrorOutput() throws Exception {
         Packet packet = new Packet(PacketType.ERROR, 6L, objectMapper.createObjectNode().put("message", "failure"));
 
-        String output = captureStderr(() -> packetProcessor.process(packet));
+        String output = capturePacketProcessorLog(() -> packetProcessor.process(packet));
 
         assertTrue(output.contains("Received ERROR packet"));
         assertTrue(output.contains("\"message\":\"failure\""));
@@ -113,40 +116,46 @@ class PacketProcessorTest {
     void shouldReportUnsupportedNullPacketType() throws Exception {
         Packet packet = new Packet(null, 7L, objectMapper.createObjectNode());
 
-        String output = captureStderr(() -> packetProcessor.process(packet));
+        String output = capturePacketProcessorLog(() -> packetProcessor.process(packet));
 
         assertTrue(output.contains("Unsupported packet type: null"));
     }
 
-    private String captureStdout(Runnable action) {
-        return captureOutput(action, true);
-    }
+    private String capturePacketProcessorLog(Runnable action) {
+        StringBuilder captured = new StringBuilder();
+        Handler handler = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                captured.append(record.getMessage()).append(System.lineSeparator());
+            }
 
-    private String captureStderr(Runnable action) {
-        return captureOutput(action, false);
-    }
+            @Override
+            public void flush() {
+                // StringBuilder writes do not need flushing.
+            }
 
-    private String captureOutput(Runnable action, boolean stdout) {
-        PrintStream original = stdout ? System.out : System.err;
-        ByteArrayOutputStream captured = new ByteArrayOutputStream();
-        PrintStream replacement = new PrintStream(captured, true, StandardCharsets.UTF_8);
+            @Override
+            public void close() {
+                // Nothing to close.
+            }
+        };
 
-        if (stdout) {
-            System.setOut(replacement);
-        } else {
-            System.setErr(replacement);
-        }
+        Level originalLevel = PACKET_PROCESSOR_LOGGER.getLevel();
+        boolean originalUseParentHandlers = PACKET_PROCESSOR_LOGGER.getUseParentHandlers();
+        handler.setLevel(Level.ALL);
+        PACKET_PROCESSOR_LOGGER.setLevel(Level.ALL);
+        PACKET_PROCESSOR_LOGGER.setUseParentHandlers(false);
+        PACKET_PROCESSOR_LOGGER.addHandler(handler);
 
         try {
             action.run();
-            replacement.flush();
-            return captured.toString(StandardCharsets.UTF_8);
+            handler.flush();
+            return captured.toString();
         } finally {
-            if (stdout) {
-                System.setOut(original);
-            } else {
-                System.setErr(original);
-            }
+            PACKET_PROCESSOR_LOGGER.removeHandler(handler);
+            PACKET_PROCESSOR_LOGGER.setLevel(originalLevel);
+            PACKET_PROCESSOR_LOGGER.setUseParentHandlers(originalUseParentHandlers);
         }
     }
+
 }

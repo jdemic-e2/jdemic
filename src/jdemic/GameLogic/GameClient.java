@@ -12,6 +12,9 @@ import java.net.Socket;
 import java.util.Scanner;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -19,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 public class GameClient {
 
+    private static final Logger LOGGER = Logger.getLogger(GameClient.class.getName());
     private SecureSocket secureSocket;
     private PrintWriter out;
     private BufferedReader in;
@@ -26,7 +30,7 @@ public class GameClient {
     private volatile boolean isConnected = false;
     private Thread listeningThread;
     private final List<PlayerUpdateListener> listeners = new CopyOnWriteArrayList<>();
-    private volatile JsonNode latestGameState;
+    private final AtomicReference<JsonNode> latestGameState = new AtomicReference<>();
 
     public interface PlayerUpdateListener {
         void onPlayersUpdated(JsonNode gameState);
@@ -37,7 +41,7 @@ public class GameClient {
             return;
         }
         listeners.add(listener);
-        JsonNode currentGameState = latestGameState;
+        JsonNode currentGameState = latestGameState.get();
         if (currentGameState != null) {
             listener.onPlayersUpdated(currentGameState);
         }
@@ -58,7 +62,7 @@ public class GameClient {
 
     //Connecting happens only once
     public boolean connectToServer(String host, int port) {
-        System.out.println("[GameClient] Connecting to " + host + ":" + port + "...");
+        LOGGER.info("[GameClient] Connecting to " + host + ":" + port + "...");
 
         try {
             Socket rawSocket = new Socket(host, port);
@@ -67,12 +71,12 @@ public class GameClient {
             this.secureSocket = SecureConnectionManager.wrapClientSocket(rawSocket);
 
             if (this.secureSocket == null) {
-                System.out.println("[GameClient] Failed to connect securely.");
+                LOGGER.info("[GameClient] Failed to connect securely.");
 
                 return false;
             }
 
-            System.out.println("[GameClient] Handshake finalized. Secure channel created.");
+            LOGGER.info("[GameClient] Handshake finalized. Secure channel created.");
 
             // I/O initialisation on the socket
             this.in = new BufferedReader(new InputStreamReader(rawSocket.getInputStream()));
@@ -84,8 +88,7 @@ public class GameClient {
             return true;
 
         } catch (Exception e) {
-            System.err.println("[GameClient] Critical error connecting to server: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Critical error connecting to server.", e);
             return false;
         }
     }
@@ -96,7 +99,7 @@ public class GameClient {
 
     private void startListeningThread() {
         listeningThread = new Thread(() -> {
-            System.out.println("[GameClient] Starting listening thread...");
+            LOGGER.info("[GameClient] Starting listening thread...");
             while (isConnected) {
                 try {
                     String received = receivePacket();
@@ -105,49 +108,55 @@ public class GameClient {
                     }
                 } catch (Exception e) {
                     if (isConnected) {
-                        System.err.println("[GameClient] Error in listening thread: " + e.getMessage());
+                        LOGGER.severe("[GameClient] Error in listening thread: " + e.getMessage());
                         isConnected = false; // Trigger disconnection
                     }
                 }
             }
-            System.out.println("[GameClient] Listening thread stopped.");
+            LOGGER.info("[GameClient] Listening thread stopped.");
         });
         listeningThread.setDaemon(true); // Make it a daemon thread so it doesn't prevent JVM exit
         listeningThread.start();
     }
 
     private void handleIncomingPacket(Packet packet) {
-        System.out.println("[GameClient] Received packet: " + packet.getType());
+        LOGGER.info("[GameClient] Received packet: " + packet.getType());
         switch (packet.getType()) {
             case GAME_DATA:
-                System.out.println("[GameClient] Handling GAME_DATA packet.");
-                latestGameState = packet.getPayload();
+                LOGGER.info("[GameClient] Handling GAME_DATA packet.");
+                latestGameState.set(packet.getPayload());
                 notifyPlayersUpdated(packet.getPayload());
                 break;
             case PONG:
                 // Handle pong response
-                System.out.println("[GameClient] Received PONG.");
+                LOGGER.info("[GameClient] Received PONG.");
                 break;
             case ERROR:
-                System.err.println("[GameClient] Received ERROR packet: " + packet.getPayload());
+                LOGGER.severe("[GameClient] Received ERROR packet: " + packet.getPayload());
                 break;
             default:
-                System.out.println("[GameClient] Unhandled packet type: " + packet.getType());
+                LOGGER.info("[GameClient] Unhandled packet type: " + packet.getType());
                 break;
         }
     }
 
     private void handleIncomingData(String data) {
-        System.out.println("[GameClient] Received data: " + data);
+        LOGGER.info("[GameClient] Received data: " + data);
         try {
             JsonNode root = objectMapper.readTree(data);
-            JsonNode gameState = root.has("type") && root.has("payload")
-                    ? Packet.fromJson(data).getPayload()
-                    : root;
-            latestGameState = gameState;
+            if (root.has("type") && root.has("payload")) {
+                Packet packet = Packet.fromJson(data);
+                if (packet != null) {
+                    handleIncomingPacket(packet);
+                }
+                return;
+            }
+
+            JsonNode gameState = root;
+            latestGameState.set(gameState);
             notifyPlayersUpdated(gameState);
         } catch (Exception e) {
-            System.err.println("[GameClient] Error parsing incoming data: " + e.getMessage());
+            LOGGER.severe("[GameClient] Error parsing incoming data: " + e.getMessage());
         }
     }
 
@@ -156,7 +165,7 @@ public class GameClient {
      */
     public void sendPacket(String jsonPayload) {
         if (secureSocket == null || out == null) {
-            System.err.println("[GameClient] Not connected to server!");
+            LOGGER.severe("[GameClient] Not connected to server!");
             return;
         }
 
@@ -164,10 +173,9 @@ public class GameClient {
             // Encrypt JSON package
             String mesajCriptat = secureSocket.encrypt(jsonPayload);
             out.println(mesajCriptat);
-            System.out.println("[GameClient] Sent encrypted packet to server.");
+            LOGGER.info("[GameClient] Sent encrypted packet to server.");
         } catch (Exception e) {
-            System.err.println("[GameClient] Error encrypting/sending packet: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Error encrypting or sending packet.", e);
         }
     }
 
@@ -201,7 +209,7 @@ public class GameClient {
                 return secureSocket.decrypt(mesajCriptat);
             }
         } catch (Exception e) {
-            System.err.println("[GameClient] Error receiving packet: " + e.getMessage());
+            LOGGER.severe("[GameClient] Error receiving packet: " + e.getMessage());
             isConnected = false;
         }
         return null;
@@ -210,7 +218,7 @@ public class GameClient {
     public void disconnect() {
         isConnected = false;
         listeners.clear();
-        latestGameState = null;
+        latestGameState.set(null);
         try {
             if (in != null) in.close();
             if (out != null) out.close();
@@ -225,14 +233,14 @@ public class GameClient {
                     Thread.currentThread().interrupt();
                 }
             }
-            System.out.println("[GameClient] Disconnected safely. Resources freed.");
+            LOGGER.info("[GameClient] Disconnected safely. Resources freed.");
         } catch (Exception e) {
-            System.err.println("[GameClient] Error while closing connection: " + e.getMessage());
+            LOGGER.severe("[GameClient] Error while closing connection: " + e.getMessage());
         }
     }
     // TERMINAL TESTING, seems to be working
     public static void main(String[] args) {
-        System.out.println("[TEST] Starting client for network testing...");
+        LOGGER.info("[TEST] Starting client for network testing...");
 
         GameClient client = new GameClient();
 
@@ -252,7 +260,7 @@ public class GameClient {
         Packet p = new Packet(PacketType.GAME_DATA, System.currentTimeMillis(), payload);
         client.sendPacket(p);
 
-        System.out.println("[TEST] Packets sent. Client is now listening. Press Enter to disconnect...");
+        LOGGER.info("[TEST] Packets sent. Client is now listening. Press Enter to disconnect...");
 
         // Wait for user input to disconnect
         Scanner scanner = new Scanner(System.in);
@@ -260,6 +268,6 @@ public class GameClient {
 
         scanner.close();
         client.disconnect();
-        System.out.println("[TEST] Client disconnected.");
+        LOGGER.info("[TEST] Client disconnected.");
     }
 }

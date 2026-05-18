@@ -20,10 +20,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 
 public class JdemicNetworkServer {
 
     private static final AtomicReference<JdemicNetworkServer> ACTIVE_SERVER = new AtomicReference<>();
+    private static final Logger LOGGER = Logger.getLogger(JdemicNetworkServer.class.getName());
 
     private final DedicatedServerConfig config;
     private final GameManager gameManager;
@@ -89,7 +91,7 @@ public class JdemicNetworkServer {
     }
 
     public void start() {
-        System.out.println("Pornire Jdemic Network Server...");
+        LOGGER.info("Pornire Jdemic Network Server...");
         if (!bindAndStartServices()) {
             return;
         }
@@ -98,7 +100,7 @@ public class JdemicNetworkServer {
     }
 
     public boolean startAsync() {
-        System.out.println("Pornire Jdemic Network Server...");
+        LOGGER.info("Pornire Jdemic Network Server...");
         if (!bindAndStartServices()) {
             return false;
         }
@@ -116,20 +118,24 @@ public class JdemicNetworkServer {
 
         try {
             serverSocket = new ServerSocket(config.serverPort());
-            System.out.println("Serverul asculta pe portul " + config.serverPort());
-            try {
-                statusUi.start();
-            } catch (IOException e) {
-                System.err.println("[Status] Could not start status UI: " + e.getMessage());
-            }
+            LOGGER.info("Serverul asculta pe portul " + config.serverPort());
+            startStatusUi();
             return true;
         } catch (Exception e) {
             running.set(false);
-            System.err.println("Eroare fatala: Nu s-a putut porni serverul pe portul " + config.serverPort());
-            System.err.println(e.getMessage());
+            LOGGER.severe("Eroare fatala: Nu s-a putut porni serverul pe portul " + config.serverPort());
+            LOGGER.severe(e.getMessage());
             closeServerSocket();
             statusUi.stop();
             return false;
+        }
+    }
+
+    private void startStatusUi() {
+        try {
+            statusUi.start();
+        } catch (IOException e) {
+            LOGGER.severe("[Status] Could not start status UI: " + e.getMessage());
         }
     }
 
@@ -141,11 +147,11 @@ public class JdemicNetworkServer {
                     handleClient(rawSocket);
                 } catch (SocketException e) {
                     if (running.get()) {
-                        System.err.println("Eroare la acceptarea conexiunii: " + e.getMessage());
+                        LOGGER.severe("Eroare la acceptarea conexiunii: " + e.getMessage());
                     }
                 } catch (IOException e) {
                     if (running.get()) {
-                        System.err.println("Eroare la acceptarea conexiunii: " + e.getMessage());
+                        LOGGER.severe("Eroare la acceptarea conexiunii: " + e.getMessage());
                     }
                 }
             }
@@ -159,26 +165,27 @@ public class JdemicNetworkServer {
             return;
         }
 
+        LOGGER.info("[SERVER] Stopping server...");
         closeServerSocket();
         closeClientSockets();
         clientExecutor.shutdownNow();
         statusUi.stop();
-        System.out.println("[SERVER] Shutdown complete.");
+        LOGGER.info("[SERVER] Shutdown complete.");
     }
 
     private void handleClient(Socket rawSocket) throws IOException {
-        System.out.println("\n[SERVER] Client conectat: " + rawSocket.getInetAddress().getHostAddress());
-        System.out.println("[SERVER] Initializare handshake RSA/AES...");
+        LOGGER.info("\n[SERVER] Client conectat: " + rawSocket.getInetAddress().getHostAddress());
+        LOGGER.info("[SERVER] Initializare handshake RSA/AES...");
 
         SecureSocket secureSocket = SecureConnectionManager.wrapSocket(rawSocket);
 
         if (secureSocket == null) {
-            System.err.println("[SERVER] Handshake esuat! Respingem clientul.");
+            LOGGER.severe("[SERVER] Handshake esuat! Respingem clientul.");
             rawSocket.close();
             return;
         }
 
-        System.out.println("[SERVER] Handshake reusit. Delegare catre ClientHandler.");
+        LOGGER.info("[SERVER] Handshake reusit. Delegare catre ClientHandler.");
         clientSockets.add(rawSocket);
         ClientHandler clientHandler = new ClientHandler(secureSocket, gameManager, connectedClients, latestPacket::set);
         connectedClients.add(clientHandler);
@@ -198,7 +205,7 @@ public class JdemicNetworkServer {
                 serverSocket.close();
             }
         } catch (IOException e) {
-            System.err.println("[SERVER] Error while closing server socket: " + e.getMessage());
+            LOGGER.severe("[SERVER] Error while closing server socket: " + e.getMessage());
         }
     }
 
@@ -209,7 +216,7 @@ public class JdemicNetworkServer {
                     clientSocket.close();
                 }
             } catch (IOException e) {
-                System.err.println("[SERVER] Error while closing client socket: " + e.getMessage());
+                LOGGER.severe("[SERVER] Error while closing client socket: " + e.getMessage());
             }
         }
         clientSockets.clear();
