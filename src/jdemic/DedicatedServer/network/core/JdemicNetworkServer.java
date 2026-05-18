@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class JdemicNetworkServer {
 
-    private static final int PORT = 9000;
+    private static int PORT = 9000;
     private static GameManager gameManager;
     private static List<ClientHandler> connectedClients = new CopyOnWriteArrayList<>();
     private static AtomicReference<Packet> latestPacket = new AtomicReference<>();
@@ -33,8 +33,16 @@ public class JdemicNetworkServer {
 
    
     public static void main(String[] args) {
+        if (args != null && args.length > 0) {
+            try {
+                PORT = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.err.println("[SERVER] Argumentul pentru port nu este valid. Folosesc portul implicit: " + PORT);
+            }
+        }
         startServer();
     }
+
     public static boolean startServer() {
         if (running) {
             System.out.println("[SERVER] Serverul rulează deja!");
@@ -70,7 +78,7 @@ public class JdemicNetworkServer {
                         SecureSocket secureSocket = SecureConnectionManager.wrapSocket(rawSocket);
 
                         if (secureSocket != null) {
-                            System.out.println("[SERVER] Handshake reușit. Delegare către ClientHandler.");
+                            System.out.println("[SERVER] Handshake reusit. Delegare catre ClientHandler.");
 
                             ClientHandler clientHandler = new ClientHandler(
                                     secureSocket,
@@ -83,7 +91,7 @@ public class JdemicNetworkServer {
                             connectedClients.add(clientHandler);
                             cancelEmptyServerShutdown();
                         } else {
-                            System.err.println("[SERVER] Handshake eșuat! Respingem clientul.");
+                            System.err.println("[SERVER] Handshake esuat! Respingem clientul.");
                             rawSocket.close();
                         }
                     } catch (IOException e) {
@@ -99,7 +107,7 @@ public class JdemicNetworkServer {
             return true; //The server was started successfully
 
         } catch (IOException e) {
-            System.err.println("Eroare fatală: Portul " + PORT + " este deja utilizat!");
+            System.err.println("Eroare fatala: Portul " + PORT + " este deja utilizat!");
             return false; 
         }
     }
@@ -117,9 +125,9 @@ public class JdemicNetworkServer {
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
             }
-            System.out.println("[SERVER] Server închis corect.");
+            System.out.println("[SERVER] Server inchis corect.");
         } catch (IOException e) {
-            System.err.println("[SERVER] Eroare la închiderea socket-ului: " + e.getMessage());
+            System.err.println("[SERVER] Eroare la inchiderea socket-ului: " + e.getMessage());
         }
     }
 
@@ -142,7 +150,7 @@ public class JdemicNetworkServer {
             emptyServerShutdownTask = emptyServerScheduler.schedule(() -> {
                 synchronized (JdemicNetworkServer.class) {
                     if (running && connectedClients.isEmpty()) {
-                        System.out.println("[SERVER] Niciun jucător conectat. Închidere automată.");
+                        System.out.println("[SERVER] Niciun jucator conectat. Inchidere automata.");
                         shutdown();
                     }
                 }
