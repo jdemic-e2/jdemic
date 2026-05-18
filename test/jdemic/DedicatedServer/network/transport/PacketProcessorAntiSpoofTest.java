@@ -121,6 +121,20 @@ public class PacketProcessorAntiSpoofTest {
         verify(mockClientHandler, never()).broadcastGameStateToAll();
     }
 
+    @Test
+    public void testRejectUnregisteredClientWithClaimedPlayerId() {
+        when(mockClientHandler.getConnectedPlayerName()).thenReturn(null);
+
+        ObjectNode payload = driveFerryPayload();
+        payload.put("PlayerID", "ALICE");
+
+        packetProcessor.process(new Packet(PacketType.GAME_DATA, payload));
+
+        assertEquals(4, gameManager.getState().getActionsRemaining(),
+                "Unregistered clients must not be able to authorize actions with payload PlayerID.");
+        verify(mockClientHandler, never()).broadcastGameStateToAll();
+    }
+
     /**
      * A packet with a blank PlayerID that does not match the connected
      * client's name must also be rejected.

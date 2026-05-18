@@ -1325,8 +1325,13 @@ public class GameLogicTest {
     public void testPerformActionIsNoOpWhenGameOver() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         gm.getState().setGameOver(true);
+        CityNode startingCity = playerInAtlanta.getPlayerCurrentCity();
+        int actionsRemaining = gm.getState().getActionsRemaining();
         Player player = new Player(playerInAtlanta, null);
-        gm.performAction(player, new DriveFerryAction(chicago)); // must not throw
+
+        assertDoesNotThrow(() -> gm.performAction(player, new DriveFerryAction(chicago)));
+        assertEquals(startingCity, playerInAtlanta.getPlayerCurrentCity());
+        assertEquals(actionsRemaining, gm.getState().getActionsRemaining());
     }
 
     @Test
