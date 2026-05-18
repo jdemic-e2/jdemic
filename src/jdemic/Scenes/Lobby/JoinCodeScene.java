@@ -6,6 +6,7 @@ import jdemic.DedicatedServer.network.transport.PacketType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -24,12 +25,18 @@ import jdemic.ui.TextUtil;
 public class JoinCodeScene {
     private final StackPane root;
     private final Stage stage;
+    private final String presetNickname;
     private Label errorLabel;
     private GameClient gameClient;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public JoinCodeScene(Stage stage) {
+        this(stage, null);
+    }
+
+    public JoinCodeScene(Stage stage, String presetNickname) {
         this.stage = stage;
+        this.presetNickname = presetNickname;
         root = new StackPane();
         setupBackground();
         setupUI();
@@ -55,16 +62,20 @@ public class JoinCodeScene {
         title.translateYProperty().bind(root.heightProperty().multiply(0.05));
         GlowUtil.applyGlow(title, "#cfc900", 7);
 
-        Label accessLabel = TextUtil.createText("ENTER ACCESS CODE", "hkmodular", 0.03, "#ff0000", root);
+        Label accessLabel = TextUtil.createText("ENTER IP ADDRESS", "hkmodular", 0.03, "#ff0000", root);
         accessLabel.setTextAlignment(TextAlignment.CENTER);
 
-        TextField nicknameField = new TextField("Newbie");
+        TextField nicknameField = new TextField(presetNickname == null ? "Newbie" : presetNickname);
         nicknameField.setMaxWidth(300);
         nicknameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
+        nicknameField.setVisible(presetNickname == null);
+        nicknameField.setManaged(presetNickname == null);
 
         Label nameLabel = TextUtil.createText("NICKNAME:", "hkmodular", 0.026, "#00b5d4", root);
         nameLabel.setTextAlignment(TextAlignment.CENTER);
         GlowUtil.applyGlow(nameLabel, "#00b5d4", 6);
+        nameLabel.setVisible(presetNickname == null);
+        nameLabel.setManaged(presetNickname == null);
 
         TextField codeField = new TextField();
         codeField.setMaxWidth(500);
@@ -73,7 +84,7 @@ public class JoinCodeScene {
         codeField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
 
         ButtonsUtil cancelBtn = new ButtonsUtil("CANCEL", "#ff0000", "black", "#ff0000", "#ff0000", 2, 15, 15, 0.2, 0.1, 0.02, root);
-        cancelBtn.setOnMouseClicked(e -> SceneManager.switchScene("LOBBY"));
+        cancelBtn.setOnMouseClicked(e -> SceneManager.switchScene("HOST_SCREEN"));
 
         ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff", 2, 15, 15, 0.2, 0.1, 0.02, root);
         joinBtn.setOnMouseClicked(e -> {
@@ -89,31 +100,9 @@ public class JoinCodeScene {
                 errorLabel.setVisible(true);
                 return;
             }
-            try {
-                // Extract the port from the code 
-                String targetIp = code;
-                int targetPort = 9000; // Default fallback just in case
-                
-                if (code.contains(":")) {
-                    String[] parts = code.split(":");
-                    targetIp = parts[0];
-                    targetPort = Integer.parseInt(parts[1]);
-                }
-                
-                gameClient = new GameClient();
-                gameClient.connectToServer(targetIp, targetPort); 
-                
-                // Send CONNECT packet
-                ObjectNode payload = objectMapper.createObjectNode();
-                payload.put("playerName", nickname);
-                Packet connectPacket = new Packet(PacketType.CONNECT, payload);
-                gameClient.sendPacket(connectPacket);
-                
-                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, targetIp, gameClient).getRoot());
-            } catch (Exception ex) {
-                errorLabel.setText("FAILED TO CONNECT");
-                errorLabel.setVisible(true);
-            }
+            joinBtn.setDisable(true);
+            errorLabel.setVisible(false);
+            connectToLobby(code, nickname, joinBtn);
         });
 
         errorLabel = TextUtil.createText("", "hkmodular", 0.025, "#ff0000", root);
@@ -136,5 +125,46 @@ public class JoinCodeScene {
 
     public StackPane getRoot() {
         return root;
+    }
+
+    private void connectToLobby(String code, String nickname, ButtonsUtil joinBtn) {
+        new Thread(() -> {
+            try {
+                String targetIp = code;
+                int targetPort = 9000;
+
+                if (code.contains(":")) {
+                    String[] parts = code.split(":");
+                    targetIp = parts[0].trim();
+                    targetPort = Integer.parseInt(parts[1].trim());
+                }
+
+                GameClient client = new GameClient();
+                if (!client.connectToServer(targetIp, targetPort)) {
+                    showJoinError(joinBtn);
+                    return;
+                }
+
+                ObjectNode payload = objectMapper.createObjectNode();
+                payload.put("playerName", nickname);
+                client.sendPacket(new Packet(PacketType.CONNECT, payload));
+                gameClient = client;
+
+                String roomCode = targetIp + ":" + targetPort;
+                Platform.runLater(() ->
+                        stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, roomCode, gameClient).getRoot())
+                );
+            } catch (Exception ex) {
+                showJoinError(joinBtn);
+            }
+        }, "jdemic-join-server").start();
+    }
+
+    private void showJoinError(ButtonsUtil joinBtn) {
+        Platform.runLater(() -> {
+            errorLabel.setText("FAILED TO CONNECT");
+            errorLabel.setVisible(true);
+            joinBtn.setDisable(false);
+        });
     }
 }

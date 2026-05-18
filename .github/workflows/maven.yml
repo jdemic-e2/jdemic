@@ -29,7 +29,7 @@ jobs:
       - name: Run unit tests
         id: unit-tests
         continue-on-error: true
-        run: mvn -B clean test
+        run: xvfb-run mvn -B clean test
 
       - name: Upload unit test reports
         if: always()
@@ -69,7 +69,7 @@ jobs:
             exit 0
           fi
 
-          mvn -B -Dtest='*IT,*ITCase' test
+          xvfb-run mvn -B -Dtest='*IT,*ITCase' test
 
       - name: Upload integration test reports
         if: always()
@@ -105,7 +105,7 @@ jobs:
       - name: Build, test, and check coverage
         id: build-coverage
         continue-on-error: true
-        run: mvn -B clean verify
+        run: xvfb-run mvn -B clean verify
 
       - name: Generate JaCoCo report after failed verify
         if: always()

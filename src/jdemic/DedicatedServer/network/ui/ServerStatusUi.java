@@ -102,16 +102,32 @@ public class ServerStatusUi {
         if (!config.openBrowser()) {
             return;
         }
-        if (GraphicsEnvironment.isHeadless() || !Desktop.isDesktopSupported()) {
-            System.out.println("[ServerStatusUi] Browser launch skipped because this environment is headless.");
-            return;
-        }
+
+        // Try standard Java Desktop API first
         try {
-            if (Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+            if (!GraphicsEnvironment.isHeadless() && Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(URI.create(url));
+                return;
             }
         } catch (Exception e) {
-            System.err.println("[ServerStatusUi] Could not open browser automatically: " + e.getMessage());
+            System.err.println("[ServerStatusUi] Standard browser launch failed, trying fallback: " + e.getMessage());
+        }
+
+        // Native OS Fallback launcher if Java Desktop API fails or detects a headless environment
+        try {
+            String os = System.getProperty("os.name").toLowerCase();
+            Runtime runtime = Runtime.getRuntime();
+            if (os.contains("win")) {
+                runtime.exec(new String[]{"cmd", "/c", "start", url});
+            } else if (os.contains("mac")) {
+                runtime.exec(new String[]{"open", url});
+            } else if (os.contains("nix") || os.contains("nux")) {
+                runtime.exec(new String[]{"xdg-open", url});
+            } else {
+                System.err.println("[ServerStatusUi] Unknown OS. Please open manually: " + url);
+            }
+        } catch (Exception e) {
+            System.err.println("[ServerStatusUi] Native fallback browser launch failed: " + e.getMessage());
         }
     }
 

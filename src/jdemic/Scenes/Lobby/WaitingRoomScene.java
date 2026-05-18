@@ -24,6 +24,7 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
+import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
 import jdemic.GameLogic.GameClient;
 import jdemic.Scenes.MapTest.MapTestScene;
 import jdemic.Scenes.SceneManager.SceneManager;
@@ -37,6 +38,7 @@ public class WaitingRoomScene {
     private final String nickname;
     private final String roomCode;
     private final GameClient gameClient;
+    private final boolean ownsServer;
     private Label hostStatusLabel;
     private VBox playerList;
     private TextArea chatArea;
@@ -55,11 +57,16 @@ public class WaitingRoomScene {
     }
 
     public WaitingRoomScene(Stage stage, String nickname, String roomCode, GameClient gameClient) {
+        this(stage, nickname, roomCode, gameClient, false);
+    }
+
+    public WaitingRoomScene(Stage stage, String nickname, String roomCode, GameClient gameClient, boolean ownsServer) {
         this.stage = stage;
         this.root = new StackPane();
         this.nickname = nickname == null || nickname.isBlank() ? "PLAYER" : nickname.toUpperCase();
         this.roomCode = roomCode == null ? "----" : roomCode;
         this.gameClient = gameClient;
+        this.ownsServer = ownsServer;
 
         setupBackground();
         setupUI();
@@ -332,6 +339,9 @@ public class WaitingRoomScene {
         cleanupScene();
         if (gameClient != null) {
             gameClient.disconnectFromLobby();
+        }
+        if (ownsServer) {
+            JdemicNetworkServer.shutdown();
         }
         SceneManager.switchScene("LOBBY");
     }

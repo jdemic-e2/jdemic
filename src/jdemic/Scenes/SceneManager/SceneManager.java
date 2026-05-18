@@ -19,7 +19,7 @@ public class SceneManager {
     }
 
     public static void switchScene(String sceneName) {
-        Parent root = scenes.get(sceneName);
+        Parent root = isDynamicScene(sceneName) ? null : scenes.get(sceneName);
 
         if (root == null) {
             switch (sceneName) {
@@ -28,6 +28,7 @@ public class SceneManager {
                 case "SETTINGS": root = new SettingsScene(stage).getRoot();break;
 
                 //Lobby related buttons
+                case "HOST_SCREEN": root = new jdemic.Scenes.Lobby.LobbyScene(stage).getRoot();break;
                 case "LOBBY": root = new jdemic.Scenes.Lobby.LobbyScene(stage).getRoot();break;
                 case "JOIN_CODE":root = new JoinCodeScene(stage).getRoot();break;
                 case "MAP_TEST": root = new jdemic.Scenes.MapTest.MapTestScene(stage).getRoot();break;
@@ -44,10 +45,19 @@ public class SceneManager {
                 case "TUT_TURN": root = new TutorialPlayerTurnScene(stage).getRoot(); break;
                 case "TUT_WINLOSE": root = new TutorialWinLoseScene(stage).getRoot(); break;
             }
-            scenes.put(sceneName, root);
+            if (!isDynamicScene(sceneName)) {
+                scenes.put(sceneName, root);
+            }
         }
 
         stage.getScene().setRoot(root);
+    }
+
+    private static boolean isDynamicScene(String sceneName) {
+        return "LOBBY".equals(sceneName)
+                || "HOST_SCREEN".equals(sceneName)
+                || "JOIN_CODE".equals(sceneName)
+                || "MAP_TEST".equals(sceneName);
     }
 
     public static void clearCache()

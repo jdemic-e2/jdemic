@@ -58,7 +58,11 @@ public class JdemicNetworkServer {
     }
 
     public static boolean startServer() {
-        JdemicNetworkServer server = new JdemicNetworkServer();
+        return startServer(DedicatedServerConfig.fromEnvironment());
+    }
+
+    public static boolean startServer(DedicatedServerConfig config) {
+        JdemicNetworkServer server = new JdemicNetworkServer(config);
         if (!server.startAsync()) {
             return false;
         }

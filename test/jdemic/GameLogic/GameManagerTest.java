@@ -3,6 +3,7 @@ package jdemic.GameLogic;
 import jdemic.GameLogic.Actions.Movement.DirectFlightAction;
 import jdemic.GameLogic.Actions.Movement.DriveFerryAction;
 import jdemic.GameLogic.Actions.Movement.ShuttleFlightAction;
+import jdemic.GameLogic.Actions.Other.DiscoverCure;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,7 @@ class GameManagerTest {
 
         assertEquals(1, state.getCurrentPlayerIndex());
         assertEquals(4, state.getActionsRemaining());
-        assertEquals(2, state.getPlayers().get(0).getHand().size());
+        assertEquals(6, state.getPlayers().get(0).getHand().size());
         assertEquals(startingCards - 2, state.getCardDeck().getRemainingCardsCount());
     }
 
@@ -98,6 +99,43 @@ class GameManagerTest {
 
         assertSame(atlanta, playerState.getPlayerCurrentCity());
         assertEquals(2, manager.getState().getActionsRemaining());
+    }
+
+    @Test
+    void discoverFinalCureShouldWinImmediatelyAfterAction() {
+        GameManager manager = new GameManager(List.of(new PlayerState("Ruben")), false);
+        GameState state = manager.getState();
+        PlayerState playerState = manager.getCurrentPlayer();
+        Player player = new Player(playerState, null);
+
+        state.getDiseaseManager().discoverCure(DiseaseColor.BLUE);
+        state.getDiseaseManager().discoverCure(DiseaseColor.YELLOW);
+        state.getDiseaseManager().discoverCure(DiseaseColor.BLACK);
+
+        List<Card> redCards = state.getMap().getCityList().stream()
+                .filter(city -> city.getNativeColor() == DiseaseColor.RED)
+                .limit(5)
+                .map(city -> new Card(city.getName(), CardType.CITY, city))
+                .toList();
+        redCards.forEach(playerState::addCard);
+
+        manager.performAction(player, new DiscoverCure(DiseaseColor.RED, redCards));
+
+        assertTrue(state.isGameOver());
+        assertTrue(state.isGameWon());
+    }
+
+    @Test
+    void startGameShouldDealInitialInfectionsBeforeEpidemicsForServerGames() {
+        PlayerState first = new PlayerState("Ruben");
+        PlayerState second = new PlayerState("Alvaro");
+        GameManager manager = new GameManager(List.of(first, second), false);
+
+        manager.startGame();
+
+        assertEquals(9, manager.getState().getCardDeck().getInfectionDiscardPile().size());
+        assertEquals(78, manager.getState().getDiseaseManager().getInfectionCubesLeft());
+        assertTrue(manager.getState().isGameStarted());
     }
 
     private GameManager newManager(String... playerNames) {

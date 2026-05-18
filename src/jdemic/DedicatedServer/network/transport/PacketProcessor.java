@@ -1,10 +1,17 @@
 package jdemic.DedicatedServer.network.transport;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import jdemic.GameLogic.Card;
+import jdemic.GameLogic.CardType;
+import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.DiseaseColor;
 import jdemic.GameLogic.GameManager;
-import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.Player;
-import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.Actions.FirewallAction;
+import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.Actions.SatelliteAction;
 import jdemic.GameLogic.Actions.ServerAction;
 import jdemic.GameLogic.Actions.SystemControlAction;
@@ -17,11 +24,8 @@ import jdemic.GameLogic.Actions.Other.BuildResearchStation;
 import jdemic.GameLogic.Actions.Other.DiscoverCure;
 import jdemic.GameLogic.Actions.Other.ShareKnowledge;
 import jdemic.GameLogic.Actions.Other.TreatDisease;
-import jdemic.GameLogic.CityNode;
-import jdemic.GameLogic.Card;
-import jdemic.GameLogic.DiseaseColor;
 import jdemic.GameLogic.ServerRelatedClasses.LobbyChatMessage;
-import com.fasterxml.jackson.databind.JsonNode;
+import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,19 +35,18 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * PacketProcessor handles packets that have already passed validation and
- * converts them into the appropriate server-side actions. It checks the
- * packet type and routes each packet to the matching handler method, keeping
- * protocol logic separate from raw socket communication.
+ * Converts validated network packets into game mutations.
  */
 public class PacketProcessor {
 
-    private GameManager gameManager;
-    private ClientHandler clientHandler;
     private static final int GAME_START_DELAY_SECONDS = 10;
     private static final int MAX_PLAYERS = 4;
-    private static final ScheduledExecutorService gameStartScheduler = Executors.newSingleThreadScheduledExecutor();
-    private static ScheduledFuture<?> gameStartTask;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private final GameManager gameManager;
+    private final ClientHandler clientHandler;
+    private final ScheduledExecutorService gameStartScheduler = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledFuture<?> gameStartTask;
 
     public PacketProcessor() {
         this(new GameManager(new ArrayList<>()), null);
@@ -53,10 +56,6 @@ public class PacketProcessor {
         this.gameManager = gameManager;
         this.clientHandler = clientHandler;
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Main dispatcher
-    // ─────────────────────────────────────────────────────────────────────────
 
     public void process(Packet packet) {
         if (packet == null) {
@@ -71,110 +70,95 @@ public class PacketProcessor {
         System.out.println("[PacketProcessor] Routing packet: " + packet);
 
         switch (packet.getType()) {
-            case PING:          handlePing(packet);         break;
-            case PONG:          handlePong(packet);         break;
-            case GAME_DATA:     handleGameData(packet);     break;
-            case CONNECT:       handleConnect(packet);      break;
-            case LOBBY_CHAT:    handleLobbyChat(packet);    break;
-            case LOBBY_READY:   handleLobbyReady(packet);   break;
-            case DISCONNECT:    handleDisconnect(packet);   break;
-            case ERROR:         handleError(packet);        break;
-            default:
-                System.err.println("[PacketProcessor] Unsupported packet type: " + packet.getType());
+            case PING: handlePing(packet); break;
+            case PONG: handlePong(packet); break;
+            case GAME_DATA: handleGameData(packet); break;
+            case CONNECT: handleConnect(packet); break;
+            case LOBBY_CHAT: handleLobbyChat(packet); break;
+            case LOBBY_READY: handleLobbyReady(packet); break;
+            case DISCONNECT: handleDisconnect(packet); break;
+            case ERROR: handleError(packet); break;
+            default: System.err.println("[PacketProcessor] Unsupported packet type: " + packet.getType());
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Heartbeat
-    // ─────────────────────────────────────────────────────────────────────────
-
     private void handlePing(Packet packet) {
         System.out.println("[PacketProcessor] Received PING packet.");
-        // Pong is sent back via the client handler if needed — nothing to do here
     }
 
     private void handlePong(Packet packet) {
         System.out.println("[PacketProcessor] Received PONG packet.");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Game data — action routing
-    // ─────────────────────────────────────────────────────────────────────────
-
     private void handleGameData(Packet packet) {
         System.out.println("[PacketProcessor] Received GAME_DATA packet.");
         JsonNode payload = packet.getPayload();
-
-        // ── TEST_ACTION (dev/debug only) ──────────────────────────────────────
         String gameAction = payload.has("GameAction") ? payload.get("GameAction").asText() : "";
+
         if ("TEST_ACTION".equals(gameAction)) {
             String playerId = payload.has("PlayerID") ? payload.get("PlayerID").asText() : "UNKNOWN";
-            String message  = payload.has("message")  ? payload.get("message").asText()  : "";
+            String message = payload.has("message") ? payload.get("message").asText() : "";
             System.out.println("[PacketProcessor] TEST_ACTION from " + playerId + ": " + message);
             broadcastGameState();
             return;
         }
 
-        // ── Resolve player ────────────────────────────────────────────────────
-        String playerId = resolvePlayerId(payload);
-        if (playerId == null) {
-            System.err.println("[PacketProcessor] Missing or spoofed PlayerID in GAME_DATA packet.");
-            return;
-        }
-
-        PlayerState playerState = findPlayerState(playerId);
-        if (playerState == null) {
-            System.err.println("[PacketProcessor] Player not found: " + playerId);
-            return;
-        }
-
-        // ── Turn enforcement ──────────────────────────────────────────────────
-        // Only the current player may perform game actions.
-        if (!isCurrentPlayer(playerState)) {
-            System.err.println("[PacketProcessor] Out-of-turn action ignored from: " + playerId);
-            return;
-        }
-
-        // ── Game-over guard ───────────────────────────────────────────────────
-        if (gameManager.isGameOver()) {
-            System.err.println("[PacketProcessor] Game is over; action ignored.");
-            return;
-        }
-
-        if ("END_TURN".equals(gameAction)) {
-            gameManager.getState().setActionsRemaining(0);
-            gameManager.nextTurn();
-            broadcastGameState();
-            return;
-        }
-
-        if ("DISCARD_CARD".equals(gameAction)) {
-            handleDiscardCard(payload, playerState);
-            return;
-        }
-
-        // ── Route to action builder ───────────────────────────────────────────
-        Player player = new Player(playerState, null);
-        GameAction action = buildAction(gameAction, payload, playerState);
-
-        if (action == null) {
-            if ("MOVE".equals(gameAction)) {
-                gameManager.consumeAction(playerState);
-                broadcastGameState();
+        boolean shouldBroadcast = false;
+        synchronized (gameManager.getStateLock()) {
+            String playerId = resolvePlayerId(payload);
+            if (playerId == null) {
+                System.err.println("[PacketProcessor] Missing or spoofed PlayerID in GAME_DATA packet.");
+                return;
             }
-            return;
+
+            PlayerState playerState = findPlayerState(playerId);
+            if (playerState == null) {
+                System.err.println("[PacketProcessor] Player not found: " + playerId);
+                return;
+            }
+
+            if (!gameManager.getState().isGameStarted()) {
+                System.err.println("[PacketProcessor] GAME_DATA ignored: game has not started.");
+                return;
+            }
+
+            if (!isCurrentPlayer(playerState)) {
+                System.err.println("[PacketProcessor] Out-of-turn action ignored from: " + playerId);
+                return;
+            }
+
+            if (gameManager.isGameOver()) {
+                System.err.println("[PacketProcessor] Game is over; action ignored.");
+                return;
+            }
+
+            if ("END_TURN".equals(gameAction)) {
+                handleEndTurn(payload);
+                shouldBroadcast = true;
+            } else if ("DISCARD_CARD".equals(gameAction)) {
+                handleDiscardCard(payload, playerState);
+                shouldBroadcast = true;
+            } else if ("THREAT_PREVIEW".equals(gameAction)) {
+                sendThreatPreview(playerState, payload);
+            } else {
+                Player player = new Player(playerState, null);
+                GameAction action = buildAction(gameAction, payload, playerState);
+                if (action == null) {
+                    System.err.println("[PacketProcessor] Action ignored because it could not be built: " + gameAction);
+                    return;
+                }
+
+                gameManager.performAction(player, action);
+                System.out.println("[PacketProcessor] Action performed: " + gameAction + " by " + playerId);
+                shouldBroadcast = true;
+            }
         }
 
-        gameManager.performAction(player, action);
-        System.out.println("[PacketProcessor] Action performed: " + gameAction + " by " + playerId);
-
-        broadcastGameState();
+        if (shouldBroadcast) {
+            broadcastGameState();
+        }
     }
 
-    /**
-     * Resolves the PlayerID from the payload, falling back to the name stored
-     * in the ClientHandler for this connection.
-     */
     private String resolvePlayerId(JsonNode payload) {
         if (clientHandler != null && clientHandler.getConnectedPlayerName() != null) {
             String connectedName = clientHandler.getConnectedPlayerName();
@@ -194,167 +178,123 @@ public class PacketProcessor {
         return null;
     }
 
-    /**
-     * Returns true only if the given player state belongs to whoever's turn it
-     * currently is.
-     */
     private boolean isCurrentPlayer(PlayerState playerState) {
         PlayerState current = gameManager.getCurrentPlayer();
         return current != null && current.getPlayerName().equals(playerState.getPlayerName());
     }
 
-    /**
-     * Builds the correct GameAction from the action name and payload.
-     * Returns null (and logs the reason) if construction fails.
-     */
     private GameAction buildAction(String gameAction, JsonNode payload, PlayerState playerState) {
         switch (gameAction) {
-
-            // ── Movement ──────────────────────────────────────────────────────
-
             case "DRIVE_FERRY": {
                 CityNode dest = resolveDestination(payload, "destination");
-                if (dest == null) return null;
-                return new DriveFerryAction(dest);
+                return dest == null ? null : new DriveFerryAction(dest);
             }
-
             case "DIRECT_FLIGHT": {
                 CityNode dest = resolveDestination(payload, "destination");
                 Card card = resolveCardByIndex(payload, "cardIndex", playerState);
-                if (dest == null || card == null) return null;
-                return new DirectFlightAction(dest, card);
+                return dest == null || card == null ? null : new DirectFlightAction(dest, card);
             }
-
             case "CHARTER_FLIGHT": {
                 CityNode dest = resolveDestination(payload, "destination");
                 Card card = resolveCardByIndex(payload, "cardIndex", playerState);
-                if (dest == null || card == null) return null;
-                return new CharterFlightAction(dest, card);
+                return dest == null || card == null ? null : new CharterFlightAction(dest, card);
             }
-
             case "SHUTTLE_FLIGHT": {
                 CityNode dest = resolveDestination(payload, "destination");
-                if (dest == null) return null;
-                return new ShuttleFlightAction(dest);
+                return dest == null ? null : new ShuttleFlightAction(dest);
             }
-
-            // ── Other actions ─────────────────────────────────────────────────
-
-            case "BUILD_RESEARCH_STATION": {
+            case "BUILD_RESEARCH_STATION":
                 return new BuildResearchStation();
-            }
-
             case "TREAT_DISEASE": {
                 DiseaseColor color = resolveColor(payload, "color");
-                if (color == null) return null;
-                return new TreatDisease(color);
+                return color == null ? null : new TreatDisease(color);
             }
-
-            case "SHARE_KNOWLEDGE": {
-                // Payload must include: "cardIndex" (int), "targetPlayer" (string), "direction" ("give"|"take")
-                Card card = resolveCardByIndex(payload, "cardIndex", playerState);
-                if (card == null) return null;
-
-                String targetName = payload.has("targetPlayer") ? payload.get("targetPlayer").asText() : null;
-                if (targetName == null || targetName.isBlank()) {
-                    System.err.println("[PacketProcessor] SHARE_KNOWLEDGE missing targetPlayer.");
-                    return null;
-                }
-                PlayerState targetState = findPlayerState(targetName);
-                if (targetState == null) {
-                    System.err.println("[PacketProcessor] SHARE_KNOWLEDGE target not found: " + targetName);
-                    return null;
-                }
-
-                String direction = payload.has("direction") ? payload.get("direction").asText() : "give";
-                // "give": current player hands card to target; "take": current player takes from target
-                PlayerState giver    = "give".equalsIgnoreCase(direction) ? playerState : targetState;
-                PlayerState receiver = "give".equalsIgnoreCase(direction) ? targetState : playerState;
-
-                // Re-resolve card from the giver's actual hand when direction is "take"
-                Card giverCard = card;
-                if ("take".equalsIgnoreCase(direction)) {
-                    giverCard = resolveCardByIndex(payload, "cardIndex", targetState);
-                    if (giverCard == null) return null;
-                }
-
-                return new ShareKnowledge(giverCard, giver, receiver);
-            }
-
-            case "DISCOVER_CURE": {
-                DiseaseColor color = resolveColor(payload, "color");
-                if (color == null) return null;
-
-                // Payload must include "cardIndices": array of int indices into playerState.getHand()
-                if (!payload.has("cardIndices") || !payload.get("cardIndices").isArray()) {
-                    System.err.println("[PacketProcessor] DISCOVER_CURE missing cardIndices array.");
-                    return null;
-                }
-
-                List<Card> hand = playerState.getHand();
-                List<Card> chosenCards = new ArrayList<>();
-                for (JsonNode indexNode : payload.get("cardIndices")) {
-                    int idx = indexNode.asInt(-1);
-                    if (idx < 0 || idx >= hand.size()) {
-                        System.err.println("[PacketProcessor] DISCOVER_CURE invalid card index: " + idx);
-                        return null;
-                    }
-                    Card chosen = hand.get(idx);
-                    if (chosenCards.contains(chosen)) {
-                        System.err.println("[PacketProcessor] DISCOVER_CURE duplicate card index: " + idx);
-                        return null;
-                    }
-                    chosenCards.add(chosen);
-                }
-
-                return new DiscoverCure(color, chosenCards);
-            }
-
+            case "SHARE_KNOWLEDGE":
+                return buildShareKnowledgeAction(payload, playerState);
+            case "DISCOVER_CURE":
+                return buildDiscoverCureAction(payload, playerState);
             case "FIREWALL": {
                 Card card = resolveCardByIndex(payload, "cardIndex", playerState);
-                if (card == null) return null;
-                return new FirewallAction(card);
+                return card == null ? null : new FirewallAction(card);
             }
-
             case "SATELLITE": {
                 Card card = resolveCardByIndex(payload, "cardIndex", playerState);
                 CityNode dest = resolveDestination(payload, "destination");
                 String targetPlayer = payload.has("targetPlayer") ? payload.get("targetPlayer").asText() : null;
-                if (card == null || dest == null || targetPlayer == null || targetPlayer.isBlank()) return null;
-                return new SatelliteAction(targetPlayer, dest, card);
+                return card == null || dest == null || targetPlayer == null || targetPlayer.isBlank()
+                        ? null
+                        : new SatelliteAction(targetPlayer, dest, card);
             }
-
             case "SERVER": {
                 Card card = resolveCardByIndex(payload, "cardIndex", playerState);
                 CityNode dest = resolveDestination(payload, "destination");
-                if (card == null || dest == null) return null;
-                return new ServerAction(dest, card);
+                return card == null || dest == null ? null : new ServerAction(dest, card);
             }
-
             case "SYSTEM_CONTROL":
             case "CONTROL": {
                 Card card = resolveCardByIndex(payload, "cardIndex", playerState);
                 Card infectionCard = resolveInfectionDiscardByIndex(payload, "infectionDiscardIndex");
-                if (card == null || infectionCard == null) return null;
-                return new SystemControlAction(card, infectionCard);
+                return card == null || infectionCard == null ? null : new SystemControlAction(card, infectionCard);
             }
-
             case "THREAT": {
                 Card card = resolveCardByIndex(payload, "cardIndex", playerState);
                 List<Card> reorderedCards = resolveTopInfectionCards(payload, "infectionCardIndices");
-                if (card == null || reorderedCards == null) return null;
-                return new ThreatAction(card, reorderedCards);
+                return card == null || reorderedCards == null ? null : new ThreatAction(card, reorderedCards);
             }
-
             default:
                 System.err.println("[PacketProcessor] Unknown GameAction: " + gameAction);
                 return null;
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Lobby handlers
-    // ─────────────────────────────────────────────────────────────────────────
+    private GameAction buildShareKnowledgeAction(JsonNode payload, PlayerState playerState) {
+        String targetName = payload.has("targetPlayer") ? payload.get("targetPlayer").asText() : null;
+        if (targetName == null || targetName.isBlank()) {
+            System.err.println("[PacketProcessor] SHARE_KNOWLEDGE missing targetPlayer.");
+            return null;
+        }
+
+        PlayerState targetState = findPlayerState(targetName);
+        if (targetState == null) {
+            System.err.println("[PacketProcessor] SHARE_KNOWLEDGE target not found: " + targetName);
+            return null;
+        }
+
+        String direction = payload.has("direction") ? payload.get("direction").asText() : "give";
+        PlayerState giver = "give".equalsIgnoreCase(direction) ? playerState : targetState;
+        PlayerState receiver = "give".equalsIgnoreCase(direction) ? targetState : playerState;
+        Card giverCard = resolveCardByIndex(payload, "cardIndex", giver);
+        return giverCard == null ? null : new ShareKnowledge(giverCard, giver, receiver);
+    }
+
+    private GameAction buildDiscoverCureAction(JsonNode payload, PlayerState playerState) {
+        DiseaseColor color = resolveColor(payload, "color");
+        if (color == null) {
+            return null;
+        }
+        if (!payload.has("cardIndices") || !payload.get("cardIndices").isArray()) {
+            System.err.println("[PacketProcessor] DISCOVER_CURE missing cardIndices array.");
+            return null;
+        }
+
+        List<Card> hand = playerState.getHand();
+        List<Card> chosenCards = new ArrayList<>();
+        for (JsonNode indexNode : payload.get("cardIndices")) {
+            int idx = indexNode.asInt(-1);
+            if (idx < 0 || idx >= hand.size()) {
+                System.err.println("[PacketProcessor] DISCOVER_CURE invalid card index: " + idx);
+                return null;
+            }
+            Card chosen = hand.get(idx);
+            if (chosenCards.contains(chosen)) {
+                System.err.println("[PacketProcessor] DISCOVER_CURE duplicate card index: " + idx);
+                return null;
+            }
+            chosenCards.add(chosen);
+        }
+
+        return new DiscoverCure(color, chosenCards);
+    }
 
     private void handleConnect(Packet packet) {
         System.out.println("[PacketProcessor] Received CONNECT packet.");
@@ -370,36 +310,32 @@ public class PacketProcessor {
                 return;
             }
 
-            // FIX: reject duplicate names
-            if (findPlayerState(playerName) != null) {
-                System.err.println("[PacketProcessor] CONNECT rejected: name already taken: " + playerName);
-                return;
-            }
+            synchronized (gameManager.getStateLock()) {
+                if (findPlayerState(playerName) != null) {
+                    System.err.println("[PacketProcessor] CONNECT rejected: name already taken: " + playerName);
+                    return;
+                }
+                if (gameManager.getState().getPlayers().size() >= MAX_PLAYERS) {
+                    System.err.println("[PacketProcessor] CONNECT rejected: lobby is full (" + MAX_PLAYERS + " players max).");
+                    return;
+                }
+                if (gameManager.getState().isGameStarted()) {
+                    System.err.println("[PacketProcessor] CONNECT rejected: game already in progress.");
+                    return;
+                }
 
-            // FIX: enforce Pandemic's 4-player maximum
-            if (gameManager.getState().getPlayers().size() >= MAX_PLAYERS) {
-                System.err.println("[PacketProcessor] CONNECT rejected: lobby is full (" + MAX_PLAYERS + " players max).");
-                return;
-            }
+                PlayerState newPlayer = new PlayerState(playerName);
+                newPlayer.setReady(false);
+                gameManager.getState().addPlayer(newPlayer);
+                updateLobbyCountdown();
 
-            // FIX: reject joins once the game has already started
-            if (gameManager.getState().isGameStarted()) {
-                System.err.println("[PacketProcessor] CONNECT rejected: game already in progress.");
-                return;
-            }
-
-            PlayerState newPlayer = new PlayerState(playerName);
-            newPlayer.setReady(false);
-            gameManager.getState().addPlayer(newPlayer);
-            updateLobbyCountdown();
-
-            if (clientHandler != null) {
-                clientHandler.setConnectedPlayerName(playerName);
+                if (clientHandler != null) {
+                    clientHandler.setConnectedPlayerName(playerName);
+                }
             }
 
             System.out.println("[PacketProcessor] Player registered: " + playerName
                     + " | Total: " + gameManager.getState().getPlayers().size());
-
             broadcastGameState();
         } catch (Exception e) {
             System.err.println("[PacketProcessor] Error handling CONNECT: " + e.getMessage());
@@ -407,14 +343,15 @@ public class PacketProcessor {
         }
     }
 
-
     private void handleLobbyChat(Packet packet) {
         System.out.println("[PacketProcessor] Received LOBBY_CHAT packet.");
 
         try {
             JsonNode payload = packet.getPayload();
             String message = payload.has("message") ? payload.get("message").asText().trim() : "";
-            if (message.isEmpty()) return;
+            if (message.isEmpty()) {
+                return;
+            }
             if (message.length() > 300) {
                 message = message.substring(0, 300);
             }
@@ -441,12 +378,6 @@ public class PacketProcessor {
         System.out.println("[PacketProcessor] Received LOBBY_READY packet.");
 
         try {
-            // FIX: ignore ready toggles once the game has started
-            if (gameManager.getState().isGameStarted()) {
-                System.err.println("[PacketProcessor] LOBBY_READY ignored: game already started.");
-                return;
-            }
-
             JsonNode payload = packet.getPayload();
             boolean ready = payload.has("ready") && payload.get("ready").asBoolean();
 
@@ -456,14 +387,22 @@ public class PacketProcessor {
                 return;
             }
 
-            PlayerState playerState = findPlayerState(playerName);
-            if (playerState == null) {
-                System.err.println("[PacketProcessor] LOBBY_READY ignored: player not found: " + playerName);
-                return;
+            synchronized (gameManager.getStateLock()) {
+                if (gameManager.getState().isGameStarted()) {
+                    System.err.println("[PacketProcessor] LOBBY_READY ignored: game already started.");
+                    return;
+                }
+
+                PlayerState playerState = findPlayerState(playerName);
+                if (playerState == null) {
+                    System.err.println("[PacketProcessor] LOBBY_READY ignored: player not found: " + playerName);
+                    return;
+                }
+
+                playerState.setReady(ready);
+                updateLobbyCountdown();
             }
 
-            playerState.setReady(ready);
-            updateLobbyCountdown();
             broadcastGameState();
         } catch (Exception e) {
             System.err.println("[PacketProcessor] Error handling LOBBY_READY: " + e.getMessage());
@@ -488,28 +427,12 @@ public class PacketProcessor {
             return;
         }
         gameManager.discardCurrentPlayerCard(playerState, payload.get("cardIndex").asInt());
-        broadcastGameState();
     }
 
-    /**
-     * Handles an explicit END_TURN packet from the client.
-     * The player may still have actions remaining but chooses to skip them.
-     * Runs the full end-of-turn sequence: draw cards → infect cities → next player.
-     */
-    private void handleEndTurn(Packet packet) {
+    private void handleEndTurn(JsonNode payload) {
         System.out.println("[PacketProcessor] Received END_TURN packet.");
 
-        if (gameManager.isGameOver()) {
-            System.err.println("[PacketProcessor] END_TURN ignored: game is already over.");
-            return;
-        }
-
-        if (!gameManager.getState().isGameStarted()) {
-            System.err.println("[PacketProcessor] END_TURN ignored: game has not started.");
-            return;
-        }
-
-        String playerName = clientHandler != null ? clientHandler.getConnectedPlayerName() : null;
+        String playerName = resolvePlayerId(payload);
         if (playerName == null || playerName.isBlank()) {
             System.err.println("[PacketProcessor] END_TURN ignored: sender is not registered.");
             return;
@@ -524,15 +447,9 @@ public class PacketProcessor {
         System.out.println("[PacketProcessor] Player " + playerName + " ended their turn early ("
                 + gameManager.getState().getActionsRemaining() + " action(s) remaining).");
 
-        // Force actions to 0 so nextTurn() doesn't guard against them
         gameManager.getState().setActionsRemaining(0);
         gameManager.nextTurn();
-        broadcastGameState();
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Helpers — resolution utilities
-    // ─────────────────────────────────────────────────────────────────────────
 
     private CityNode resolveDestination(JsonNode payload, String field) {
         if (!payload.has(field) || !payload.get(field).isTextual()) {
@@ -576,17 +493,30 @@ public class PacketProcessor {
     }
 
     private Card resolveInfectionDiscardByIndex(JsonNode payload, String field) {
-        if (!payload.has(field) || !payload.get(field).isInt()) {
-            System.err.println("[PacketProcessor] Missing or non-integer field: " + field);
-            return null;
-        }
-        int idx = payload.get(field).asInt();
         List<Card> discardPile = gameManager.getState().getCardDeck().getInfectionDiscardPile();
-        if (idx < 0 || idx >= discardPile.size()) {
-            System.err.println("[PacketProcessor] Infection discard index out of bounds: " + idx);
+
+        if (payload.has(field) && payload.get(field).isInt()) {
+            int idx = payload.get(field).asInt();
+            if (idx < 0 || idx >= discardPile.size()) {
+                System.err.println("[PacketProcessor] Infection discard index out of bounds: " + idx);
+                return null;
+            }
+            return discardPile.get(idx);
+        }
+
+        if (payload.has("infectionCardName") && payload.get("infectionCardName").isTextual()) {
+            String cardName = payload.get("infectionCardName").asText();
+            for (Card card : discardPile) {
+                if (card.getCardName().equals(cardName)) {
+                    return card;
+                }
+            }
+            System.err.println("[PacketProcessor] Infection discard card not found: " + cardName);
             return null;
         }
-        return discardPile.get(idx);
+
+        System.err.println("[PacketProcessor] Missing infection discard selector: " + field + " or infectionCardName.");
+        return null;
     }
 
     private List<Card> resolveTopInfectionCards(JsonNode payload, String field) {
@@ -613,7 +543,53 @@ public class PacketProcessor {
         return reordered;
     }
 
-    //CASE SENSITIVE !!!!!!
+    private void sendThreatPreview(PlayerState playerState, JsonNode payload) {
+        if (clientHandler == null) {
+            return;
+        }
+        if (!playerHasThreatCard(playerState, payload)) {
+            System.err.println("[PacketProcessor] THREAT_PREVIEW rejected: player has no selected Threat Scan card.");
+            return;
+        }
+
+        ObjectNode response = OBJECT_MAPPER.createObjectNode();
+        response.put("GameAction", "THREAT_PREVIEW");
+        ArrayNode cards = response.putArray("topInfectionCards");
+        List<Card> topCards = gameManager.getState().getCardDeck().getTopInfectionCards(6);
+
+        for (int i = 0; i < topCards.size(); i++) {
+            Card card = topCards.get(i);
+            ObjectNode cardNode = cards.addObject();
+            cardNode.put("index", i);
+            cardNode.put("cardName", card.getCardName());
+            if (card.getTargetCity() != null) {
+                cardNode.put("cityName", card.getTargetCity().getName());
+                cardNode.put("color", card.getTargetCity().getNativeColor().name());
+            }
+        }
+
+        clientHandler.sendPacketToClient(new Packet(PacketType.GAME_DATA, response));
+    }
+
+    private boolean playerHasThreatCard(PlayerState playerState, JsonNode payload) {
+        if (payload.has("cardIndex") && payload.get("cardIndex").isInt()) {
+            return isThreatCard(resolveCardByIndex(payload, "cardIndex", playerState));
+        }
+
+        for (Card card : playerState.getHand()) {
+            if (isThreatCard(card)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isThreatCard(Card card) {
+        return card != null
+                && card.getType() == CardType.EVENT
+                && card.getEventType() == Card.EventType.THREAT;
+    }
+
     private PlayerState findPlayerState(String playerName) {
         for (PlayerState ps : gameManager.getState().getPlayers()) {
             if (ps.getPlayerName().equals(playerName)) {
@@ -629,30 +605,29 @@ public class PacketProcessor {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Disconnect / broadcast / lobby countdown
-    // ─────────────────────────────────────────────────────────────────────────
-
     public void disconnectCurrentPlayer() {
-        if (gameManager == null || clientHandler == null) return;
-        else {
+        if (gameManager == null || clientHandler == null) {
+            return;
+        }
+
         String playerName = clientHandler.getConnectedPlayerName();
-        if (playerName == null || playerName.isBlank()) return;
-        else {
+        if (playerName == null || playerName.isBlank()) {
+            return;
+        }
+
+        synchronized (gameManager.getStateLock()) {
             PlayerState playerToRemove = findPlayerState(playerName);
             if (playerToRemove == null) {
                 return;
             }
 
             gameManager.removePlayer(playerToRemove);
-
             System.out.println("[PacketProcessor] Player disconnected: " + playerName);
             updateLobbyCountdown();
             clientHandler.clearConnectedPlayerName();
         }
 
         broadcastGameState();
-        }
     }
 
     private void updateLobbyCountdown() {
@@ -675,26 +650,24 @@ public class PacketProcessor {
     }
 
     private void scheduleGameStart() {
-        synchronized (PacketProcessor.class) {
+        synchronized (this) {
             cancelGameStart();
             gameStartTask = gameStartScheduler.schedule(() -> {
-                synchronized (PacketProcessor.class) {
-                    synchronized (gameManager.getStateLock()) {
-                        if (!areAllPlayersReady() || gameManager.getState().isGameStarted()) {
-                            gameManager.getState().setLobbyCountdownStartedAt(0);
-                        } else {
-                            gameManager.startGame();
-                            System.out.println("[PacketProcessor] Lobby countdown finished. Game started.");
-                        }
+                synchronized (gameManager.getStateLock()) {
+                    if (!areAllPlayersReady() || gameManager.getState().isGameStarted()) {
+                        gameManager.getState().setLobbyCountdownStartedAt(0);
+                    } else {
+                        gameManager.startGame();
+                        System.out.println("[PacketProcessor] Lobby countdown finished. Game started.");
                     }
-                    broadcastGameState();
                 }
+                broadcastGameState();
             }, GAME_START_DELAY_SECONDS, TimeUnit.SECONDS);
         }
     }
 
     private void cancelGameStart() {
-        synchronized (PacketProcessor.class) {
+        synchronized (this) {
             if (gameStartTask != null && !gameStartTask.isDone()) {
                 gameStartTask.cancel(false);
             }
@@ -703,9 +676,13 @@ public class PacketProcessor {
     }
 
     private boolean areAllPlayersReady() {
-        if (gameManager.getState().getPlayers().isEmpty()) return false;
+        if (gameManager.getState().getPlayers().isEmpty()) {
+            return false;
+        }
         for (PlayerState player : gameManager.getState().getPlayers()) {
-            if (!player.isReady()) return false;
+            if (!player.isReady()) {
+                return false;
+            }
         }
         return true;
     }

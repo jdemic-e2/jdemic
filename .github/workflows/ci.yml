@@ -21,7 +21,7 @@ jobs:
             cache: maven
         
         - name: Build and run tests
-          run: mvn clean test
+          run: xvfb-run mvn -B clean test
         
         - name: Generate JaCoCo coverage report
           run: mvn jacoco:report

@@ -111,9 +111,14 @@ public class CityNode {
     public float getRenderX() { return renderX; }
     public float getRenderY() { return renderY; }
     public boolean hasResearchStation() { return hasResearchStation; }
+    public Map<DiseaseColor, Integer> getDiseaseCubes() { return diseaseCubes; }
     
     public int getCubeCount(DiseaseColor color) 
     {
         return diseaseCubes.get(color);
+    }
+
+    public void setDiseaseCubeCount(DiseaseColor color, int amount) {
+        diseaseCubes.put(color, Math.max(0, Math.min(3, amount)));
     }
 }

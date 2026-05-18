@@ -200,7 +200,7 @@ public class MainMenuScene {
         });
 
         playBtn.setOnMouseClicked(e -> {
-            SceneManager.switchScene("LOBBY");
+            SceneManager.switchScene("HOST_SCREEN");
         });
 
         settingsBtn.setOnMouseClicked(e -> {

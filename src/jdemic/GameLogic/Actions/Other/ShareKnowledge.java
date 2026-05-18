@@ -20,6 +20,18 @@ public class ShareKnowledge extends GameAction {
         this.receiver = receiver;
     }
 
+    public Card getCard() {
+        return card;
+    }
+
+    public PlayerState getGiver() {
+        return giver;
+    }
+
+    public PlayerState getReceiver() {
+        return receiver;
+    }
+
     @Override
     public boolean isValid(GameState state, PlayerState playerState) {
         if (card == null || giver == null || receiver == null) {

@@ -57,7 +57,7 @@ public class GameClient {
     }
 
     //Connecting happens only once
-    public void connectToServer(String host, int port) {
+    public boolean connectToServer(String host, int port) {
         System.out.println("[GameClient] Connecting to " + host + ":" + port + "...");
 
         try {
@@ -69,7 +69,7 @@ public class GameClient {
             if (this.secureSocket == null) {
                 System.out.println("[GameClient] Failed to connect securely.");
 
-                return;
+                return false;
             }
 
             System.out.println("[GameClient] Handshake finalized. Secure channel created.");
@@ -81,11 +81,17 @@ public class GameClient {
             // Start maintaining the connection
             isConnected = true;
             startListeningThread();
+            return true;
 
         } catch (Exception e) {
             System.err.println("[GameClient] Critical error connecting to server: " + e.getMessage());
             e.printStackTrace();
+            return false;
         }
+    }
+
+    public boolean isConnected() {
+        return isConnected;
     }
 
     private void startListeningThread() {

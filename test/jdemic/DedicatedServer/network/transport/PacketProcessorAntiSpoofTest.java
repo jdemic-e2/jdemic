@@ -3,6 +3,7 @@ package jdemic.DedicatedServer.network.transport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jdemic.GameLogic.GameManager;
+import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,14 +29,27 @@ public class PacketProcessorAntiSpoofTest {
     @BeforeEach
     public void setUp() {
         gameManager = new GameManager(new ArrayList<>());
-        gameManager.getState().addPlayer(new PlayerState("ALICE"));
-        gameManager.getState().addPlayer(new PlayerState("BOB"));
+        PlayerState alice = new PlayerState("ALICE");
+        PlayerState bob = new PlayerState("BOB");
+        gameManager.getState().addPlayer(alice);
+        gameManager.getState().addPlayer(bob);
+        CityNode atlanta = gameManager.getState().getMap().getCity("Atlanta");
+        alice.setCurrentCity(atlanta);
+        bob.setCurrentCity(atlanta);
 
         // Alice's turn with 4 actions remaining
         gameManager.getState().setCurrentPlayerIndex(0);
         gameManager.getState().setActionsRemaining(4);
+        gameManager.getState().setGameStarted(true);
 
         packetProcessor = new PacketProcessor(gameManager, mockClientHandler);
+    }
+
+    private ObjectNode driveFerryPayload() {
+        ObjectNode payload = mapper.createObjectNode();
+        payload.put("GameAction", "DRIVE_FERRY");
+        payload.put("destination", "Chicago");
+        return payload;
     }
 
     /**
@@ -48,8 +62,7 @@ public class PacketProcessorAntiSpoofTest {
         when(mockClientHandler.getConnectedPlayerName()).thenReturn("BOB");
 
         // Bob's packet falsely declares PlayerID = "ALICE"
-        ObjectNode payload = mapper.createObjectNode();
-        payload.put("GameAction", "MOVE");
+        ObjectNode payload = driveFerryPayload();
         payload.put("PlayerID", "ALICE");
 
         Packet packet = new Packet(PacketType.GAME_DATA, payload);
@@ -73,8 +86,7 @@ public class PacketProcessorAntiSpoofTest {
         when(mockClientHandler.getConnectedPlayerName()).thenReturn("ALICE");
 
         // Alice sends her own PlayerID — no spoofing
-        ObjectNode payload = mapper.createObjectNode();
-        payload.put("GameAction", "MOVE");
+        ObjectNode payload = driveFerryPayload();
         payload.put("PlayerID", "ALICE");
 
         Packet packet = new Packet(PacketType.GAME_DATA, payload);
@@ -97,8 +109,7 @@ public class PacketProcessorAntiSpoofTest {
         // No CONNECT was received; name is null
         when(mockClientHandler.getConnectedPlayerName()).thenReturn(null);
 
-        ObjectNode payload = mapper.createObjectNode();
-        payload.put("GameAction", "MOVE");
+        ObjectNode payload = driveFerryPayload();
 
         Packet packet = new Packet(PacketType.GAME_DATA, payload);
         packetProcessor.process(packet);
@@ -119,8 +130,7 @@ public class PacketProcessorAntiSpoofTest {
         when(mockClientHandler.getConnectedPlayerName()).thenReturn("BOB");
 
         // PlayerID present but empty — not equal to "BOB"
-        ObjectNode payload = mapper.createObjectNode();
-        payload.put("GameAction", "MOVE");
+        ObjectNode payload = driveFerryPayload();
         payload.put("PlayerID", "");
 
         Packet packet = new Packet(PacketType.GAME_DATA, payload);
@@ -141,8 +151,7 @@ public class PacketProcessorAntiSpoofTest {
         when(mockClientHandler.getConnectedPlayerName()).thenReturn("ALICE");
 
         // No PlayerID field at all — server should default to connected name
-        ObjectNode payload = mapper.createObjectNode();
-        payload.put("GameAction", "MOVE");
+        ObjectNode payload = driveFerryPayload();
 
         Packet packet = new Packet(PacketType.GAME_DATA, payload);
         packetProcessor.process(packet);
@@ -151,5 +160,19 @@ public class PacketProcessorAntiSpoofTest {
                 "Omitting PlayerID should default to the connection identity and succeed.");
 
         verify(mockClientHandler, atLeastOnce()).broadcastGameStateToAll();
+    }
+
+    @Test
+    public void testRejectActionBeforeGameStarts() {
+        gameManager.getState().setGameStarted(false);
+        when(mockClientHandler.getConnectedPlayerName()).thenReturn("ALICE");
+
+        ObjectNode payload = driveFerryPayload();
+        payload.put("PlayerID", "ALICE");
+
+        packetProcessor.process(new Packet(PacketType.GAME_DATA, payload));
+
+        assertEquals(4, gameManager.getState().getActionsRemaining());
+        verify(mockClientHandler, never()).broadcastGameStateToAll();
     }
 }

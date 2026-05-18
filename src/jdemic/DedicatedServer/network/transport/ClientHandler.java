@@ -174,4 +174,17 @@ public class ClientHandler implements Runnable {
             System.err.println("[ClientHandler] Error broadcasting game state: " + e.getMessage());
         }
     }
+
+    public void sendPacketToClient(Packet packet) {
+        if (packet == null || out == null) {
+            return;
+        }
+
+        try {
+            String finalEncrypted = secureSocket.encrypt(packet.toJson());
+            out.println(finalEncrypted);
+        } catch (Exception e) {
+            System.err.println("[ClientHandler] Error sending packet to client: " + e.getMessage());
+        }
+    }
 }

@@ -2,6 +2,7 @@ package jdemic.Scenes.MapTest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -305,6 +306,7 @@ public class MapTestScene {
         if (gameState.has("gameStarted")) {
             manager.getState().setGameStarted(gameState.get("gameStarted").asBoolean());
         }
+        applyMapSnapshot(gameState);
 
         JsonNode playersArray = getPlayersArray(gameState);
         if (playersArray != null && playersArray.isArray()) {
@@ -343,6 +345,48 @@ public class MapTestScene {
             int currentPlayerIndex = gameState.get("currentPlayerIndex").asInt();
             int maxPlayerIndex = manager.getState().getPlayers().size() - 1;
             manager.getState().setCurrentPlayerIndex(Math.max(0, Math.min(currentPlayerIndex, maxPlayerIndex)));
+        }
+    }
+
+    private void applyMapSnapshot(JsonNode gameState) {
+        if (gameState == null || !gameState.has("map")) {
+            return;
+        }
+
+        JsonNode mapNode = gameState.get("map");
+        JsonNode cityList = mapNode.get("cityList");
+        if (cityList == null || !cityList.isArray()) {
+            return;
+        }
+
+        for (JsonNode cityNode : cityList) {
+            if (!cityNode.has("name")) {
+                continue;
+            }
+
+            CityNode localCity = mapGraph.getCity(cityNode.get("name").asText());
+            if (localCity == null) {
+                continue;
+            }
+
+            JsonNode researchStation = cityNode.has("researchStation")
+                    ? cityNode.get("researchStation")
+                    : cityNode.get("hasResearchStation");
+            if (researchStation != null && researchStation.asBoolean()) {
+                localCity.addResearchStation();
+            } else if (researchStation != null) {
+                localCity.removeResearchStation();
+            }
+
+            JsonNode diseaseCubes = cityNode.get("diseaseCubes");
+            if (diseaseCubes != null && diseaseCubes.isObject()) {
+                for (DiseaseColor color : DiseaseColor.values()) {
+                    JsonNode cubeCount = diseaseCubes.get(color.name());
+                    if (cubeCount != null && cubeCount.isNumber()) {
+                        localCity.setDiseaseCubeCount(color, cubeCount.asInt());
+                    }
+                }
+            }
         }
     }
 
@@ -607,18 +651,167 @@ public class MapTestScene {
 
         ObjectNode payload = createBaseGameActionPayload();
         payload.put("GameAction", action);
+
+        if (!populateActionPayload(payload, action, null)) {
+            notificationManager.showNotification("Action needs a valid target first");
+            return;
+        }
+
         gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
     }
 
-    private void sendDriveFerryPacket(CityNode destination) {
+    private void sendMovementActionPacket(String action, CityNode destination) {
         if (gameClient == null || destination == null) {
             return;
         }
 
         ObjectNode payload = createBaseGameActionPayload();
-        payload.put("GameAction", "DRIVE_FERRY");
-        payload.put("destination", destination.getName());
+        payload.put("GameAction", action);
+
+        if (!populateActionPayload(payload, action, destination)) {
+            notificationManager.showNotification("Cannot use " + action.replace('_', ' ') + " for " + destination.getName());
+            return;
+        }
+
         gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    private boolean populateActionPayload(ObjectNode payload, String action, CityNode destination) {
+        PlayerState player = getDisplayedHandPlayer();
+        if (player == null) {
+            return false;
+        }
+
+        CityNode currentCity = player.getPlayerCurrentCity();
+        switch (action) {
+            case "DRIVE_FERRY":
+            case "SHUTTLE_FLIGHT":
+                if (destination == null) return false;
+                payload.put("destination", destination.getName());
+                return true;
+
+            case "DIRECT_FLIGHT": {
+                if (destination == null) return false;
+                int cardIndex = findCardIndexForCity(player, destination);
+                if (cardIndex < 0) return false;
+                payload.put("destination", destination.getName());
+                payload.put("cardIndex", cardIndex);
+                return true;
+            }
+
+            case "CHARTER_FLIGHT": {
+                if (destination == null || currentCity == null) return false;
+                int cardIndex = findCardIndexForCity(player, currentCity);
+                if (cardIndex < 0) return false;
+                payload.put("destination", destination.getName());
+                payload.put("cardIndex", cardIndex);
+                return true;
+            }
+
+            case "TREAT_DISEASE": {
+                DiseaseColor color = firstTreatableColor(currentCity);
+                if (color == null) return false;
+                payload.put("color", color.name());
+                return true;
+            }
+
+            case "DISCOVER_CURE":
+                return populateDiscoverCurePayload(payload, player);
+
+            case "SHARE_KNOWLEDGE":
+                return populateShareKnowledgePayload(payload, player);
+
+            case "BUILD_RESEARCH_STATION":
+                return true;
+
+            default:
+                return true;
+        }
+    }
+
+    private int findCardIndexForCity(PlayerState player, CityNode city) {
+        if (player == null || city == null) {
+            return -1;
+        }
+
+        List<Card> hand = player.getHand();
+        for (int i = 0; i < hand.size(); i++) {
+            Card card = hand.get(i);
+            if (card.getType() == CardType.CITY
+                    && card.getTargetCity() != null
+                    && city.getName().equals(card.getTargetCity().getName())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private DiseaseColor firstTreatableColor(CityNode city) {
+        if (city == null) {
+            return null;
+        }
+
+        for (DiseaseColor color : DiseaseColor.values()) {
+            if (city.getCubeCount(color) > 0) {
+                return color;
+            }
+        }
+        return null;
+    }
+
+    private boolean populateDiscoverCurePayload(ObjectNode payload, PlayerState player) {
+        int requiredCards = player.getPlayerRole() == PlayerRoles.SCIENTIST ? 4 : 5;
+
+        for (DiseaseColor color : DiseaseColor.values()) {
+            List<Integer> matchingIndices = new ArrayList<>();
+            List<Card> hand = player.getHand();
+            for (int i = 0; i < hand.size(); i++) {
+                Card card = hand.get(i);
+                if (card.getType() == CardType.CITY
+                        && card.getTargetCity() != null
+                        && card.getTargetCity().getNativeColor() == color) {
+                    matchingIndices.add(i);
+                }
+            }
+
+            if (matchingIndices.size() >= requiredCards) {
+                payload.put("color", color.name());
+                ArrayNode cardIndices = payload.putArray("cardIndices");
+                for (int i = 0; i < requiredCards; i++) {
+                    cardIndices.add(matchingIndices.get(i));
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean populateShareKnowledgePayload(ObjectNode payload, PlayerState player) {
+        CityNode currentCity = player.getPlayerCurrentCity();
+        if (currentCity == null) {
+            return false;
+        }
+
+        int cardIndex = findCardIndexForCity(player, currentCity);
+        if (cardIndex < 0 && player.getPlayerRole() == PlayerRoles.RESEARCHER && !player.getHand().isEmpty()) {
+            cardIndex = 0;
+        }
+        if (cardIndex < 0) {
+            return false;
+        }
+
+        for (PlayerState target : gameManager.getState().getPlayers()) {
+            CityNode targetCity = target.getPlayerCurrentCity();
+            if (!target.getPlayerName().equalsIgnoreCase(player.getPlayerName())
+                    && targetCity != null
+                    && targetCity.getName().equals(currentCity.getName())) {
+                payload.put("cardIndex", cardIndex);
+                payload.put("targetPlayer", target.getPlayerName());
+                payload.put("direction", "give");
+                return true;
+            }
+        }
+        return false;
     }
 
     private void sendDiscardCardPacket(int cardIndex) {
@@ -640,6 +833,7 @@ public class MapTestScene {
                 Color nativeColor = getFxColor(city.getNativeColor());
                 nodeCircle.setFill(nativeColor);
                 nodeCircle.setEffect(null);
+                nodeCircle.setOnMouseClicked(ev -> city.clickEvent());
             }
         }
         highlightedValidNodes.clear();
@@ -659,51 +853,96 @@ public class MapTestScene {
             return;
         }
 
-        // For DRIVE/FERRY, highlight all connected cities
-        if ("DRIVE_FERRY".equals(movementType)) {
-            for (CityNode neighbor : currentCity.getConnectedCities()) {
-                highlightedValidNodes.add(neighbor);
-                Circle nodeCircle = nodeVisuals.get(neighbor);
-                if (nodeCircle != null) {
-                    nodeCircle.setFill(Color.web("#00ff00"));
-                    
-                    javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
-                    glow.setColor(Color.web("#00ff00"));
-                    glow.setRadius(20);
-                    glow.setSpread(0.6);
-                    nodeCircle.setEffect(glow);
-                    
-                    // Add click handler for movement
-                    nodeCircle.setOnMouseClicked(ev -> {
-                        int actionsLeft = gameManager.getState().getActionsRemaining();
-                        if (actionsLeft > 0) {
-                            if (gameClient == null) {
-                                gameManager.getState().setActionsRemaining(actionsLeft - 1);
-                                if (gameManager.getState().getActionsRemaining() <= 0) {
-                                    gameManager.nextTurn();
-                                }
-                            }
+        Set<CityNode> validDestinations = getValidDestinations(movementType, currentPlayer, currentCity);
+        for (CityNode destination : validDestinations) {
+            highlightedValidNodes.add(destination);
+            Circle nodeCircle = nodeVisuals.get(destination);
+            if (nodeCircle != null) {
+                nodeCircle.setFill(Color.web("#00ff00"));
 
-                            sendDriveFerryPacket(neighbor);
-                            notificationManager.showNotification(
-                                    gameClient == null
-                                            ? "Moved to " + neighbor.getName() + ". Actions left: " + gameManager.getState().getActionsRemaining()
-                                            : "Move request sent: " + neighbor.getName()
-                            );
-                            
-                            // Clear highlights and reset movement selection
-                            highlightValidNodes(""); 
-                            if (actionMenuManager != null) {
-                                actionMenuManager.clearSelectedMovementAction();
-                            }
-                            refreshTurnUI();
-                        } else {
-                            notificationManager.showNotification("No actions remaining!");
-                        }
-                    });
+                javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
+                glow.setColor(Color.web("#00ff00"));
+                glow.setRadius(20);
+                glow.setSpread(0.6);
+                nodeCircle.setEffect(glow);
+
+                nodeCircle.setOnMouseClicked(ev -> handleHighlightedMovementClick(movementType, destination));
+            }
+        }
+    }
+
+    private Set<CityNode> getValidDestinations(String movementType, PlayerState currentPlayer, CityNode currentCity) {
+        Set<CityNode> destinations = new HashSet<>();
+
+        if ("DRIVE_FERRY".equals(movementType)) {
+            destinations.addAll(currentCity.getConnectedCities());
+            return destinations;
+        }
+
+        if ("DIRECT_FLIGHT".equals(movementType)) {
+            for (Card card : currentPlayer.getHand()) {
+                if (card.getType() == CardType.CITY && card.getTargetCity() != null) {
+                    CityNode city = mapGraph.getCity(card.getTargetCity().getName());
+                    if (city != null && !city.getName().equals(currentCity.getName())) {
+                        destinations.add(city);
+                    }
+                }
+            }
+            return destinations;
+        }
+
+        if ("CHARTER_FLIGHT".equals(movementType)) {
+            if (findCardIndexForCity(currentPlayer, currentCity) >= 0) {
+                for (CityNode city : mapGraph.getCityList()) {
+                    if (!city.getName().equals(currentCity.getName())) {
+                        destinations.add(city);
+                    }
+                }
+            }
+            return destinations;
+        }
+
+        if ("SHUTTLE_FLIGHT".equals(movementType) && currentCity.hasResearchStation()) {
+            for (CityNode city : mapGraph.getCityList()) {
+                if (city.hasResearchStation() && !city.getName().equals(currentCity.getName())) {
+                    destinations.add(city);
                 }
             }
         }
+
+        return destinations;
+    }
+
+    private void handleHighlightedMovementClick(String movementType, CityNode destination) {
+        int actionsLeft = gameManager.getState().getActionsRemaining();
+        if (actionsLeft <= 0) {
+            notificationManager.showNotification("No actions remaining!");
+            return;
+        }
+
+        if (gameClient == null) {
+            PlayerState currentPlayer = gameManager.getCurrentPlayer();
+            if (currentPlayer != null) {
+                currentPlayer.setCurrentCity(destination);
+            }
+            gameManager.getState().setActionsRemaining(actionsLeft - 1);
+            if (gameManager.getState().getActionsRemaining() <= 0) {
+                gameManager.nextTurn();
+            }
+        }
+
+        sendMovementActionPacket(movementType, destination);
+        notificationManager.showNotification(
+                gameClient == null
+                        ? "Moved to " + destination.getName() + ". Actions left: " + gameManager.getState().getActionsRemaining()
+                        : "Move request sent: " + destination.getName()
+        );
+
+        highlightValidNodes("");
+        if (actionMenuManager != null) {
+            actionMenuManager.clearSelectedMovementAction();
+        }
+        refreshTurnUI();
     }
 
     private ObjectNode createBaseGameActionPayload() {

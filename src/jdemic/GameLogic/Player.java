@@ -11,6 +11,10 @@ import jdemic.GameLogic.Actions.SatelliteAction;
 import jdemic.GameLogic.Actions.ServerAction;
 import jdemic.GameLogic.Actions.SystemControlAction;
 import jdemic.GameLogic.Actions.ThreatAction;
+import jdemic.GameLogic.Actions.Other.BuildResearchStation;
+import jdemic.GameLogic.Actions.Other.DiscoverCure;
+import jdemic.GameLogic.Actions.Other.ShareKnowledge;
+import jdemic.GameLogic.Actions.Other.TreatDisease;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,6 +60,24 @@ public class Player {
         else if (action instanceof ShuttleFlightAction) {
             ShuttleFlightAction moveAction = (ShuttleFlightAction) action;
             payload.put("destination", moveAction.getDestination().getName());
+        } else if (action instanceof TreatDisease treatDisease) {
+            payload.put("color", treatDisease.getTargetDisease().name());
+        } else if (action instanceof ShareKnowledge shareKnowledge) {
+            boolean currentPlayerGives = shareKnowledge.getGiver().getPlayerName().equals(state.getPlayerName());
+            PlayerState target = currentPlayerGives ? shareKnowledge.getReceiver() : shareKnowledge.getGiver();
+            payload.put("cardIndex", currentPlayerGives
+                    ? getCardIndex(shareKnowledge.getCard())
+                    : target.getHand().indexOf(shareKnowledge.getCard()));
+            payload.put("targetPlayer", target.getPlayerName());
+            payload.put("direction", currentPlayerGives ? "give" : "take");
+        } else if (action instanceof DiscoverCure discoverCure) {
+            payload.put("color", discoverCure.getTargetColor().name());
+            ArrayNode indices = payload.putArray("cardIndices");
+            for (Card card : discoverCure.getCardsToDiscard()) {
+                indices.add(getCardIndex(card));
+            }
+        } else if (action instanceof BuildResearchStation) {
+            // No extra payload is needed; the server validates the current city and required card.
         } else if (action instanceof FirewallAction firewallAction) {
             payload.put("cardIndex", getCardIndex(firewallAction.getCardToDiscard()));
         } else if (action instanceof SatelliteAction satelliteAction) {
@@ -148,6 +170,10 @@ public class Player {
         if (action instanceof DirectFlightAction) return "DIRECT_FLIGHT";
         if (action instanceof CharterFlightAction) return "CHARTER_FLIGHT";
         if (action instanceof ShuttleFlightAction) return "SHUTTLE_FLIGHT";
+        if (action instanceof TreatDisease) return "TREAT_DISEASE";
+        if (action instanceof ShareKnowledge) return "SHARE_KNOWLEDGE";
+        if (action instanceof DiscoverCure) return "DISCOVER_CURE";
+        if (action instanceof BuildResearchStation) return "BUILD_RESEARCH_STATION";
         if (action instanceof FirewallAction) return "FIREWALL";
         if (action instanceof SatelliteAction) return "SATELLITE";
         if (action instanceof ServerAction) return "SERVER";

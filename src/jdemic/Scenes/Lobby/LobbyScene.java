@@ -8,14 +8,26 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
+import javafx.application.Platform;
+import jdemic.DedicatedServer.network.core.DedicatedServerConfig;
+import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
+import jdemic.GameLogic.GameClient;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import java.net.InetAddress;
 
 public class LobbyScene {
     private final StackPane root;
     private final Stage stage;
+    private static final int DEFAULT_GAME_PORT = 9000;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public LobbyScene(Stage stage) {
         this.stage = stage;
@@ -39,7 +51,7 @@ public class LobbyScene {
 
     private void setupUI() {
         // Sadece arka planın üzerinde üstte konumlanan "LOBBY" başlığı gösterilir.
-        Label title = TextUtil.createText("LOBBY", "hkmodular", 0.05, "#cfc900", root);
+        Label title = TextUtil.createText("HOST", "hkmodular", 0.05, "#cfc900", root);
         title.setTextAlignment(TextAlignment.CENTER);
         StackPane.setAlignment(title, javafx.geometry.Pos.TOP_CENTER);
         title.translateYProperty().bind(root.heightProperty().multiply(0.05));
@@ -57,19 +69,31 @@ public class LobbyScene {
         errorLabel.setTextAlignment(TextAlignment.CENTER);
         errorLabel.setVisible(false);
 
-        ButtonsUtil hostBtn = new ButtonsUtil("HOST GAME", "#ff0000", "black", "#ff0000", "#ff0000", 2, 15, 15, 0.40, 0.10, 0.03, root);
+        ButtonsUtil hostBtn = new ButtonsUtil("CREATE SERVER", "#ff0000", "black", "#ff0000", "#ff0000", 2, 15, 15, 0.40, 0.10, 0.03, root);
         hostBtn.setOnMouseClicked(e -> {
             String nickname = nicknameField.getText().trim();
             if (nickname.isEmpty()) {
+                errorLabel.setText("ENTER NICKNAME");
                 errorLabel.setVisible(true);
             } else {
                 errorLabel.setVisible(false);
-                stage.getScene().setRoot(new HostGameScene(stage, nickname).getRoot());
+                hostBtn.setDisable(true);
+                startLocalServerAndEnterLobby(nickname, hostBtn, errorLabel);
             }
         });
 
-        ButtonsUtil joinBtn = new ButtonsUtil("JOIN BY CODE", "#00d1ff", "black", "#00d4ff", "#00d4ff", 2, 15, 15, 0.40, 0.10, 0.03, root);
-        joinBtn.setOnMouseClicked(e -> SceneManager.switchScene("JOIN_CODE"));
+        ButtonsUtil joinBtn = new ButtonsUtil("JOIN BY IP", "#00d1ff", "black", "#00d4ff", "#00d4ff", 2, 15, 15, 0.40, 0.10, 0.03, root);
+        joinBtn.setOnMouseClicked(e -> {
+            String nickname = nicknameField.getText().trim();
+            if (nickname.isEmpty()) {
+                errorLabel.setText("ENTER NICKNAME");
+                errorLabel.setVisible(true);
+                return;
+            }
+
+            errorLabel.setVisible(false);
+            stage.getScene().setRoot(new JoinCodeScene(stage, nickname).getRoot());
+        });
 
         VBox centerBox = new VBox(18, nameLabel, nicknameField, errorLabel, hostBtn, joinBtn);
         centerBox.setAlignment(javafx.geometry.Pos.TOP_CENTER);
@@ -86,5 +110,63 @@ public class LobbyScene {
 
     public StackPane getRoot() {
         return root;
+    }
+
+    private void startLocalServerAndEnterLobby(String nickname, ButtonsUtil hostBtn, Label errorLabel) {
+        new Thread(() -> {
+            DedicatedServerConfig config = new DedicatedServerConfig(
+                    DEFAULT_GAME_PORT,
+                    true,
+                    DedicatedServerConfig.DEFAULT_STATUS_HOST,
+                    DedicatedServerConfig.DEFAULT_STATUS_PORT,
+                    false
+            );
+
+            boolean serverStarted = JdemicNetworkServer.startServer(config);
+            if (!serverStarted) {
+                Platform.runLater(() -> {
+                    errorLabel.setText("PORT 9000 IN USE");
+                    errorLabel.setVisible(true);
+                    hostBtn.setDisable(false);
+                });
+                return;
+            }
+
+            GameClient hostClient = connectAndRegister("localhost", DEFAULT_GAME_PORT, nickname);
+            if (hostClient == null) {
+                JdemicNetworkServer.shutdown();
+                Platform.runLater(() -> {
+                    errorLabel.setText("FAILED TO CONNECT TO SERVER");
+                    errorLabel.setVisible(true);
+                    hostBtn.setDisable(false);
+                });
+                return;
+            }
+
+            String roomCode = getLocalHostAddress() + ":" + DEFAULT_GAME_PORT;
+            Platform.runLater(() ->
+                    stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, roomCode, hostClient, true).getRoot())
+            );
+        }, "jdemic-create-server").start();
+    }
+
+    private GameClient connectAndRegister(String host, int port, String nickname) {
+        GameClient client = new GameClient();
+        if (!client.connectToServer(host, port)) {
+            return null;
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("playerName", nickname);
+        client.sendPacket(new Packet(PacketType.CONNECT, payload));
+        return client;
+    }
+
+    private String getLocalHostAddress() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            return "127.0.0.1";
+        }
     }
 }

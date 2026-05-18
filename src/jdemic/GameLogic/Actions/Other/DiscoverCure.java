@@ -21,6 +21,14 @@ public class DiscoverCure extends GameAction {
         this.cardsToDiscard = cardsToDiscard;
     }
 
+    public DiseaseColor getTargetColor() {
+        return targetColor;
+    }
+
+    public List<Card> getCardsToDiscard() {
+        return cardsToDiscard;
+    }
+
     private int requiredCardCount(PlayerState playerState) {
         return playerState.getPlayerRole() == PlayerRoles.SCIENTIST ? 4 : 5;
     }

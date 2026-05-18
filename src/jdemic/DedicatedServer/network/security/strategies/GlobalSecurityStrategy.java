@@ -9,6 +9,15 @@ public class GlobalSecurityStrategy implements MaskingStrategy {
         if (gameState.has("infectionDeck")) {
             gameState.remove("infectionDeck");
         }
+
+        if (gameState.has("cardDeck")) {
+            JSONObject cardDeck = gameState.optJSONObject("cardDeck");
+            if (cardDeck != null && cardDeck.has("infectionCards")) {
+                int remainingInfectionCards = cardDeck.getJSONArray("infectionCards").length();
+                cardDeck.remove("infectionCards");
+                cardDeck.put("infectionCardCount", remainingInfectionCards);
+            }
+        }
         
         // You can add more global rules here later (e.g., hiding the game seed)
     }

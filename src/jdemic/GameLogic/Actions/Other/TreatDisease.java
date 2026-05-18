@@ -16,6 +16,10 @@ public class TreatDisease extends GameAction {
         this.targetDisease = targetDisease;
     }
 
+    public DiseaseColor getTargetDisease() {
+        return targetDisease;
+    }
+
     @Override
     public boolean isValid(GameState state, PlayerState playerState) {
         CityNode currentCity = playerState.getPlayerCurrentCity();

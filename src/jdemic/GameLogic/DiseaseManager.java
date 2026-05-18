@@ -1,6 +1,8 @@
 package jdemic.GameLogic;
 
 import java.util.HashSet;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Set;
 
 // Not important for the first sprint, will improve later with more correct gameplay options.
@@ -44,6 +46,9 @@ public class DiseaseManager {
 
     // Main entry point for adding cubes
     public void addInfectionCubes(CityNode city, int amount) {
+        if (city == null || amount <= 0) {
+            return;
+        }
         if (amount >= this.infectionCubesLeft) {
             this.infectionCubesLeft = 0;
             gameManager.checkLoseCondition();
@@ -61,15 +66,18 @@ public class DiseaseManager {
             return;
         }
 
-        boolean wasAdded = city.addDiseaseCube(color, amount);
-        this.infectionCubesLeft -= amount;
+        int currentCubes = city.getCubeCount(color);
+        int cubesToAdd = Math.min(amount, 3 - currentCubes);
+        boolean wasAdded = cubesToAdd > 0 && city.addDiseaseCube(color, cubesToAdd);
+        this.infectionCubesLeft -= cubesToAdd;
         if (this.infectionCubesLeft <= 0) {
             this.infectionCubesLeft = 0;
             gameManager.checkLoseCondition();
+            return;
         }
 
-        if (!wasAdded) {
-            // If addDiseaseCube returns false, it means we hit the 3-cube limit
+        if (!wasAdded || currentCubes + amount > 3) {
+            // If the city would exceed the 3-cube limit, it outbreaks instead.
             triggerOutbreak(city, color, alreadyOutbroken);
         }
     }
@@ -83,6 +91,15 @@ public class DiseaseManager {
         alreadyOutbroken.add(originCity);
         increaseOutbreakScore();
 
+        for (CityNode connectedCity : originCity.getConnectedCities()) {
+            if (alreadyOutbroken.contains(connectedCity)) {
+                continue;
+            }
+            infectCity(connectedCity, 1, color, alreadyOutbroken);
+            if (gameManager.isGameOver()) {
+                return;
+            }
+        }
     }
 
     public void removeInfectionCubes(CityNode city, int amount) {
@@ -116,5 +133,13 @@ public class DiseaseManager {
 
     public boolean areAllCured() {
         return isBlueCured && isYellowCured && isBlackCured && isRedCured;
+    }
+
+    public Map<DiseaseColor, Boolean> getCuredDiseases() {
+        Map<DiseaseColor, Boolean> curedDiseases = new EnumMap<>(DiseaseColor.class);
+        for (DiseaseColor color : DiseaseColor.values()) {
+            curedDiseases.put(color, isCured(color));
+        }
+        return curedDiseases;
     }
 }

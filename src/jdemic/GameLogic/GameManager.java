@@ -14,6 +14,7 @@ public class GameManager {
     private static final int MAX_OUTBREAKS = 8;
     private boolean initialHandsDealt;
     private boolean epidemicsAdded;
+    private boolean initialInfectionsDealt;
 
     public GameManager(List<PlayerState> players) {
         this(players, true);
@@ -36,7 +37,6 @@ public class GameManager {
         setupGame();
         if (dealInitialHands) {
             dealInitialHands();
-            addEpidemicsAfterInitialDeal();
         }
     }
 
@@ -61,9 +61,39 @@ public class GameManager {
         state.setCurrentPlayerIndex(0);
         state.setActionsRemaining(ACTIONS_PER_TURN);
         state.setLobbyCountdownStartedAt(0);
+        dealInitialInfections();
         dealInitialHands();
         addEpidemicsAfterInitialDeal();
         state.setGameStarted(true);
+    }
+
+    private void dealInitialInfections()
+    {
+        if(initialInfectionsDealt || state.getCardDeck() == null) return;
+
+        int[] cubeAmounts = {3, 2, 1};
+        for(int amount : cubeAmounts)
+        {
+            for(int i = 0; i < 3; i++)
+            {
+                Card infectionCard = state.getCardDeck().drawInfectionCard();
+                if(infectionCard == null) {
+                    checkLoseCondition();
+                    initialInfectionsDealt = true;
+                    return;
+                }
+
+                CityNode targetCity = infectionCard.getTargetCity();
+                state.getDiseaseManager().addInfectionCubes(targetCity, amount);
+                state.getCardDeck().getInfectionDiscardPile().add(infectionCard);
+                if(state.isGameOver()) {
+                    initialInfectionsDealt = true;
+                    return;
+                }
+            }
+        }
+
+        initialInfectionsDealt = true;
     }
 
     private void dealInitialHands()
@@ -89,7 +119,7 @@ public class GameManager {
     }
 
     private void addEpidemicsAfterInitialDeal() {
-        if(!epidemicsAdded && state.getCardDeck() != null) {
+        if(initialHandsDealt && !epidemicsAdded && state.getCardDeck() != null) {
             state.getCardDeck().addEpidemicCards(4);
             epidemicsAdded = true;
         }
@@ -107,6 +137,8 @@ public class GameManager {
         if (action.isValid(state, player.getState())) {
             action.execute(state, player.getState());
             state.setActionsRemaining(state.getActionsRemaining() - 1);
+            checkWinCondition();
+            if(state.isGameOver()) return;
             
             // Automatically advance to next turn when actions reach 0
             if(state.getActionsRemaining() <= 0){
@@ -284,6 +316,11 @@ public class GameManager {
 
     public void checkLoseCondition() {
         if (state.getDiseaseManager().getOutbreakScore() >= MAX_OUTBREAKS) {
+            state.setGameOver(true);
+            state.setGameWon(false);
+        }
+
+        if (state.getDiseaseManager().getInfectionCubesLeft() <= 0) {
             state.setGameOver(true);
             state.setGameWon(false);
         }
