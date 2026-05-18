@@ -5,6 +5,55 @@ import java.util.List;
 
 public final class PandemicMapGraph
 {
+    public static final String CITY_SAN_FRANCISCO = "San Francisco";
+    public static final String CITY_CHICAGO = "Chicago";
+    public static final String CITY_MONTREAL = "Montreal";
+    public static final String CITY_NEW_YORK = "New York";
+    public static final String CITY_WASHINGTON = "Washington";
+    public static final String CITY_ATLANTA = "Atlanta";
+    public static final String CITY_LONDON = "London";
+    public static final String CITY_MADRID = "Madrid";
+    public static final String CITY_PARIS = "Paris";
+    public static final String CITY_ESSEN = "Essen";
+    public static final String CITY_MILAN = "Milan";
+    public static final String CITY_ST_PETERSBURG = "St. Petersburg";
+    public static final String CITY_LOS_ANGELES = "Los Angeles";
+    public static final String CITY_MEXICO_CITY = "Mexico City";
+    public static final String CITY_MIAMI = "Miami";
+    public static final String CITY_BOGOTA = "Bogota";
+    public static final String CITY_LIMA = "Lima";
+    public static final String CITY_SANTIAGO = "Santiago";
+    public static final String CITY_SAO_PAULO = "Sao Paulo";
+    public static final String CITY_BUENOS_AIRES = "Buenos Aires";
+    public static final String CITY_LAGOS = "Lagos";
+    public static final String CITY_KHARTOUM = "Khartoum";
+    public static final String CITY_KINSHASA = "Kinshasa";
+    public static final String CITY_JOHANNESBURG = "Johannesburg";
+    public static final String CITY_ALGIERS = "Algiers";
+    public static final String CITY_CAIRO = "Cairo";
+    public static final String CITY_ISTANBUL = "Istanbul";
+    public static final String CITY_MOSCOW = "Moscow";
+    public static final String CITY_BAGHDAD = "Baghdad";
+    public static final String CITY_RIYADH = "Riyadh";
+    public static final String CITY_TEHRAN = "Tehran";
+    public static final String CITY_KARACHI = "Karachi";
+    public static final String CITY_MUMBAI = "Mumbai";
+    public static final String CITY_DELHI = "Delhi";
+    public static final String CITY_CHENNAI = "Chennai";
+    public static final String CITY_KOLKATA = "Kolkata";
+    public static final String CITY_BEIJING = "Beijing";
+    public static final String CITY_SEOUL = "Seoul";
+    public static final String CITY_TOKYO = "Tokyo";
+    public static final String CITY_SHANGHAI = "Shanghai";
+    public static final String CITY_HONG_KONG = "Hong Kong";
+    public static final String CITY_TAIPEI = "Taipei";
+    public static final String CITY_OSAKA = "Osaka";
+    public static final String CITY_BANGKOK = "Bangkok";
+    public static final String CITY_HO_CHI_MINH_CITY = "Ho Chi Minh City";
+    public static final String CITY_MANILA = "Manila";
+    public static final String CITY_JAKARTA = "Jakarta";
+    public static final String CITY_SYDNEY = "Sydney";
+
     private List<CityNode> cityList;
     public PandemicMapGraph()
     {
@@ -16,120 +65,120 @@ public final class PandemicMapGraph
     {
         return List.of(
                 // Blue cities
-                new CityNode("San Francisco", DiseaseColor.BLUE, 0.14f, 0.34f), //
-                new CityNode("Chicago", DiseaseColor.BLUE, 0.24f, 0.30f), //
-                new CityNode("Montreal", DiseaseColor.BLUE, 0.30f, 0.26f), //
-                new CityNode("New York", DiseaseColor.BLUE, 0.30f, 0.32f), //
-                new CityNode("Washington", DiseaseColor.BLUE, 0.28f, 0.35f),  //
-                new CityNode("Atlanta", DiseaseColor.BLUE, 0.25f, 0.39f), //
-                new CityNode("London", DiseaseColor.BLUE, 0.48f, 0.25f), //
-                new CityNode("Madrid", DiseaseColor.BLUE, 0.475f, 0.335f), //
-                new CityNode("Paris", DiseaseColor.BLUE, 0.49f, 0.28f), //
-                new CityNode("Essen", DiseaseColor.BLUE, 0.50f, 0.22f), //
-                new CityNode("Milan", DiseaseColor.BLUE, 0.52f, 0.32f), //
-                new CityNode("St. Petersburg", DiseaseColor.BLUE, 0.57f, 0.21f), //
+                new CityNode(CITY_SAN_FRANCISCO, DiseaseColor.BLUE, 0.14f, 0.34f), //
+                new CityNode(CITY_CHICAGO, DiseaseColor.BLUE, 0.24f, 0.30f), //
+                new CityNode(CITY_MONTREAL, DiseaseColor.BLUE, 0.30f, 0.26f), //
+                new CityNode(CITY_NEW_YORK, DiseaseColor.BLUE, 0.30f, 0.32f), //
+                new CityNode(CITY_WASHINGTON, DiseaseColor.BLUE, 0.28f, 0.35f),  //
+                new CityNode(CITY_ATLANTA, DiseaseColor.BLUE, 0.25f, 0.39f), //
+                new CityNode(CITY_LONDON, DiseaseColor.BLUE, 0.48f, 0.25f), //
+                new CityNode(CITY_MADRID, DiseaseColor.BLUE, 0.475f, 0.335f), //
+                new CityNode(CITY_PARIS, DiseaseColor.BLUE, 0.49f, 0.28f), //
+                new CityNode(CITY_ESSEN, DiseaseColor.BLUE, 0.50f, 0.22f), //
+                new CityNode(CITY_MILAN, DiseaseColor.BLUE, 0.52f, 0.32f), //
+                new CityNode(CITY_ST_PETERSBURG, DiseaseColor.BLUE, 0.57f, 0.21f), //
 
                 // Yellow cities
-                new CityNode("Los Angeles", DiseaseColor.YELLOW, 0.16f, 0.40f), //
-                new CityNode("Mexico City", DiseaseColor.YELLOW, 0.21f, 0.49f), //
-                new CityNode("Miami", DiseaseColor.YELLOW, 0.26f, 0.45f), //
-                new CityNode("Bogota", DiseaseColor.YELLOW, 0.27f, 0.58f), //
-                new CityNode("Lima", DiseaseColor.YELLOW, 0.27f, 0.71f), //
-                new CityNode("Santiago", DiseaseColor.YELLOW, 0.28f, 0.88f), //
-                new CityNode("Sao Paulo", DiseaseColor.YELLOW, 0.35f, 0.78f), //
-                new CityNode("Buenos Aires", DiseaseColor.YELLOW, 0.32f, 0.88f), //
-                new CityNode("Lagos", DiseaseColor.YELLOW, 0.50f, 0.57f), //
-                new CityNode("Khartoum", DiseaseColor.YELLOW, 0.57f, 0.52f), //
-                new CityNode("Kinshasa", DiseaseColor.YELLOW, 0.53f, 0.64f), //
-                new CityNode("Johannesburg", DiseaseColor.YELLOW, 0.56f, 0.80f), //
+                new CityNode(CITY_LOS_ANGELES, DiseaseColor.YELLOW, 0.16f, 0.40f), //
+                new CityNode(CITY_MEXICO_CITY, DiseaseColor.YELLOW, 0.21f, 0.49f), //
+                new CityNode(CITY_MIAMI, DiseaseColor.YELLOW, 0.26f, 0.45f), //
+                new CityNode(CITY_BOGOTA, DiseaseColor.YELLOW, 0.27f, 0.58f), //
+                new CityNode(CITY_LIMA, DiseaseColor.YELLOW, 0.27f, 0.71f), //
+                new CityNode(CITY_SANTIAGO, DiseaseColor.YELLOW, 0.28f, 0.88f), //
+                new CityNode(CITY_SAO_PAULO, DiseaseColor.YELLOW, 0.35f, 0.78f), //
+                new CityNode(CITY_BUENOS_AIRES, DiseaseColor.YELLOW, 0.32f, 0.88f), //
+                new CityNode(CITY_LAGOS, DiseaseColor.YELLOW, 0.50f, 0.57f), //
+                new CityNode(CITY_KHARTOUM, DiseaseColor.YELLOW, 0.57f, 0.52f), //
+                new CityNode(CITY_KINSHASA, DiseaseColor.YELLOW, 0.53f, 0.64f), //
+                new CityNode(CITY_JOHANNESBURG, DiseaseColor.YELLOW, 0.56f, 0.80f), //
 
                 // Black cities
-                new CityNode("Algiers", DiseaseColor.BLACK, 0.50f, 0.38f), //
-                new CityNode("Cairo", DiseaseColor.BLACK, 0.57f, 0.42f), //
-                new CityNode("Istanbul", DiseaseColor.BLACK, 0.57f, 0.34f), //
-                new CityNode("Moscow", DiseaseColor.BLACK, 0.60f, 0.25f), //
-                new CityNode("Baghdad", DiseaseColor.BLACK, 0.62f, 0.40f), //
-                new CityNode("Riyadh", DiseaseColor.BLACK, 0.63f, 0.47f), //
-                new CityNode("Tehran", DiseaseColor.BLACK, 0.64f, 0.36f), //
-                new CityNode("Karachi", DiseaseColor.BLACK, 0.68f, 0.45f), //
-                new CityNode("Mumbai", DiseaseColor.BLACK, 0.69f, 0.50f), //
-                new CityNode("Delhi", DiseaseColor.BLACK, 0.72f, 0.42f), //
-                new CityNode("Chennai", DiseaseColor.BLACK, 0.70f, 0.56f), //
-                new CityNode("Kolkata", DiseaseColor.BLACK, 0.74f, 0.47f), //
+                new CityNode(CITY_ALGIERS, DiseaseColor.BLACK, 0.50f, 0.38f), //
+                new CityNode(CITY_CAIRO, DiseaseColor.BLACK, 0.57f, 0.42f), //
+                new CityNode(CITY_ISTANBUL, DiseaseColor.BLACK, 0.57f, 0.34f), //
+                new CityNode(CITY_MOSCOW, DiseaseColor.BLACK, 0.60f, 0.25f), //
+                new CityNode(CITY_BAGHDAD, DiseaseColor.BLACK, 0.62f, 0.40f), //
+                new CityNode(CITY_RIYADH, DiseaseColor.BLACK, 0.63f, 0.47f), //
+                new CityNode(CITY_TEHRAN, DiseaseColor.BLACK, 0.64f, 0.36f), //
+                new CityNode(CITY_KARACHI, DiseaseColor.BLACK, 0.68f, 0.45f), //
+                new CityNode(CITY_MUMBAI, DiseaseColor.BLACK, 0.69f, 0.50f), //
+                new CityNode(CITY_DELHI, DiseaseColor.BLACK, 0.72f, 0.42f), //
+                new CityNode(CITY_CHENNAI, DiseaseColor.BLACK, 0.70f, 0.56f), //
+                new CityNode(CITY_KOLKATA, DiseaseColor.BLACK, 0.74f, 0.47f), //
 
                 // Red cities
-                new CityNode("Beijing", DiseaseColor.RED, 0.81f, 0.33f), //
-                new CityNode("Seoul", DiseaseColor.RED, 0.84f, 0.36f), //
-                new CityNode("Tokyo", DiseaseColor.RED, 0.88f, 0.38f), //
-                new CityNode("Shanghai", DiseaseColor.RED, 0.83f, 0.41f), //
-                new CityNode("Hong Kong", DiseaseColor.RED, 0.795f, 0.48f), //
-                new CityNode("Taipei", DiseaseColor.RED, 0.83f, 0.47f), //
-                new CityNode("Osaka", DiseaseColor.RED, 0.86f, 0.39f), //
-                new CityNode("Bangkok", DiseaseColor.RED, 0.765f, 0.53f), //
-                new CityNode("Ho Chi Minh City", DiseaseColor.RED, 0.79f, 0.55f), //
-                new CityNode("Manila", DiseaseColor.RED, 0.83f, 0.51f), //
-                new CityNode("Jakarta", DiseaseColor.RED, 0.78f, 0.65f), //
-                new CityNode("Sydney", DiseaseColor.RED, 0.90f, 0.86f) //
+                new CityNode(CITY_BEIJING, DiseaseColor.RED, 0.81f, 0.33f), //
+                new CityNode(CITY_SEOUL, DiseaseColor.RED, 0.84f, 0.36f), //
+                new CityNode(CITY_TOKYO, DiseaseColor.RED, 0.88f, 0.38f), //
+                new CityNode(CITY_SHANGHAI, DiseaseColor.RED, 0.83f, 0.41f), //
+                new CityNode(CITY_HONG_KONG, DiseaseColor.RED, 0.795f, 0.48f), //
+                new CityNode(CITY_TAIPEI, DiseaseColor.RED, 0.83f, 0.47f), //
+                new CityNode(CITY_OSAKA, DiseaseColor.RED, 0.86f, 0.39f), //
+                new CityNode(CITY_BANGKOK, DiseaseColor.RED, 0.765f, 0.53f), //
+                new CityNode(CITY_HO_CHI_MINH_CITY, DiseaseColor.RED, 0.79f, 0.55f), //
+                new CityNode(CITY_MANILA, DiseaseColor.RED, 0.83f, 0.51f), //
+                new CityNode(CITY_JAKARTA, DiseaseColor.RED, 0.78f, 0.65f), //
+                new CityNode(CITY_SYDNEY, DiseaseColor.RED, 0.90f, 0.86f) //
         );
     }
     
     private void createNeighbours(){
         // Blue Cities
-        getCity("San Francisco").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Chicago"), getCity("Tokyo"), getCity("Manila"), getCity("Los Angeles"))));
-        getCity("Chicago").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("San Francisco"), getCity("Los Angeles"), getCity("Atlanta"), getCity("Mexico City"), getCity("Montreal"))));
-        getCity("Montreal").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Washington"), getCity("New York"), getCity("Chicago"))));
-        getCity("New York").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Montreal"), getCity("Washington"), getCity("Madrid"), getCity("London"))));
-        getCity("Washington").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("New York"), getCity("Montreal"), getCity("Atlanta"), getCity("Miami"))));
-        getCity("Atlanta").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Chicago"), getCity("Miami"), getCity("Washington"))));
-        getCity("London").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("New York"), getCity("Madrid"), getCity("Essen"), getCity("Paris"))));
-        getCity("Madrid").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("London"), getCity("New York"), getCity("Paris"), getCity("Sao Paulo"), getCity("Algiers"))));
-        getCity("Paris").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("London"), getCity("Madrid"), getCity("Essen"), getCity("Milan"), getCity("Algiers"))));
-        getCity("Essen").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("St. Petersburg"), getCity("Milan"), getCity("London"), getCity("Paris"))));
-        getCity("Milan").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Istanbul"), getCity("Essen"), getCity("Paris"))));
-        getCity("St. Petersburg").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Istanbul"), getCity("Essen"), getCity("Moscow"))));
+        getCity(CITY_SAN_FRANCISCO).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_CHICAGO), getCity(CITY_TOKYO), getCity(CITY_MANILA), getCity(CITY_LOS_ANGELES))));
+        getCity(CITY_CHICAGO).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_SAN_FRANCISCO), getCity(CITY_LOS_ANGELES), getCity(CITY_ATLANTA), getCity(CITY_MEXICO_CITY), getCity(CITY_MONTREAL))));
+        getCity(CITY_MONTREAL).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_WASHINGTON), getCity(CITY_NEW_YORK), getCity(CITY_CHICAGO))));
+        getCity(CITY_NEW_YORK).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_MONTREAL), getCity(CITY_WASHINGTON), getCity(CITY_MADRID), getCity(CITY_LONDON))));
+        getCity(CITY_WASHINGTON).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_NEW_YORK), getCity(CITY_MONTREAL), getCity(CITY_ATLANTA), getCity(CITY_MIAMI))));
+        getCity(CITY_ATLANTA).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_CHICAGO), getCity(CITY_MIAMI), getCity(CITY_WASHINGTON))));
+        getCity(CITY_LONDON).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_NEW_YORK), getCity(CITY_MADRID), getCity(CITY_ESSEN), getCity(CITY_PARIS))));
+        getCity(CITY_MADRID).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_LONDON), getCity(CITY_NEW_YORK), getCity(CITY_PARIS), getCity(CITY_SAO_PAULO), getCity(CITY_ALGIERS))));
+        getCity(CITY_PARIS).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_LONDON), getCity(CITY_MADRID), getCity(CITY_ESSEN), getCity(CITY_MILAN), getCity(CITY_ALGIERS))));
+        getCity(CITY_ESSEN).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_ST_PETERSBURG), getCity(CITY_MILAN), getCity(CITY_LONDON), getCity(CITY_PARIS))));
+        getCity(CITY_MILAN).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_ISTANBUL), getCity(CITY_ESSEN), getCity(CITY_PARIS))));
+        getCity(CITY_ST_PETERSBURG).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_ISTANBUL), getCity(CITY_ESSEN), getCity(CITY_MOSCOW))));
 
         // Yellow Cities
-        getCity("Los Angeles").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Sydney"), getCity("Mexico City"), getCity("San Francisco"), getCity("Chicago"))));
-        getCity("Mexico City").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Chicago"), getCity("Los Angeles"), getCity("Miami"), getCity("Bogota"), getCity("Lima"))));
-        getCity("Miami").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Atlanta"), getCity("Washington"), getCity("Mexico City"), getCity("Bogota"))));
-        getCity("Bogota").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Miami"), getCity("Mexico City"), getCity("Lima"), getCity("Buenos Aires"), getCity("Sao Paulo"))));
-        getCity("Lima").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Mexico City"), getCity("Bogota"), getCity("Santiago"))));
-        getCity("London").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Lima"))));
-        getCity("Sao Paulo").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Buenos Aires"), getCity("Bogota"), getCity("Madrid"), getCity("Lagos"))));
-        getCity("Buenos Aires").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Sao Paulo"), getCity("Bogota"))));
-        getCity("Lagos").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Sao Paulo"), getCity("Kinshasa"), getCity("Khartoum"))));
-        getCity("Khartoum").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Lagos"), getCity("Kinshasa"), getCity("Johannesburg"), getCity("Cairo"))));
-        getCity("Kinshasa").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Lagos"), getCity("Khartoum"), getCity("Johannesburg"))));
-        getCity("Johannesburg").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Kinshasa"), getCity("Khartoum"))));
+        getCity(CITY_LOS_ANGELES).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_SYDNEY), getCity(CITY_MEXICO_CITY), getCity(CITY_SAN_FRANCISCO), getCity(CITY_CHICAGO))));
+        getCity(CITY_MEXICO_CITY).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_CHICAGO), getCity(CITY_LOS_ANGELES), getCity(CITY_MIAMI), getCity(CITY_BOGOTA), getCity(CITY_LIMA))));
+        getCity(CITY_MIAMI).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_ATLANTA), getCity(CITY_WASHINGTON), getCity(CITY_MEXICO_CITY), getCity(CITY_BOGOTA))));
+        getCity(CITY_BOGOTA).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_MIAMI), getCity(CITY_MEXICO_CITY), getCity(CITY_LIMA), getCity(CITY_BUENOS_AIRES), getCity(CITY_SAO_PAULO))));
+        getCity(CITY_LIMA).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_MEXICO_CITY), getCity(CITY_BOGOTA), getCity(CITY_SANTIAGO))));
+        getCity(CITY_LONDON).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_LIMA))));
+        getCity(CITY_SAO_PAULO).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_BUENOS_AIRES), getCity(CITY_BOGOTA), getCity(CITY_MADRID), getCity(CITY_LAGOS))));
+        getCity(CITY_BUENOS_AIRES).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_SAO_PAULO), getCity(CITY_BOGOTA))));
+        getCity(CITY_LAGOS).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_SAO_PAULO), getCity(CITY_KINSHASA), getCity(CITY_KHARTOUM))));
+        getCity(CITY_KHARTOUM).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_LAGOS), getCity(CITY_KINSHASA), getCity(CITY_JOHANNESBURG), getCity(CITY_CAIRO))));
+        getCity(CITY_KINSHASA).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_LAGOS), getCity(CITY_KHARTOUM), getCity(CITY_JOHANNESBURG))));
+        getCity(CITY_JOHANNESBURG).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_KINSHASA), getCity(CITY_KHARTOUM))));
 
         // Black Cities
-        getCity("Algiers").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Cairo"), getCity("Madrid"), getCity("Istanbul"), getCity("Paris"))));
-        getCity("Cairo").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Algiers"), getCity("Istanbul"), getCity("Baghdad"), getCity("Riyadh"), getCity("Khartoum"))));
-        getCity("Istanbul").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Cairo"), getCity("Algiers"), getCity("Milan"), getCity("St. Petersburg"), getCity("Moscow"), getCity("Baghdad"))));
-        getCity("Moscow").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("St. Petersburg"), getCity("Tehran"), getCity("Istanbul"))));
-        getCity("Baghdad").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Cairo"), getCity("Riyadh"), getCity("Istanbul"), getCity("Tehran"), getCity("Karachi"))));
-        getCity("Riyadh").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Cairo"), getCity("Baghdad"), getCity("Karachi"))));
-        getCity("Tehran").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Moscow"), getCity("Delhi"), getCity("Karachi"), getCity("Baghdad"))));
-        getCity("Karachi").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Tehran"), getCity("Baghdad"), getCity("Riyadh"), getCity("Mumbai"), getCity("Delhi"))));
-        getCity("Mumbai").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Karachi"), getCity("Delhi"), getCity("Chennai"))));
-        getCity("Delhi").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Tehran"), getCity("Karachi"), getCity("Mumbai"), getCity("Chennai"), getCity("Kolkata"))));
-        getCity("Chennai").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Delhi"), getCity("Mumbai"), getCity("Kolkata"), getCity("Bangkok"), getCity("Jakarta"))));
-        getCity("Kolkata").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Delhi"), getCity("Chennai"), getCity("Bangkok"), getCity("Hong Kong"))));
+        getCity(CITY_ALGIERS).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_CAIRO), getCity(CITY_MADRID), getCity(CITY_ISTANBUL), getCity(CITY_PARIS))));
+        getCity(CITY_CAIRO).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_ALGIERS), getCity(CITY_ISTANBUL), getCity(CITY_BAGHDAD), getCity(CITY_RIYADH), getCity(CITY_KHARTOUM))));
+        getCity(CITY_ISTANBUL).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_CAIRO), getCity(CITY_ALGIERS), getCity(CITY_MILAN), getCity(CITY_ST_PETERSBURG), getCity(CITY_MOSCOW), getCity(CITY_BAGHDAD))));
+        getCity(CITY_MOSCOW).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_ST_PETERSBURG), getCity(CITY_TEHRAN), getCity(CITY_ISTANBUL))));
+        getCity(CITY_BAGHDAD).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_CAIRO), getCity(CITY_RIYADH), getCity(CITY_ISTANBUL), getCity(CITY_TEHRAN), getCity(CITY_KARACHI))));
+        getCity(CITY_RIYADH).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_CAIRO), getCity(CITY_BAGHDAD), getCity(CITY_KARACHI))));
+        getCity(CITY_TEHRAN).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_MOSCOW), getCity(CITY_DELHI), getCity(CITY_KARACHI), getCity(CITY_BAGHDAD))));
+        getCity(CITY_KARACHI).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_TEHRAN), getCity(CITY_BAGHDAD), getCity(CITY_RIYADH), getCity(CITY_MUMBAI), getCity(CITY_DELHI))));
+        getCity(CITY_MUMBAI).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_KARACHI), getCity(CITY_DELHI), getCity(CITY_CHENNAI))));
+        getCity(CITY_DELHI).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_TEHRAN), getCity(CITY_KARACHI), getCity(CITY_MUMBAI), getCity(CITY_CHENNAI), getCity(CITY_KOLKATA))));
+        getCity(CITY_CHENNAI).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_DELHI), getCity(CITY_MUMBAI), getCity(CITY_KOLKATA), getCity(CITY_BANGKOK), getCity(CITY_JAKARTA))));
+        getCity(CITY_KOLKATA).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_DELHI), getCity(CITY_CHENNAI), getCity(CITY_BANGKOK), getCity(CITY_HONG_KONG))));
 
         // Red Cities
-        getCity("Beijing").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Shanghai"), getCity("Seoul"))));
-        getCity("Seoul").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Beijing"), getCity("Shanghai"), getCity("Tokyo"))));
-        getCity("Tokyo").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Seoul"), getCity("Shanghai"), getCity("Osaka"), getCity("San Francisco"))));
-        getCity("Shanghai").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Beijing"), getCity("Seoul"), getCity("Tokyo"), getCity("Taipei"), getCity("Hong Kong"))));
-        getCity("Hong Kong").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Kolkata"), getCity("Bangkok"), getCity("Ho Chi Minh City"), getCity("Manila"), getCity("Taipei"), getCity("Shanghai"))));
-        getCity("Taipei").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Osaka"), getCity("Shanghai"), getCity("Hong Kong"), getCity("Manila"))));
-        getCity("Osaka").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Tokyo"), getCity("Taipei"))));
-        getCity("Bangkok").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Kolkata"), getCity("Chennai"), getCity("Jakarta"), getCity("Ho Chi Minh City"), getCity("Hong Kong"))));
-        getCity("Ho Chi Minh City").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Jakarta"), getCity("Manila"), getCity("Hong Kong"), getCity("Bangkok"))));
-        getCity("Manila").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("San Francisco"), getCity("Taipei"), getCity("Hong Kong"), getCity("Ho Chi Minh City"), getCity("Sydney"))));
-        getCity("Jakarta").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Chennai"), getCity("Bangkok"), getCity("Ho Chi Minh City"), getCity("Sydney"))));
-        getCity("Seoul").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Beijing"), getCity("Shanghai"), getCity("Tokyo"))));
-        getCity("Sydney").addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity("Los Angeles"), getCity("Manila"), getCity("Jakarta"))));
+        getCity(CITY_BEIJING).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_SHANGHAI), getCity(CITY_SEOUL))));
+        getCity(CITY_SEOUL).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_BEIJING), getCity(CITY_SHANGHAI), getCity(CITY_TOKYO))));
+        getCity(CITY_TOKYO).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_SEOUL), getCity(CITY_SHANGHAI), getCity(CITY_OSAKA), getCity(CITY_SAN_FRANCISCO))));
+        getCity(CITY_SHANGHAI).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_BEIJING), getCity(CITY_SEOUL), getCity(CITY_TOKYO), getCity(CITY_TAIPEI), getCity(CITY_HONG_KONG))));
+        getCity(CITY_HONG_KONG).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_KOLKATA), getCity(CITY_BANGKOK), getCity(CITY_HO_CHI_MINH_CITY), getCity(CITY_MANILA), getCity(CITY_TAIPEI), getCity(CITY_SHANGHAI))));
+        getCity(CITY_TAIPEI).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_OSAKA), getCity(CITY_SHANGHAI), getCity(CITY_HONG_KONG), getCity(CITY_MANILA))));
+        getCity(CITY_OSAKA).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_TOKYO), getCity(CITY_TAIPEI))));
+        getCity(CITY_BANGKOK).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_KOLKATA), getCity(CITY_CHENNAI), getCity(CITY_JAKARTA), getCity(CITY_HO_CHI_MINH_CITY), getCity(CITY_HONG_KONG))));
+        getCity(CITY_HO_CHI_MINH_CITY).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_JAKARTA), getCity(CITY_MANILA), getCity(CITY_HONG_KONG), getCity(CITY_BANGKOK))));
+        getCity(CITY_MANILA).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_SAN_FRANCISCO), getCity(CITY_TAIPEI), getCity(CITY_HONG_KONG), getCity(CITY_HO_CHI_MINH_CITY), getCity(CITY_SYDNEY))));
+        getCity(CITY_JAKARTA).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_CHENNAI), getCity(CITY_BANGKOK), getCity(CITY_HO_CHI_MINH_CITY), getCity(CITY_SYDNEY))));
+        getCity(CITY_SEOUL).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_BEIJING), getCity(CITY_SHANGHAI), getCity(CITY_TOKYO))));
+        getCity(CITY_SYDNEY).addConnectionMultiple(new ArrayList<CityNode>(List.of(getCity(CITY_LOS_ANGELES), getCity(CITY_MANILA), getCity(CITY_JAKARTA))));
 
     }
 

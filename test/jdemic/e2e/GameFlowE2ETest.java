@@ -199,7 +199,7 @@ class GameFlowE2ETest {
     @DisplayName("E2E-11 | Turn advances to player 2 after nextTurn()")
     void turnShouldAdvanceToSecondPlayer() {
         gameManager.nextTurn();
-        assertEquals(player2, gameManager.getCurrentPlayer(),
+        assertEquals(state2, gameManager.getCurrentPlayer(),
                 "After the first nextTurn(), player 2 should be the active player.");
     }
 
@@ -208,7 +208,7 @@ class GameFlowE2ETest {
     void turnShouldWrapAroundToFirstPlayer() {
         gameManager.nextTurn(); // → player 2
         gameManager.nextTurn(); // → player 1 again
-        assertEquals(player1, gameManager.getCurrentPlayer(),
+        assertEquals(state1, gameManager.getCurrentPlayer(),
                 "Turn must cycle back to player 1 after both players have gone.");
     }
 
@@ -365,7 +365,7 @@ class GameFlowE2ETest {
         // Game should still be running normally
         assertFalse(gameManager.isGameOver(),
                 "Game must still be active after a normal 2-turn sequence.");
-        assertEquals(player1, gameManager.getCurrentPlayer(),
+        assertEquals(state1, gameManager.getCurrentPlayer(),
                 "After 2 full turns, it should be Player 1's turn again.");
     }
 

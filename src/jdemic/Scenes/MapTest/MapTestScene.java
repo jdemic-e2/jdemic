@@ -35,6 +35,63 @@ import jdemic.ui.GameplayUI.*;
 import java.util.*;
 
 public class MapTestScene {
+    private static final String FONT_HKMODULAR = "hkmodular";
+    private static final String DEFAULT_LOCAL_PLAYER_NAME = "Tester";
+    private static final String DEFAULT_PLAYER_NAME = "PLAYER";
+    private static final String CYAN_COLOR = "#00b5d4";
+    private static final String BRIGHT_CYAN_COLOR = "#00d4ff";
+    private static final String HIGHLIGHT_GREEN_COLOR = "#00ff00";
+    private static final String YELLOW_COLOR = "#d1d412";
+    private static final String RED_COLOR = "#ff2d2d";
+    private static final String BLACK_COLOR = "#333333";
+    private static final String MAP_BACKGROUND_RESOURCE = "/backgroundMap.png";
+    private static final String GAME_BACKGROUND_RESOURCE = "/bgGame.png";
+    private static final String SCENE_MAIN_MENU = "MAIN_MENU";
+    private static final String JSON_ACTIONS_REMAINING = "actionsRemaining";
+    private static final String JSON_INFECTION_RATE = "infectionRate";
+    private static final String JSON_EPIDEMIC_COUNT = "epidemicCount";
+    private static final String JSON_GAME_OVER = "gameOver";
+    private static final String JSON_GAME_WON = "gameWon";
+    private static final String JSON_GAME_STARTED = "gameStarted";
+    private static final String JSON_HAND = "hand";
+    private static final String JSON_IS_DISCARDING = "isDiscarding";
+    private static final String JSON_DISCARDING_CARDS = "discardingCards";
+    private static final String JSON_CURRENT_PLAYER_INDEX = "currentPlayerIndex";
+    private static final String JSON_MAP = "map";
+    private static final String JSON_CITY_LIST = "cityList";
+    private static final String JSON_NAME = "name";
+    private static final String JSON_RESEARCH_STATION = "researchStation";
+    private static final String JSON_HAS_RESEARCH_STATION = "hasResearchStation";
+    private static final String JSON_DISEASE_CUBES = "diseaseCubes";
+    private static final String JSON_PLAYERS = "players";
+    private static final String JSON_PLAYER_ARRAY = "playerArray";
+    private static final String JSON_PLAYER_NAME = "playerName";
+    private static final String JSON_PLAYER_CURRENT_CITY = "playerCurrentCity";
+    private static final String JSON_CURRENT_CITY = "currentCity";
+    private static final String JSON_CARD_NAME = "cardName";
+    private static final String JSON_TYPE = "type";
+    private static final String JSON_TARGET_CITY = "targetCity";
+    private static final String JSON_EVENT_TYPE = "eventType";
+    private static final String JSON_LOBBY_CHAT_MESSAGES = "lobbyChatMessages";
+    private static final String PAYLOAD_GAME_ACTION = "GameAction";
+    private static final String PAYLOAD_DESTINATION = "destination";
+    private static final String PAYLOAD_CARD_INDEX = "cardIndex";
+    private static final String PAYLOAD_COLOR = "color";
+    private static final String PAYLOAD_CARD_INDICES = "cardIndices";
+    private static final String PAYLOAD_TARGET_PLAYER = "targetPlayer";
+    private static final String PAYLOAD_DIRECTION = "direction";
+    private static final String PAYLOAD_PLAYER_ID = "PlayerID";
+    private static final String DIRECTION_GIVE = "give";
+    private static final String ACTION_DRIVE_FERRY = "DRIVE_FERRY";
+    private static final String ACTION_SHUTTLE_FLIGHT = "SHUTTLE_FLIGHT";
+    private static final String ACTION_DIRECT_FLIGHT = "DIRECT_FLIGHT";
+    private static final String ACTION_CHARTER_FLIGHT = "CHARTER_FLIGHT";
+    private static final String ACTION_TREAT_DISEASE = "TREAT_DISEASE";
+    private static final String ACTION_DISCOVER_CURE = "DISCOVER_CURE";
+    private static final String ACTION_SHARE_KNOWLEDGE = "SHARE_KNOWLEDGE";
+    private static final String ACTION_BUILD_RESEARCH_STATION = "BUILD_RESEARCH_STATION";
+    private static final String ACTION_DISCARD_CARD = "DISCARD_CARD";
+
     private Stage stage;
     private StackPane root;
     private PandemicMapGraph mapGraph;
@@ -78,7 +135,7 @@ public class MapTestScene {
     
     //Variable for current player display
     private Label currentPlayerLabel;
-    private String playerName = "Tester";
+    private String playerName = DEFAULT_LOCAL_PLAYER_NAME;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private Map<String, PawnUI> playerPawns = new HashMap<>();
@@ -102,7 +159,7 @@ public class MapTestScene {
         this.mapGraph = new PandemicMapGraph();
         addDefaultResearchStationToSceneMap();
         this.gameClient = gameClient;
-        this.playerName = playerName == null || playerName.isBlank() ? "PLAYER" : playerName.toUpperCase();
+        this.playerName = playerName == null || playerName.isBlank() ? DEFAULT_PLAYER_NAME : playerName.toUpperCase();
 
         this.gameManager = createNetworkGameManager(gameState);
         initializeScene();
@@ -230,7 +287,7 @@ public class MapTestScene {
 
     private GameManager createLocalGameManager() {
         List<PlayerState> players = new ArrayList<>();
-        CityNode startingCity = mapGraph.getCity("Atlanta");
+        CityNode startingCity = mapGraph.getCity(PandemicMapGraph.CITY_ATLANTA);
         PlayerState testPlayer = new PlayerState(playerName);
         testPlayer.setCurrentCity(startingCity);
         players.add(testPlayer);
@@ -256,7 +313,7 @@ public class MapTestScene {
         }
 
         for (JsonNode playerNode : playersArray) {
-            String name = playerNode.has("playerName") ? playerNode.get("playerName").asText() : "PLAYER";
+            String name = playerNode.has(JSON_PLAYER_NAME) ? playerNode.get(JSON_PLAYER_NAME).asText() : DEFAULT_PLAYER_NAME;
             PlayerState playerState = new PlayerState(name);
             CityNode currentCity = getCityFromPlayerNode(playerNode, mapGraph);
             if (currentCity != null) {
@@ -279,7 +336,7 @@ public class MapTestScene {
         if (infectionRateManager != null) infectionRateManager.updateTrack();
         if (outbreakManager != null) outbreakManager.updateTrack();
         if (cureManager != null) cureManager.updateUI();
-        if (chatManager != null) chatManager.updateMessages(gameState.get("lobbyChatMessages"));
+        if (chatManager != null) chatManager.updateMessages(gameState.get(JSON_LOBBY_CHAT_MESSAGES));
         Platform.runLater(this::updatePawnPositions);
     }
 
@@ -288,23 +345,23 @@ public class MapTestScene {
             return;
         }
 
-        if (gameState.has("actionsRemaining")) {
-            manager.getState().setActionsRemaining(gameState.get("actionsRemaining").asInt());
+        if (gameState.has(JSON_ACTIONS_REMAINING)) {
+            manager.getState().setActionsRemaining(gameState.get(JSON_ACTIONS_REMAINING).asInt());
         }
-        if (gameState.has("infectionRate")) {
-            manager.getState().setInfectionRate(gameState.get("infectionRate").asInt());
+        if (gameState.has(JSON_INFECTION_RATE)) {
+            manager.getState().setInfectionRate(gameState.get(JSON_INFECTION_RATE).asInt());
         }
-        if (gameState.has("epidemicCount")) {
-            manager.getState().setEpidemicCount(gameState.get("epidemicCount").asInt());
+        if (gameState.has(JSON_EPIDEMIC_COUNT)) {
+            manager.getState().setEpidemicCount(gameState.get(JSON_EPIDEMIC_COUNT).asInt());
         }
-        if (gameState.has("gameOver")) {
-            manager.getState().setGameOver(gameState.get("gameOver").asBoolean());
+        if (gameState.has(JSON_GAME_OVER)) {
+            manager.getState().setGameOver(gameState.get(JSON_GAME_OVER).asBoolean());
         }
-        if (gameState.has("gameWon")) {
-            manager.getState().setGameWon(gameState.get("gameWon").asBoolean());
+        if (gameState.has(JSON_GAME_WON)) {
+            manager.getState().setGameWon(gameState.get(JSON_GAME_WON).asBoolean());
         }
-        if (gameState.has("gameStarted")) {
-            manager.getState().setGameStarted(gameState.get("gameStarted").asBoolean());
+        if (gameState.has(JSON_GAME_STARTED)) {
+            manager.getState().setGameStarted(gameState.get(JSON_GAME_STARTED).asBoolean());
         }
         applyMapSnapshot(gameState);
 
@@ -321,10 +378,10 @@ public class MapTestScene {
                     manager.getState().getPlayers().get(index).setCurrentCity(currentCity);
                 }
 
-                if (playerNode.has("hand") && playerNode.get("hand").isArray()) {
+                if (playerNode.has(JSON_HAND) && playerNode.get(JSON_HAND).isArray()) {
                     List<Card> hand = manager.getState().getPlayers().get(index).getHand();
                     hand.clear();
-                    for (JsonNode cardNode : playerNode.get("hand")) {
+                    for (JsonNode cardNode : playerNode.get(JSON_HAND)) {
                         Card card = getCardFromNode(cardNode, this.mapGraph);
                         if (card != null) {
                             hand.add(card);
@@ -332,53 +389,53 @@ public class MapTestScene {
                     }
                 }
 
-                if (playerNode.has("isDiscarding")) {
-                    manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get("isDiscarding").asBoolean());
-                } else if (playerNode.has("discardingCards")) {
-                    manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get("discardingCards").asBoolean());
+                if (playerNode.has(JSON_IS_DISCARDING)) {
+                    manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get(JSON_IS_DISCARDING).asBoolean());
+                } else if (playerNode.has(JSON_DISCARDING_CARDS)) {
+                    manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get(JSON_DISCARDING_CARDS).asBoolean());
                 }
                 index++;
             }
         }
 
-        if (gameState.has("currentPlayerIndex") && !manager.getState().getPlayers().isEmpty()) {
-            int currentPlayerIndex = gameState.get("currentPlayerIndex").asInt();
+        if (gameState.has(JSON_CURRENT_PLAYER_INDEX) && !manager.getState().getPlayers().isEmpty()) {
+            int currentPlayerIndex = gameState.get(JSON_CURRENT_PLAYER_INDEX).asInt();
             int maxPlayerIndex = manager.getState().getPlayers().size() - 1;
             manager.getState().setCurrentPlayerIndex(Math.max(0, Math.min(currentPlayerIndex, maxPlayerIndex)));
         }
     }
 
     private void applyMapSnapshot(JsonNode gameState) {
-        if (gameState == null || !gameState.has("map")) {
+        if (gameState == null || !gameState.has(JSON_MAP)) {
             return;
         }
 
-        JsonNode mapNode = gameState.get("map");
-        JsonNode cityList = mapNode.get("cityList");
+        JsonNode mapNode = gameState.get(JSON_MAP);
+        JsonNode cityList = mapNode.get(JSON_CITY_LIST);
         if (cityList == null || !cityList.isArray()) {
             return;
         }
 
         for (JsonNode cityNode : cityList) {
-            if (!cityNode.has("name")) {
+            if (!cityNode.has(JSON_NAME)) {
                 continue;
             }
 
-            CityNode localCity = mapGraph.getCity(cityNode.get("name").asText());
+            CityNode localCity = mapGraph.getCity(cityNode.get(JSON_NAME).asText());
             if (localCity == null) {
                 continue;
             }
 
-            JsonNode researchStation = cityNode.has("researchStation")
-                    ? cityNode.get("researchStation")
-                    : cityNode.get("hasResearchStation");
+            JsonNode researchStation = cityNode.has(JSON_RESEARCH_STATION)
+                    ? cityNode.get(JSON_RESEARCH_STATION)
+                    : cityNode.get(JSON_HAS_RESEARCH_STATION);
             if (researchStation != null && researchStation.asBoolean()) {
                 localCity.addResearchStation();
             } else if (researchStation != null) {
                 localCity.removeResearchStation();
             }
 
-            JsonNode diseaseCubes = cityNode.get("diseaseCubes");
+            JsonNode diseaseCubes = cityNode.get(JSON_DISEASE_CUBES);
             if (diseaseCubes != null && diseaseCubes.isObject()) {
                 for (DiseaseColor color : DiseaseColor.values()) {
                     JsonNode cubeCount = diseaseCubes.get(color.name());
@@ -394,11 +451,11 @@ public class MapTestScene {
         if (gameState == null) {
             return null;
         }
-        if (gameState.has("players")) {
-            return gameState.get("players");
+        if (gameState.has(JSON_PLAYERS)) {
+            return gameState.get(JSON_PLAYERS);
         }
-        if (gameState.has("playerArray")) {
-            return gameState.get("playerArray");
+        if (gameState.has(JSON_PLAYER_ARRAY)) {
+            return gameState.get(JSON_PLAYER_ARRAY);
         }
         return null;
     }
@@ -408,9 +465,9 @@ public class MapTestScene {
             return null;
         }
 
-        JsonNode cityNode = playerNode.get("playerCurrentCity");
+        JsonNode cityNode = playerNode.get(JSON_PLAYER_CURRENT_CITY);
         if (cityNode == null) {
-            cityNode = playerNode.get("currentCity");
+            cityNode = playerNode.get(JSON_CURRENT_CITY);
         }
 
         if (cityNode == null) {
@@ -420,49 +477,49 @@ public class MapTestScene {
         String cityName = null;
         if (cityNode.isTextual()) {
             cityName = cityNode.asText();
-        } else if (cityNode.has("name")) {
-            cityName = cityNode.get("name").asText();
+        } else if (cityNode.has(JSON_NAME)) {
+            cityName = cityNode.get(JSON_NAME).asText();
         }
 
         CityNode city = cityName == null ? null : graph.getCity(cityName);
-        if (city != null && cityNode.has("hasResearchStation") && cityNode.get("hasResearchStation").asBoolean()) {
+        if (city != null && cityNode.has(JSON_HAS_RESEARCH_STATION) && cityNode.get(JSON_HAS_RESEARCH_STATION).asBoolean()) {
             city.addResearchStation();
         }
-        if (city != null && cityNode.has("researchStation") && cityNode.get("researchStation").asBoolean()) {
+        if (city != null && cityNode.has(JSON_RESEARCH_STATION) && cityNode.get(JSON_RESEARCH_STATION).asBoolean()) {
             city.addResearchStation();
         }
         return city;
     }
 
     private Card getCardFromNode(JsonNode cardNode, PandemicMapGraph graph) {
-        if (cardNode == null || !cardNode.has("cardName") || !cardNode.has("type")) {
+        if (cardNode == null || !cardNode.has(JSON_CARD_NAME) || !cardNode.has(JSON_TYPE)) {
             return null;
         }
 
-        String cardName = cardNode.get("cardName").asText();
+        String cardName = cardNode.get(JSON_CARD_NAME).asText();
         CardType type;
         try {
-            type = CardType.valueOf(cardNode.get("type").asText());
+            type = CardType.valueOf(cardNode.get(JSON_TYPE).asText());
         } catch (IllegalArgumentException ex) {
             return null;
         }
 
         CityNode targetCity = null;
-        JsonNode targetCityNode = cardNode.get("targetCity");
+        JsonNode targetCityNode = cardNode.get(JSON_TARGET_CITY);
         if (targetCityNode != null && graph != null) {
             String cityName = null;
             if (targetCityNode.isTextual()) {
                 cityName = targetCityNode.asText();
-            } else if (targetCityNode.has("name")) {
-                cityName = targetCityNode.get("name").asText();
+            } else if (targetCityNode.has(JSON_NAME)) {
+                cityName = targetCityNode.get(JSON_NAME).asText();
             }
             targetCity = cityName == null ? null : graph.getCity(cityName);
         }
 
         Card card = new Card(cardName, type, targetCity);
-        if (cardNode.has("eventType") && !cardNode.get("eventType").isNull()) {
+        if (cardNode.has(JSON_EVENT_TYPE) && !cardNode.get(JSON_EVENT_TYPE).isNull()) {
             try {
-                card.setEventType(Card.EventType.valueOf(cardNode.get("eventType").asText()));
+                card.setEventType(Card.EventType.valueOf(cardNode.get(JSON_EVENT_TYPE).asText()));
             } catch (IllegalArgumentException ignored) {
                 // Event type is optional for non-event cards and older snapshots.
             }
@@ -471,7 +528,7 @@ public class MapTestScene {
     }
 
     private void addDefaultResearchStationToSceneMap() {
-        CityNode atlanta = mapGraph.getCity("Atlanta");
+        CityNode atlanta = mapGraph.getCity(PandemicMapGraph.CITY_ATLANTA);
         if (atlanta != null) {
             atlanta.addResearchStation();
         }
@@ -485,7 +542,7 @@ public class MapTestScene {
 
         ButtonsUtil backBtn = new ButtonsUtil(
                 "BACK",
-                "#00b5d4", "black", "#00b5d4", "#00b5d4",
+                CYAN_COLOR, "black", CYAN_COLOR, CYAN_COLOR,
                 2, 10, 10,
                 0.12, 0.06, 0.015,
                 root
@@ -535,8 +592,8 @@ public class MapTestScene {
 
         // Create current player display label
         currentPlayerLabel = new Label();
-        currentPlayerLabel.setFont(Font.font("hkmodular", FontWeight.BOLD, 20));
-        currentPlayerLabel.setTextFill(Color.web("#d1d412"));
+        currentPlayerLabel.setFont(Font.font(FONT_HKMODULAR, FontWeight.BOLD, 20));
+        currentPlayerLabel.setTextFill(Color.web(YELLOW_COLOR));
         currentPlayerLabel.setStyle("-fx-effect: dropshadow(gaussian, #d1d412, 10, 0.5, 0, 0);");
         updateCurrentPlayerLabel();
         
@@ -650,7 +707,7 @@ public class MapTestScene {
         }
 
         ObjectNode payload = createBaseGameActionPayload();
-        payload.put("GameAction", action);
+        payload.put(PAYLOAD_GAME_ACTION, action);
 
         if (!populateActionPayload(payload, action, null)) {
             notificationManager.showNotification("Action needs a valid target first");
@@ -666,7 +723,7 @@ public class MapTestScene {
         }
 
         ObjectNode payload = createBaseGameActionPayload();
-        payload.put("GameAction", action);
+        payload.put(PAYLOAD_GAME_ACTION, action);
 
         if (!populateActionPayload(payload, action, destination)) {
             notificationManager.showNotification("Cannot use " + action.replace('_', ' ') + " for " + destination.getName());
@@ -684,44 +741,44 @@ public class MapTestScene {
 
         CityNode currentCity = player.getPlayerCurrentCity();
         switch (action) {
-            case "DRIVE_FERRY":
-            case "SHUTTLE_FLIGHT":
+            case ACTION_DRIVE_FERRY:
+            case ACTION_SHUTTLE_FLIGHT:
                 if (destination == null) return false;
-                payload.put("destination", destination.getName());
+                payload.put(PAYLOAD_DESTINATION, destination.getName());
                 return true;
 
-            case "DIRECT_FLIGHT": {
+            case ACTION_DIRECT_FLIGHT: {
                 if (destination == null) return false;
                 int cardIndex = findCardIndexForCity(player, destination);
                 if (cardIndex < 0) return false;
-                payload.put("destination", destination.getName());
-                payload.put("cardIndex", cardIndex);
+                payload.put(PAYLOAD_DESTINATION, destination.getName());
+                payload.put(PAYLOAD_CARD_INDEX, cardIndex);
                 return true;
             }
 
-            case "CHARTER_FLIGHT": {
+            case ACTION_CHARTER_FLIGHT: {
                 if (destination == null || currentCity == null) return false;
                 int cardIndex = findCardIndexForCity(player, currentCity);
                 if (cardIndex < 0) return false;
-                payload.put("destination", destination.getName());
-                payload.put("cardIndex", cardIndex);
+                payload.put(PAYLOAD_DESTINATION, destination.getName());
+                payload.put(PAYLOAD_CARD_INDEX, cardIndex);
                 return true;
             }
 
-            case "TREAT_DISEASE": {
+            case ACTION_TREAT_DISEASE: {
                 DiseaseColor color = firstTreatableColor(currentCity);
                 if (color == null) return false;
-                payload.put("color", color.name());
+                payload.put(PAYLOAD_COLOR, color.name());
                 return true;
             }
 
-            case "DISCOVER_CURE":
+            case ACTION_DISCOVER_CURE:
                 return populateDiscoverCurePayload(payload, player);
 
-            case "SHARE_KNOWLEDGE":
+            case ACTION_SHARE_KNOWLEDGE:
                 return populateShareKnowledgePayload(payload, player);
 
-            case "BUILD_RESEARCH_STATION":
+            case ACTION_BUILD_RESEARCH_STATION:
                 return true;
 
             default:
@@ -775,8 +832,8 @@ public class MapTestScene {
             }
 
             if (matchingIndices.size() >= requiredCards) {
-                payload.put("color", color.name());
-                ArrayNode cardIndices = payload.putArray("cardIndices");
+                payload.put(PAYLOAD_COLOR, color.name());
+                ArrayNode cardIndices = payload.putArray(PAYLOAD_CARD_INDICES);
                 for (int i = 0; i < requiredCards; i++) {
                     cardIndices.add(matchingIndices.get(i));
                 }
@@ -805,9 +862,9 @@ public class MapTestScene {
             if (!target.getPlayerName().equalsIgnoreCase(player.getPlayerName())
                     && targetCity != null
                     && targetCity.getName().equals(currentCity.getName())) {
-                payload.put("cardIndex", cardIndex);
-                payload.put("targetPlayer", target.getPlayerName());
-                payload.put("direction", "give");
+                payload.put(PAYLOAD_CARD_INDEX, cardIndex);
+                payload.put(PAYLOAD_TARGET_PLAYER, target.getPlayerName());
+                payload.put(PAYLOAD_DIRECTION, DIRECTION_GIVE);
                 return true;
             }
         }
@@ -820,8 +877,8 @@ public class MapTestScene {
         }
 
         ObjectNode payload = createBaseGameActionPayload();
-        payload.put("GameAction", "DISCARD_CARD");
-        payload.put("cardIndex", cardIndex);
+        payload.put(PAYLOAD_GAME_ACTION, ACTION_DISCARD_CARD);
+        payload.put(PAYLOAD_CARD_INDEX, cardIndex);
         gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
     }
 
@@ -858,10 +915,10 @@ public class MapTestScene {
             highlightedValidNodes.add(destination);
             Circle nodeCircle = nodeVisuals.get(destination);
             if (nodeCircle != null) {
-                nodeCircle.setFill(Color.web("#00ff00"));
+                nodeCircle.setFill(Color.web(HIGHLIGHT_GREEN_COLOR));
 
                 javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
-                glow.setColor(Color.web("#00ff00"));
+                glow.setColor(Color.web(HIGHLIGHT_GREEN_COLOR));
                 glow.setRadius(20);
                 glow.setSpread(0.6);
                 nodeCircle.setEffect(glow);
@@ -874,12 +931,12 @@ public class MapTestScene {
     private Set<CityNode> getValidDestinations(String movementType, PlayerState currentPlayer, CityNode currentCity) {
         Set<CityNode> destinations = new HashSet<>();
 
-        if ("DRIVE_FERRY".equals(movementType)) {
+        if (ACTION_DRIVE_FERRY.equals(movementType)) {
             destinations.addAll(currentCity.getConnectedCities());
             return destinations;
         }
 
-        if ("DIRECT_FLIGHT".equals(movementType)) {
+        if (ACTION_DIRECT_FLIGHT.equals(movementType)) {
             for (Card card : currentPlayer.getHand()) {
                 if (card.getType() == CardType.CITY && card.getTargetCity() != null) {
                     CityNode city = mapGraph.getCity(card.getTargetCity().getName());
@@ -891,7 +948,7 @@ public class MapTestScene {
             return destinations;
         }
 
-        if ("CHARTER_FLIGHT".equals(movementType)) {
+        if (ACTION_CHARTER_FLIGHT.equals(movementType)) {
             if (findCardIndexForCity(currentPlayer, currentCity) >= 0) {
                 for (CityNode city : mapGraph.getCityList()) {
                     if (!city.getName().equals(currentCity.getName())) {
@@ -902,7 +959,7 @@ public class MapTestScene {
             return destinations;
         }
 
-        if ("SHUTTLE_FLIGHT".equals(movementType) && currentCity.hasResearchStation()) {
+        if (ACTION_SHUTTLE_FLIGHT.equals(movementType) && currentCity.hasResearchStation()) {
             for (CityNode city : mapGraph.getCityList()) {
                 if (city.hasResearchStation() && !city.getName().equals(currentCity.getName())) {
                     destinations.add(city);
@@ -947,7 +1004,7 @@ public class MapTestScene {
 
     private ObjectNode createBaseGameActionPayload() {
         ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("PlayerID", playerName);
+        payload.put(PAYLOAD_PLAYER_ID, playerName);
         return payload;
     }
 
@@ -967,9 +1024,9 @@ public class MapTestScene {
         mapPane.prefHeightProperty().bind(mapPane.prefWidthProperty().multiply(0.5));
         mapPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        java.net.URL mapBgUrl = getClass().getResource("/backgroundMap.png");
+        java.net.URL mapBgUrl = getClass().getResource(MAP_BACKGROUND_RESOURCE);
         if (mapBgUrl == null) {
-            System.err.println("[MapTestScene] Missing resource: /backgroundMap.png");
+            System.err.println("[MapTestScene] Missing resource: " + MAP_BACKGROUND_RESOURCE);
             return;
         }
         ImageView mapBg = new ImageView(new Image(mapBgUrl.toExternalForm()));
@@ -982,7 +1039,7 @@ public class MapTestScene {
         Color activeLineColor = Color.web("#00ffea");
 
         DropShadow glowEffect = new DropShadow();
-        glowEffect.setColor(Color.web("#00d4ff"));
+        glowEffect.setColor(Color.web(BRIGHT_CYAN_COLOR));
         glowEffect.setRadius(20);
         glowEffect.setSpread(0.6);
 
@@ -1080,7 +1137,7 @@ public class MapTestScene {
 
             Text label = new Text(city.getName());
             label.setFill(Color.WHITE);
-            label.setFont(Font.font("hkmodular", FontWeight.BOLD, 10));
+            label.setFont(Font.font(FONT_HKMODULAR, FontWeight.BOLD, 10));
             label.setMouseTransparent(true);
 
             label.layoutXProperty().bind(Bindings.createDoubleBinding(() -> node.getCenterX() - label.getLayoutBounds().getWidth() / 2, node.centerXProperty(),label.layoutBoundsProperty()));
@@ -1095,10 +1152,10 @@ public class MapTestScene {
 
     private Color getFxColor(DiseaseColor color) {
         return switch (color) {
-            case BLUE -> Color.web("#00b5d4");
+            case BLUE -> Color.web(CYAN_COLOR);
             case YELLOW -> Color.web("#cfc900");
-            case BLACK -> Color.web("#333333");
-            case RED -> Color.web("#ff2d2d");
+            case BLACK -> Color.web(BLACK_COLOR);
+            case RED -> Color.web(RED_COLOR);
         };
     }
 
@@ -1108,13 +1165,13 @@ public class MapTestScene {
 
     private void returnToMainMenu() {
         cleanupScene();
-        SceneManager.switchScene("MAIN_MENU");
+        SceneManager.switchScene(SCENE_MAIN_MENU);
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource("/bgGame.png");
+        java.net.URL bgUrl = getClass().getResource(GAME_BACKGROUND_RESOURCE);
         if (bgUrl == null) {
-            System.err.println("[MapTestScene] Missing resource: /bgGame.png");
+            System.err.println("[MapTestScene] Missing resource: " + GAME_BACKGROUND_RESOURCE);
             return;
         }
         ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
