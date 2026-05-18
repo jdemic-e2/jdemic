@@ -132,7 +132,6 @@ jobs:
             echo "JaCoCo CSV report was not generated."
             exit 0
           fi
-
           awk -F, '
             NR > 1 {
               missed += $4
