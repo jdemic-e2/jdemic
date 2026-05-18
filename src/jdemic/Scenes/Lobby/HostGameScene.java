@@ -145,6 +145,10 @@ public class HostGameScene {
                         JdemicNetworkServer.shutdown();
                         throw ex;
                     }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    System.err.println("[HostGameScene] Hosting interrupted: " + ex.getMessage());
+                    showHostError("CRITICAL ERROR: ALL SYSTEMS OFFLINE!", hostBtn, errorLabel);
                 } catch (Exception ex) {
                     System.err.println("[HostGameScene] Failed to host game: " + ex.getMessage());
                     showHostError("CRITICAL ERROR: ALL SYSTEMS OFFLINE!", hostBtn, errorLabel);

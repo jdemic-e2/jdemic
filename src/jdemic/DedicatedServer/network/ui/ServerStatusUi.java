@@ -23,10 +23,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ServerStatusUi {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Logger LOGGER = Logger.getLogger(ServerStatusUi.class.getName());
+    private static final String JSON_CONTENT_TYPE = "application/json; charset=UTF-8";
 
     private final DedicatedServerConfig config;
     private final Supplier<GameManager> gameManagerSupplier;
@@ -103,7 +107,7 @@ public class ServerStatusUi {
         response.put("service", "jdemic-dedicated-server");
         response.put("gameServerPort", config.serverPort());
         response.put("connectedPlayers", connectedPlayerCountSupplier.getAsInt());
-        sendResponse(exchange, "application/json; charset=UTF-8", OBJECT_MAPPER.writeValueAsString(response));
+        sendResponse(exchange, JSON_CONTENT_TYPE, OBJECT_MAPPER.writeValueAsString(response));
     }
 
     private void openBrowser(String url) {
@@ -118,8 +122,10 @@ public class ServerStatusUi {
                 return;
             }
         } catch (Exception e) {
-            System.err.println("[ServerStatusUi] Standard browser launch failed, trying fallback: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Standard browser launch failed. Open manually: " + url, e);
         }
+
+        LOGGER.info("[ServerStatusUi] Browser auto-open unavailable. Open manually: " + url);
     }
 
     private void handleIndex(HttpExchange exchange) throws IOException {
@@ -151,7 +157,7 @@ public class ServerStatusUi {
             response.putNull("latestPacket");
         }
 
-        sendResponse(exchange, "application/json; charset=UTF-8", OBJECT_MAPPER.writeValueAsString(response));
+        sendResponse(exchange, JSON_CONTENT_TYPE, OBJECT_MAPPER.writeValueAsString(response));
     }
 
     private void handleShutdown(HttpExchange exchange) throws IOException {
@@ -159,7 +165,7 @@ public class ServerStatusUi {
             return;
         }
         if (!isLocalRequest(exchange)) {
-            sendResponse(exchange, 403, "application/json; charset=UTF-8", "{\"error\":\"forbidden\"}");
+            sendResponse(exchange, 403, JSON_CONTENT_TYPE, "{\"error\":\"forbidden\"}");
             return;
         }
 
@@ -187,7 +193,7 @@ public class ServerStatusUi {
         }
 
         exchange.getResponseHeaders().set("Allow", method.toUpperCase());
-        sendResponse(exchange, 405, "application/json; charset=UTF-8", "{\"error\":\"method_not_allowed\"}");
+        sendResponse(exchange, 405, JSON_CONTENT_TYPE, "{\"error\":\"method_not_allowed\"}");
         return false;
     }
 
