@@ -120,23 +120,6 @@ public class ServerStatusUi {
         } catch (Exception e) {
             System.err.println("[ServerStatusUi] Standard browser launch failed, trying fallback: " + e.getMessage());
         }
-
-        // Native OS Fallback launcher if Java Desktop API fails or detects a headless environment
-        try {
-            String os = System.getProperty("os.name").toLowerCase();
-            Runtime runtime = Runtime.getRuntime();
-            if (os.contains("win")) {
-                runtime.exec(new String[]{"cmd", "/c", "start", url});
-            } else if (os.contains("mac")) {
-                runtime.exec(new String[]{"open", url});
-            } else if (os.contains("nix") || os.contains("nux")) {
-                runtime.exec(new String[]{"xdg-open", url});
-            } else {
-                System.err.println("[ServerStatusUi] Unknown OS. Please open manually: " + url);
-            }
-        } catch (Exception e) {
-            System.err.println("[ServerStatusUi] Native fallback browser launch failed: " + e.getMessage());
-        }
     }
 
     private void handleIndex(HttpExchange exchange) throws IOException {

@@ -2,7 +2,6 @@ package jdemic.frontend;
 
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
