@@ -1,16 +1,11 @@
 package jdemic.Scenes.Tutorial;
 
-import javafx.beans.binding.Bindings;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
-import jdemic.ui.*;
 
 public class TutorialMapScene {
 
@@ -40,35 +35,11 @@ public class TutorialMapScene {
         map.translateXProperty().bind(root.widthProperty().multiply(0.1));
         StackPane.setAlignment(map, Pos.CENTER);
 
-        StackPane leftPanel = new StackPane();
-        leftPanel.prefWidthProperty().bind(root.widthProperty().multiply(0.18));
-        leftPanel.prefHeightProperty().bind(root.heightProperty().multiply(0.18));
-        leftPanel.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        leftPanel.setStyle("-fx-background-color: black;" + "-fx-border-color: #00b5d4;" +"-fx-border-width: 2;" +"-fx-background-radius: 6;" +"-fx-border-radius: 6;");
-        GlowUtil.applyGlow(leftPanel, "#00b5d4", 15);
+        StackPane leftPanel = TutorialUtil.createInstructionPanel(root, "FAMILIARIZE\nYOURSELF\nWITH THE MAP", 0.013);
         StackPane.setAlignment(leftPanel, Pos.CENTER_LEFT);
         leftPanel.translateXProperty().bind(root.widthProperty().multiply(0.06));
         leftPanel.translateYProperty().bind(root.heightProperty().multiply(-0.05));
 
-        Label panelText = TextUtil.createText("FAMILIARIZE\nYOURSELF\nWITH THE MAP","hkmodular",0.013,"#00b5d4",root);
-        panelText.setWrapText(true);
-        panelText.setAlignment(Pos.CENTER);
-        panelText.setTextAlignment(TextAlignment.CENTER);
-        panelText.maxWidthProperty().bind(leftPanel.widthProperty().multiply(0.75));
-
-        StackPane panelContent = new StackPane(panelText);
-        panelContent.paddingProperty().bind(Bindings.createObjectBinding(() ->
-                                new Insets(
-                                        leftPanel.getHeight() * 0.15,
-                                        leftPanel.getWidth() * 0.1,
-                                        leftPanel.getHeight() * 0.15,
-                                        leftPanel.getWidth() * 0.1
-                                ),
-                        leftPanel.widthProperty(),
-                        leftPanel.heightProperty()
-                )
-        );
-        leftPanel.getChildren().add(panelContent);
         root.getChildren().addAll(map, leftPanel);
 
         TutorialUtil.addBottomButtons(root, root, stage, () -> SceneManager.switchScene("MAIN_MENU"), () -> SceneManager.switchScene("TUT_CITIES"));

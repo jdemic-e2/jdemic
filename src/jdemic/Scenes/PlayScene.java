@@ -22,6 +22,7 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
 import jdemic.ui.TextUtil;
+import java.security.SecureRandom;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.UnaryOperator;
@@ -274,7 +275,7 @@ public class PlayScene {
 
     private String generateHostCode() {
         String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+        SecureRandom rnd = new SecureRandom();
         StringBuilder sb = new StringBuilder(10);
         for (int i = 0; i < 10; i++) { sb.append(chars.charAt(rnd.nextInt(chars.length()))); }
         return sb.toString();

@@ -59,7 +59,6 @@ public class ClientHandler implements Runnable {
             this.out = new PrintWriter(rawSocket.getOutputStream(), true);
         } catch (Exception e) {
             LOGGER.severe("Eroare la initializarea fluxurilor I/O pentru client.");
-            e.printStackTrace();
         }
     }
 
