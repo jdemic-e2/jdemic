@@ -48,7 +48,7 @@ public class TutorialCitiesScene {
             };
 
             String cityName = city.getName().replace(" ", "").replace(".", "");
-            String path = "/cards/" + colorPrefix + cityName + ".png";
+            String path = "/cityCards/" + colorPrefix + cityName + ".png";
             card = new ImageView(new Image(getClass().getResource(path).toExternalForm()));
         } catch (Exception e) {
             Label fallback = new Label(city.getName());
