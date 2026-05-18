@@ -18,6 +18,10 @@ The dedicated server can be configured entirely through environment variables, w
 docker build -f Dockerfile.dedicated-server -t jdemic-dedicated-server .
 ```
 
+The runtime image uses Eclipse Temurin Java 21, runs the Java process as the
+non-root `jdemic` user, and includes a container `HEALTHCHECK` against
+`/health`. The healthcheck is skipped only when `JDEMIC_STATUS_ENABLED=false`.
+
 ## Run
 
 ```bash
@@ -61,3 +65,13 @@ Expected response:
 ```
 
 The process handles `SIGTERM` through a JVM shutdown hook, closes the game server socket, stops the status server, and closes active client sockets.
+
+## CI and GHCR Deployment
+
+The Maven QA workflow builds the dedicated server image and runs the Docker smoke test before any image is pushed to GitHub Container Registry. The smoke test starts the container, polls `/health`, verifies that the TCP game port accepts a connection, and then stops the container cleanly.
+
+GHCR deployment runs only on pushes to `main` or `develop` and uses the built-in `GITHUB_TOKEN`. Images are tagged with:
+
+- the branch/channel name, such as `main` or `develop`
+- the commit SHA, such as `sha-<short-sha>`
+- `latest` only for pushes to `main`

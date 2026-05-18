@@ -4,6 +4,8 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Labeled;
 import javafx.scene.input.Clipboard;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import jdemic.Scenes.Lobby.HostGameScene;
 import jdemic.ui.ButtonsUtil;
@@ -73,8 +75,26 @@ class HostGameSceneFxTest {
         String code = findHostCode(robot);
 
         ButtonsUtil copyBtn = LobbySceneFxTest.buttonByText(robot, "COPY");
-        robot.clickOn(copyBtn);
-        WaitForAsyncUtils.waitForFxEvents();
+        robot.interact(() -> copyBtn.fireEvent(new MouseEvent(
+                MouseEvent.MOUSE_CLICKED,
+                0,
+                0,
+                0,
+                0,
+                MouseButton.PRIMARY,
+                1,
+                false,
+                false,
+                false,
+                false,
+                true,
+                false,
+                false,
+                false,
+                false,
+                false,
+                null
+        )));
 
         final String[] clipboardText = new String[1];
         robot.interact(() -> clipboardText[0] = Clipboard.getSystemClipboard().getString());

@@ -1,5 +1,8 @@
 package jdemic.DedicatedServer.network.security;
 
+import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -91,5 +94,80 @@ class RateLimiterTest {
         // Confirm packets flow again after reset
         assertTrue(rateLimiter.allowPacket(),
                 "First packet after reset should be ALLOWED");
+    }
+
+    @Test
+    @DisplayName("Window rollover should record a violation when the previous window exceeded the limit")
+    void testWindowRollover_recordsViolationForFloodedWindow() throws Exception {
+        RateLimiter limiter = new RateLimiter(3, 2);
+
+        assertTrue(limiter.allowPacket());
+        assertTrue(limiter.allowPacket());
+        assertTrue(limiter.allowPacket());
+        assertFalse(limiter.allowPacket());
+
+        backdateWindow(limiter);
+
+        assertTrue(limiter.allowPacket(), "First packet in the new window should be allowed");
+        assertEquals(1, limiter.getConsecutiveViolations(),
+                "The flooded previous window should count as one violation");
+    }
+
+    @Test
+    @DisplayName("A clean window should reset consecutive violations")
+    void testCleanWindow_resetsConsecutiveViolations() throws Exception {
+        RateLimiter limiter = new RateLimiter(3, 2);
+
+        for (int i = 0; i < 4; i++) {
+            limiter.allowPacket();
+        }
+        backdateWindow(limiter);
+        limiter.allowPacket();
+        assertEquals(1, limiter.getConsecutiveViolations());
+
+        backdateWindow(limiter);
+        limiter.allowPacket();
+
+        assertEquals(0, limiter.getConsecutiveViolations(),
+                "A non-flooded window should reset the violation streak");
+    }
+
+    @Test
+    @DisplayName("Persistent flooding should trigger disconnect after the configured threshold")
+    void testShouldDisconnect_afterConsecutiveViolationsReachThreshold() throws Exception {
+        RateLimiter limiter = new RateLimiter(3, 2);
+
+        floodCurrentWindow(limiter, 4);
+        backdateWindow(limiter);
+        limiter.allowPacket();
+
+        floodCurrentWindow(limiter, 3);
+        backdateWindow(limiter);
+        limiter.allowPacket();
+
+        assertTrue(limiter.shouldDisconnect(),
+                "Two consecutive flooded windows should reach the disconnect threshold");
+    }
+
+    @Test
+    @DisplayName("Custom max packets and violation threshold should be exposed")
+    void testCustomLimits_areStored() {
+        RateLimiter limiter = new RateLimiter(100, 10);
+
+        assertEquals(100, limiter.getMaxPacketsPerSecond());
+        assertEquals(10, limiter.getViolationThreshold());
+    }
+
+    private void floodCurrentWindow(RateLimiter limiter, int packetCount) {
+        for (int i = 0; i < packetCount; i++) {
+            limiter.allowPacket();
+        }
+    }
+
+    private void backdateWindow(RateLimiter limiter) throws Exception {
+        Field windowStartField = RateLimiter.class.getDeclaredField("windowStart");
+        windowStartField.setAccessible(true);
+        AtomicLong windowStart = (AtomicLong) windowStartField.get(limiter);
+        windowStart.set(System.currentTimeMillis() - 1_001);
     }
 }
