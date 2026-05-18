@@ -33,6 +33,28 @@ import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
 
 public class WaitingRoomScene {
+    private static final String FONT_HKMODULAR = "hkmodular";
+    private static final String DEFAULT_PLAYER_NAME = "PLAYER";
+    private static final String DEFAULT_ROOM_CODE = "----";
+    private static final String READY_TEXT = "READY";
+    private static final String NOT_READY_TEXT = "NOT READY";
+    private static final String UNREADY_TEXT = "UNREADY";
+    private static final String CYAN = "#00b5d4";
+    private static final String BRIGHT_CYAN = "#00d9ff";
+    private static final String RED = "#ff2d2d";
+    private static final String YELLOW = "#d1d412";
+    private static final String BLACK = "black";
+    private static final String BACKGROUND_RESOURCE = "/background.png";
+    private static final String SCENE_LOBBY = "LOBBY";
+    private static final String JSON_PLAYERS = "players";
+    private static final String JSON_PLAYER_ARRAY = "playerArray";
+    private static final String JSON_GAME_STARTED = "gameStarted";
+    private static final String JSON_PLAYER_NAME = "playerName";
+    private static final String JSON_READY = "ready";
+    private static final String JSON_LOBBY_CHAT_MESSAGES = "lobbyChatMessages";
+    private static final String JSON_MESSAGE = "message";
+    private static final String JSON_LOBBY_COUNTDOWN_STARTED_AT = "lobbyCountdownStartedAt";
+
     private final StackPane root;
     private final Stage stage;
     private final String nickname;
@@ -63,8 +85,8 @@ public class WaitingRoomScene {
     public WaitingRoomScene(Stage stage, String nickname, String roomCode, GameClient gameClient, boolean ownsServer) {
         this.stage = stage;
         this.root = new StackPane();
-        this.nickname = nickname == null || nickname.isBlank() ? "PLAYER" : nickname.toUpperCase();
-        this.roomCode = roomCode == null ? "----" : roomCode;
+        this.nickname = nickname == null || nickname.isBlank() ? DEFAULT_PLAYER_NAME : nickname.toUpperCase();
+        this.roomCode = roomCode == null ? DEFAULT_ROOM_CODE : roomCode;
         this.gameClient = gameClient;
         this.ownsServer = ownsServer;
 
@@ -82,9 +104,9 @@ public class WaitingRoomScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource("/background.png");
+        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
         if (bgUrl == null) {
-            System.err.println("[WaitingRoomScene] Missing resource: /background.png");
+            System.err.println("[WaitingRoomScene] Missing resource: " + BACKGROUND_RESOURCE);
             return;
         }
         ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
@@ -95,11 +117,11 @@ public class WaitingRoomScene {
     }
 
     private void setupUI() {
-        Label title = TextUtil.createText("LOBBY", "hkmodular", 0.06, "#cfc900", root);
+        Label title = TextUtil.createText(SCENE_LOBBY, FONT_HKMODULAR, 0.06, "#cfc900", root);
         GlowUtil.applyGlow(title, "#cfc900", 15);
 
-        Label subtitle = TextUtil.createText("WAITING ROOM", "hkmodular", 0.034, "#ff2d2d", root);
-        GlowUtil.applyGlow(subtitle, "#ff2d2d", 10);
+        Label subtitle = TextUtil.createText("WAITING ROOM", FONT_HKMODULAR, 0.034, RED, root);
+        GlowUtil.applyGlow(subtitle, RED, 10);
 
         VBox headerBox = new VBox(title, subtitle);
         headerBox.setAlignment(Pos.TOP_CENTER);
@@ -107,7 +129,7 @@ public class WaitingRoomScene {
         StackPane.setAlignment(headerBox, Pos.TOP_CENTER);
         headerBox.translateYProperty().bind(root.heightProperty().multiply(0.05));
 
-        hostStatusLabel = TextUtil.createText("NOT READY", "hkmodular", 0.024, "#d1d412", root);
+        hostStatusLabel = TextUtil.createText(NOT_READY_TEXT, FONT_HKMODULAR, 0.024, YELLOW, root);
 
         playerList = new VBox();
         playerList.spacingProperty().bind(root.heightProperty().multiply(0.012));
@@ -121,19 +143,19 @@ public class WaitingRoomScene {
         chatPanel.prefHeightProperty().bind(root.heightProperty().multiply(0.31));
         chatPanel.setStyle(
                 "-fx-background-color: rgba(0,0,0,0.70);" +
-                "-fx-border-color: #00b5d4;" +
+                "-fx-border-color: " + CYAN + ";" +
                 "-fx-border-width: 2;" +
                 "-fx-border-radius: 10;" +
                 "-fx-background-radius: 10;"
         );
-        GlowUtil.applyGlow(chatPanel, "#00b5d4", 10);
+        GlowUtil.applyGlow(chatPanel, CYAN, 10);
 
         chatPanel.paddingProperty().bind(Bindings.createObjectBinding(
                 () -> new Insets(root.getHeight() * 0.018, root.getWidth() * 0.012, root.getHeight() * 0.018, root.getWidth() * 0.012),
                 root.widthProperty(), root.heightProperty()
         ));
 
-        Label chatTitle = TextUtil.createText("PLAYER CHAT:", "hkmodular", 0.028, "#d1d412", root);
+        Label chatTitle = TextUtil.createText("PLAYER CHAT:", FONT_HKMODULAR, 0.028, YELLOW, root);
 
         chatArea = new TextArea();
         chatArea.setEditable(false);
@@ -142,17 +164,17 @@ public class WaitingRoomScene {
         chatArea.prefHeightProperty().bind(root.heightProperty().multiply(0.145));
         chatArea.setStyle(
                 "-fx-control-inner-background: black;" +
-                "-fx-text-fill: #00d9ff;" +
+                "-fx-text-fill: " + BRIGHT_CYAN + ";" +
                 "-fx-border-color: transparent;" +
-                "-fx-font-family: 'hkmodular';"
+                "-fx-font-family: '" + FONT_HKMODULAR + "';"
         );
 
         TextField chatInput = new TextField();
-        chatInput.setStyle("-fx-background-color: black; -fx-text-fill: #00d9ff; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-font-family: 'hkmodular';");
+        chatInput.setStyle("-fx-background-color: " + BLACK + "; -fx-text-fill: " + BRIGHT_CYAN + "; -fx-border-color: " + CYAN + "; -fx-border-width: 2; -fx-font-family: '" + FONT_HKMODULAR + "';");
         chatInput.prefWidthProperty().bind(root.widthProperty().multiply(0.18));
         chatInput.prefHeightProperty().bind(root.heightProperty().multiply(0.055));
 
-        ButtonsUtil sendBtn = new ButtonsUtil("SEND", "#d1d412", "black", "#00b5d4", "#00b5d4", 2, 10, 10, 0.07, 0.055, 0.019, root);
+        ButtonsUtil sendBtn = new ButtonsUtil("SEND", YELLOW, BLACK, CYAN, CYAN, 2, 10, 10, 0.07, 0.055, 0.019, root);
         Runnable sendChat = () -> {
             String msg = chatInput.getText().trim();
             if (msg.isEmpty()) return;
@@ -172,13 +194,13 @@ public class WaitingRoomScene {
         upper.setAlignment(Pos.TOP_CENTER);
         upper.spacingProperty().bind(root.widthProperty().multiply(0.015));
 
-        ButtonsUtil cancelBtn = new ButtonsUtil("CANCEL", "#ff2d2d", "black", "#ff2d2d", "#ff2d2d", 2, 12, 12, 0.14, 0.07, 0.020, root);
-        readyBtn = new ButtonsUtil("READY", "#00d9ff", "black", "#00d9ff", "#00d9ff", 2, 12, 12, 0.14, 0.07, 0.020, root);
+        ButtonsUtil cancelBtn = new ButtonsUtil("CANCEL", RED, BLACK, RED, RED, 2, 12, 12, 0.14, 0.07, 0.020, root);
+        readyBtn = new ButtonsUtil(READY_TEXT, BRIGHT_CYAN, BLACK, BRIGHT_CYAN, BRIGHT_CYAN, 2, 12, 12, 0.14, 0.07, 0.020, root);
         readyBtn.setOnMouseClicked(e -> sendReadyState(!currentReady));
 
         cancelBtn.setOnMouseClicked(e -> leaveWaitingRoom());
 
-        countdownLabel = TextUtil.createText("", "hkmodular", 0.024, "#ff2d2d", root);
+        countdownLabel = TextUtil.createText("", FONT_HKMODULAR, 0.024, RED, root);
         countdownLabel.setVisible(false);
 
         HBox bottom = new HBox(cancelBtn, readyBtn, countdownLabel);
@@ -210,10 +232,10 @@ public class WaitingRoomScene {
         }
 
         JsonNode playersArray = null;
-        if (gameState.has("players")) {
-            playersArray = gameState.get("players");
-        } else if (gameState.has("playerArray")) {
-            playersArray = gameState.get("playerArray");
+        if (gameState.has(JSON_PLAYERS)) {
+            playersArray = gameState.get(JSON_PLAYERS);
+        } else if (gameState.has(JSON_PLAYER_ARRAY)) {
+            playersArray = gameState.get(JSON_PLAYER_ARRAY);
         }
 
         if (playersArray == null || !playersArray.isArray()) {
@@ -221,7 +243,7 @@ public class WaitingRoomScene {
             return;
         }
 
-        if (gameState.has("gameStarted") && gameState.get("gameStarted").asBoolean()) {
+        if (gameState.has(JSON_GAME_STARTED) && gameState.get(JSON_GAME_STARTED).asBoolean()) {
             transitionToGame(gameState);
             return;
         }
@@ -229,9 +251,9 @@ public class WaitingRoomScene {
         playerList.getChildren().clear();
         boolean foundCurrentPlayer = false;
         for (JsonNode playerNode : playersArray) {
-            String playerName = playerNode.has("playerName") ? playerNode.get("playerName").asText() : "UNKNOWN";
-            boolean ready = playerNode.has("ready") && playerNode.get("ready").asBoolean();
-            Label statusLabel = TextUtil.createText(ready ? "READY" : "NOT READY", "hkmodular", 0.024, "#d1d412", root);
+            String playerName = playerNode.has(JSON_PLAYER_NAME) ? playerNode.get(JSON_PLAYER_NAME).asText() : "UNKNOWN";
+            boolean ready = playerNode.has(JSON_READY) && playerNode.get(JSON_READY).asBoolean();
+            Label statusLabel = TextUtil.createText(ready ? READY_TEXT : NOT_READY_TEXT, FONT_HKMODULAR, 0.024, YELLOW, root);
             playerList.getChildren().add(createPlayerRow(playerName, statusLabel));
 
             if (playerName.equalsIgnoreCase(nickname)) {
@@ -243,7 +265,7 @@ public class WaitingRoomScene {
         if (!foundCurrentPlayer) {
             currentReady = false;
         }
-        readyBtn.setText(currentReady ? "UNREADY" : "READY");
+        readyBtn.setText(currentReady ? UNREADY_TEXT : READY_TEXT);
         updateChat(gameState);
         updateCountdown(gameState);
 
@@ -251,7 +273,7 @@ public class WaitingRoomScene {
     }
 
     private void updateChat(JsonNode gameState) {
-        JsonNode messages = gameState.get("lobbyChatMessages");
+        JsonNode messages = gameState.get(JSON_LOBBY_CHAT_MESSAGES);
         if (messages == null || !messages.isArray()) {
             chatArea.clear();
             return;
@@ -259,8 +281,8 @@ public class WaitingRoomScene {
 
         StringBuilder chatText = new StringBuilder();
         for (JsonNode messageNode : messages) {
-            String playerName = messageNode.has("playerName") ? messageNode.get("playerName").asText() : "PLAYER";
-            String message = messageNode.has("message") ? messageNode.get("message").asText() : "";
+            String playerName = messageNode.has(JSON_PLAYER_NAME) ? messageNode.get(JSON_PLAYER_NAME).asText() : DEFAULT_PLAYER_NAME;
+            String message = messageNode.has(JSON_MESSAGE) ? messageNode.get(JSON_MESSAGE).asText() : "";
             if (message.isBlank()) {
                 continue;
             }
@@ -274,8 +296,8 @@ public class WaitingRoomScene {
     }
 
     private void updateCountdown(JsonNode gameState) {
-        long newCountdownStartedAt = gameState.has("lobbyCountdownStartedAt")
-                ? gameState.get("lobbyCountdownStartedAt").asLong()
+        long newCountdownStartedAt = gameState.has(JSON_LOBBY_COUNTDOWN_STARTED_AT)
+                ? gameState.get(JSON_LOBBY_COUNTDOWN_STARTED_AT).asLong()
                 : 0;
 
         if (newCountdownStartedAt <= 0) {
@@ -320,8 +342,8 @@ public class WaitingRoomScene {
         }
 
         ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("playerName", nickname);
-        payload.put("message", message);
+        payload.put(JSON_PLAYER_NAME, nickname);
+        payload.put(JSON_MESSAGE, message);
         gameClient.sendPacket(new Packet(PacketType.LOBBY_CHAT, payload));
     }
 
@@ -331,7 +353,7 @@ public class WaitingRoomScene {
         }
 
         ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("ready", ready);
+        payload.put(JSON_READY, ready);
         gameClient.sendPacket(new Packet(PacketType.LOBBY_READY, payload));
     }
 
@@ -343,7 +365,7 @@ public class WaitingRoomScene {
         if (ownsServer) {
             JdemicNetworkServer.shutdown();
         }
-        SceneManager.switchScene("LOBBY");
+        SceneManager.switchScene(SCENE_LOBBY);
     }
 
     private void transitionToGame(JsonNode gameState) {
@@ -359,13 +381,13 @@ public class WaitingRoomScene {
     private TextField createCyberInput() {
         TextField field = new TextField();
         field.setStyle(
-                "-fx-background-color: black;" +
-                "-fx-text-fill: #00d9ff;" +
-                "-fx-border-color: #00b5d4;" +
+                "-fx-background-color: " + BLACK + ";" +
+                "-fx-text-fill: " + BRIGHT_CYAN + ";" +
+                "-fx-border-color: " + CYAN + ";" +
                 "-fx-border-width: 2;" +
                 "-fx-background-radius: 10;" +
                 "-fx-border-radius: 10;" +
-                "-fx-font-family: 'hkmodular';"
+                "-fx-font-family: '" + FONT_HKMODULAR + "';"
         );
         return field;
     }
@@ -378,9 +400,9 @@ public class WaitingRoomScene {
     private StackPane createPlayerRow(String name, Label statusLabel) {
         StackPane row = new StackPane();
         row.setMaxWidth(460);
-        row.setStyle("-fx-background-color: rgba(0,0,0,0.65); -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 8; -fx-background-radius: 8;");
+        row.setStyle("-fx-background-color: rgba(0,0,0,0.65); -fx-border-color: " + CYAN + "; -fx-border-width: 2; -fx-border-radius: 8; -fx-background-radius: 8;");
 
-        Label nameLabel = TextUtil.createText(name, "hkmodular", 0.024, "#00d9ff", root);
+        Label nameLabel = TextUtil.createText(name, FONT_HKMODULAR, 0.024, BRIGHT_CYAN, root);
 
         HBox inner = new HBox(16, nameLabel, new Region(), statusLabel);
         HBox.setHgrow(inner.getChildren().get(1), Priority.ALWAYS);

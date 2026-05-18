@@ -38,6 +38,7 @@ public class Card {
                     case CONTROL:
                         return("Remove 1 card from the Infection Discard Pile from the game entirely.");
                 }
+                break;
             case INFECTION:
                 return("Use this card to infect " + this.getCardName());
             case EPIDEMIC:
