@@ -20,6 +20,9 @@ public class StateMaskerTest {
     /**
      * Construieste un JSON complet de Game State inainte de fiecare test.
      * Contine: 3 jucatori (cu carti si IP-uri), infectionDeck, playerDeck.
+     *
+     * PrivateSecurityStrategy foloseste campul "id" pentru a identifica jucatorii
+     * si "cardsInHand" pentru cartile din mana (nu "playerName" / "hand").
      */
     @BeforeEach
     public void buildFullGameState() {
@@ -30,25 +33,28 @@ public class StateMaskerTest {
 
         // Player_1 = jucatorul care primeste pachetul (target)
         JSONObject player1 = new JSONObject();
+        player1.put("id", "Player_1");
         player1.put("playerName", "Player_1");
         player1.put("ipAddress", "192.168.1.10");
-        player1.put("hand", new JSONArray().put("Atlanta").put("Madrid").put("Tokyo"));
+        player1.put("cardsInHand", new JSONArray().put("Atlanta").put("Madrid").put("Tokyo"));
         player1.put("role", "Medic");
         players.put(player1);
 
         // Player_2 = alt jucator (datele lui trebuie ascunse de la Player_1)
         JSONObject player2 = new JSONObject();
+        player2.put("id", "Player_2");
         player2.put("playerName", "Player_2");
         player2.put("ipAddress", "192.168.1.20");
-        player2.put("hand", new JSONArray().put("Paris").put("London"));
+        player2.put("cardsInHand", new JSONArray().put("Paris").put("London"));
         player2.put("role", "Scientist");
         players.put(player2);
 
         // Player_3 = al treilea jucator
         JSONObject player3 = new JSONObject();
+        player3.put("id", "Player_3");
         player3.put("playerName", "Player_3");
         player3.put("ipAddress", "10.0.0.5");
-        player3.put("hand", new JSONArray().put("Cairo").put("Beijing").put("Mumbai").put("Sydney"));
+        player3.put("cardsInHand", new JSONArray().put("Cairo").put("Beijing").put("Mumbai").put("Sydney"));
         player3.put("role", "Researcher");
         players.put(player3);
 
@@ -129,11 +135,11 @@ public class StateMaskerTest {
         // Cautam Player_2 si Player_3 in array
         for (int i = 0; i < players.length(); i++) {
             JSONObject player = players.getJSONObject(i);
-            String name = player.getString("playerName");
+            String id = player.getString("id");
 
-            if (!name.equals("Player_1")) {
+            if (!id.equals("Player_1")) {
                 assertFalse(player.has("ipAddress"),
-                        "IP-ul lui " + name + " nu trebuie sa fie vizibil pentru Player_1.");
+                        "IP-ul lui " + id + " nu trebuie sa fie vizibil pentru Player_1.");
             }
         }
     }
@@ -164,9 +170,9 @@ public class StateMaskerTest {
 
         JSONObject player1 = findPlayer(players, "Player_1");
         assertNotNull(player1);
-        assertTrue(player1.has("hand"),
+        assertTrue(player1.has("cardsInHand"),
                 "Player_1 trebuie sa isi vada propriile carti.");
-        assertEquals(3, player1.getJSONArray("hand").length(),
+        assertEquals(3, player1.getJSONArray("cardsInHand").length(),
                 "Player_1 trebuie sa aiba 3 carti vizibile.");
     }
 
@@ -178,11 +184,11 @@ public class StateMaskerTest {
 
         for (int i = 0; i < players.length(); i++) {
             JSONObject player = players.getJSONObject(i);
-            String name = player.getString("playerName");
+            String id = player.getString("id");
 
-            if (!name.equals("Player_1")) {
-                assertFalse(player.has("hand"),
-                        "Cartile lui " + name + " trebuie ascunse de la Player_1.");
+            if (!id.equals("Player_1")) {
+                assertFalse(player.has("cardsInHand"),
+                        "Cartile lui " + id + " trebuie ascunse de la Player_1.");
             }
         }
     }
@@ -200,12 +206,12 @@ public class StateMaskerTest {
         assertNotNull(player3);
 
         assertTrue(player2.has("hiddenCardCount"),
-                "Player_2 trebuie sa aiba hiddenCardCount in loc de hand.");
+                "Player_2 trebuie sa aiba hiddenCardCount in loc de cardsInHand.");
         assertEquals(2, player2.getInt("hiddenCardCount"),
                 "Player_2 are 2 carti, hiddenCardCount trebuie sa fie 2.");
 
         assertTrue(player3.has("hiddenCardCount"),
-                "Player_3 trebuie sa aiba hiddenCardCount in loc de hand.");
+                "Player_3 trebuie sa aiba hiddenCardCount in loc de cardsInHand.");
         assertEquals(4, player3.getInt("hiddenCardCount"),
                 "Player_3 are 4 carti, hiddenCardCount trebuie sa fie 4.");
     }
@@ -229,12 +235,12 @@ public class StateMaskerTest {
         assertNotNull(player3);
 
         // Player_2 isi vede cartile
-        assertTrue(player2.has("hand"), "Player_2 trebuie sa isi vada cartile.");
-        assertEquals(2, player2.getJSONArray("hand").length());
+        assertTrue(player2.has("cardsInHand"), "Player_2 trebuie sa isi vada cartile.");
+        assertEquals(2, player2.getJSONArray("cardsInHand").length());
 
         // Player_1 si Player_3 nu sunt vizibili pentru Player_2
-        assertFalse(player1.has("hand"), "Cartile lui Player_1 trebuie ascunse de la Player_2.");
-        assertFalse(player3.has("hand"), "Cartile lui Player_3 trebuie ascunse de la Player_2.");
+        assertFalse(player1.has("cardsInHand"), "Cartile lui Player_1 trebuie ascunse de la Player_2.");
+        assertFalse(player3.has("cardsInHand"), "Cartile lui Player_3 trebuie ascunse de la Player_2.");
 
         // IP-urile celorlalti sunt ascunse
         assertFalse(player1.has("ipAddress"), "IP-ul lui Player_1 nu trebuie vizibil pentru Player_2.");
@@ -280,27 +286,28 @@ public class StateMaskerTest {
     }
 
     @Test
-    public void testPlayerWithNoHandIsNotAffected() {
-        // Un jucator fara campul 'hand' nu trebuie sa cauzeze erori
+    public void testPlayerWithNoCardsIsNotAffected() {
+        // Un jucator fara campul 'cardsInHand' nu trebuie sa cauzeze erori
         JSONObject state = new JSONObject();
         JSONArray players = new JSONArray();
 
-        JSONObject playerNoHand = new JSONObject();
-        playerNoHand.put("playerName", "Player_2");
-        playerNoHand.put("ipAddress", "10.0.0.1");
-        // Nu punem 'hand' intentionat
+        JSONObject playerNoCards = new JSONObject();
+        playerNoCards.put("id", "Player_2");
+        playerNoCards.put("playerName", "Player_2");
+        playerNoCards.put("ipAddress", "10.0.0.1");
+        // Nu punem 'cardsInHand' intentionat
 
-        players.put(playerNoHand);
+        players.put(playerNoCards);
         state.put("players", players);
 
         String result = StateMasker.maskStateForPlayer(state.toString(), "Player_1");
         JSONObject parsed = new JSONObject(result);
         JSONObject p2 = parsed.getJSONArray("players").getJSONObject(0);
 
-        assertFalse(p2.has("hand"),
-                "Player fara hand nu trebuie sa aiba hand dupa masking.");
+        assertFalse(p2.has("cardsInHand"),
+                "Player fara cardsInHand nu trebuie sa aiba cardsInHand dupa masking.");
         assertFalse(p2.has("hiddenCardCount"),
-                "hiddenCardCount nu trebuie adaugat daca nu exista hand.");
+                "hiddenCardCount nu trebuie adaugat daca nu exista cardsInHand.");
     }
 
     // =========================================================
@@ -308,13 +315,13 @@ public class StateMaskerTest {
     // =========================================================
 
     /**
-     * Cauta un jucator dupa playerName in JSONArray.
+     * Cauta un jucator dupa id in JSONArray.
      * Returneaza null daca nu il gaseste.
      */
-    private JSONObject findPlayer(JSONArray players, String playerName) {
+    private JSONObject findPlayer(JSONArray players, String playerId) {
         for (int i = 0; i < players.length(); i++) {
             JSONObject player = players.getJSONObject(i);
-            if (playerName.equals(player.optString("playerName"))) {
+            if (playerId.equals(player.optString("id"))) {
                 return player;
             }
         }
