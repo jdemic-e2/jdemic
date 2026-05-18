@@ -8,7 +8,10 @@ import java.util.Set;
 // Not important for the first sprint, will improve later with more correct gameplay options.
 public class DiseaseManager {
     private int outbreakScore;
-    private int infectionCubesLeft;
+
+    // Remaining cubes per color. Pandemic uses 24 cubes per disease color.
+    private final java.util.Map<DiseaseColor, Integer> cubesRemaining;
+    private static final int CUBES_PER_COLOR = 24;
 
     private boolean isBlueCured;
     private boolean isYellowCured;
@@ -23,11 +26,16 @@ public class DiseaseManager {
 
     private GameManager gameManager;
 
-    // Start with all 96 cubes and all cures set to false.
+    // Start with CUBES_PER_COLOR per disease and all cures set to false.
     public DiseaseManager(GameManager manager) {
         this.gameManager = manager;
         this.outbreakScore = 0;
-        this.infectionCubesLeft = 96;
+
+        // Initialize per-color supply
+        this.cubesRemaining = new EnumMap<>(DiseaseColor.class);
+        for (DiseaseColor c : DiseaseColor.values()) {
+            this.cubesRemaining.put(c, CUBES_PER_COLOR);
+        }
 
         this.isBlueCured = false;
         this.isYellowCured = false;
@@ -52,7 +60,17 @@ public class DiseaseManager {
     }
 
     public int getInfectionCubesLeft() {
-        return this.infectionCubesLeft;
+        int total = 0;
+        for (Integer v : cubesRemaining.values()) {
+            total += (v == null) ? 0 : v;
+        }
+        return total;
+    }
+
+    /** Returns how many cubes remain for a specific color */
+    public int getCubesLeftForColor(DiseaseColor color) {
+        Integer v = cubesRemaining.get(color);
+        return v == null ? 0 : v;
     }
 
     // Main entry point for adding cubes
@@ -67,35 +85,70 @@ public class DiseaseManager {
             return;
         }
 
-        if (amount >= this.infectionCubesLeft) {
-            this.infectionCubesLeft = 0;
+        int supply = getCubesLeftForColor(color);
+        if (supply <= 0) {
+            // No cubes of this color remain -> immediate loss condition
             gameManager.checkLoseCondition();
             return;
         }
 
+        // Use a single outbreak-tracker per external call so chain reactions are limited
         Set<CityNode> alreadyOutbroken = new HashSet<>();
         infectCity(city, amount, color, alreadyOutbroken);
     }
 
     // Recursive method to handle chain reactions
     private void infectCity(CityNode city, int amount, DiseaseColor color, Set<CityNode> alreadyOutbroken) {
-        if (this.infectionCubesLeft <= 0) {
+        // Check supply for this color before attempting placement
+        int available = getCubesLeftForColor(color);
+        if (available <= 0) {
             gameManager.checkLoseCondition();
             return;
         }
 
         int currentCubes = city.getCubeCount(color);
-        int cubesToAdd = Math.min(amount, 3 - currentCubes);
-        boolean wasAdded = cubesToAdd > 0 && city.addDiseaseCube(color, cubesToAdd);
-        this.infectionCubesLeft -= cubesToAdd;
-        if (this.infectionCubesLeft <= 0) {
-            this.infectionCubesLeft = 0;
-            gameManager.checkLoseCondition();
+
+        // If the city already has 3 cubes and an attempt is made to add more, trigger outbreak
+        if (currentCubes >= 3 && amount > 0) {
+            triggerOutbreak(city, color, alreadyOutbroken);
             return;
         }
 
-        if (!wasAdded || currentCubes + amount > 3) {
-            // If the city would exceed the 3-cube limit, it outbreaks instead.
+        int cubesToAdd = Math.min(amount, 3 - currentCubes);
+        if (cubesToAdd > 0) {
+            // If supply is insufficient to place all requested cubes, place what's left then lose
+            if (available < cubesToAdd) {
+                int place = available;
+                if (place > 0) {
+                    city.addDiseaseCube(color, place);
+                    cubesRemaining.put(color, 0);
+                    // Notify UI
+                    if (gameManager != null) {
+                        try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
+                    }
+                }
+                // Supply exhausted while still needing to place cubes -> lose
+                gameManager.checkLoseCondition();
+                return;
+            }
+
+            boolean added = city.addDiseaseCube(color, cubesToAdd);
+            cubesRemaining.put(color, available - cubesToAdd);
+
+            // Notify UI of cube addition so visuals update
+            if (gameManager != null) {
+                try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
+            }
+
+            // If we couldn't add the cubes (CityNode capped at 3), outbreak instead
+            if (!added) {
+                triggerOutbreak(city, color, alreadyOutbroken);
+                return;
+            }
+        }
+
+        // If there's still leftover amount (e.g., adding more than fits), outbreak
+        if (currentCubes + amount > 3) {
             triggerOutbreak(city, color, alreadyOutbroken);
         }
     }
@@ -108,6 +161,11 @@ public class DiseaseManager {
 
         alreadyOutbroken.add(originCity);
         increaseOutbreakScore();
+
+        // Notify manager/UI that an outbreak occurred so widgets can refresh
+        if (gameManager != null) {
+            try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
+        }
 
         for (CityNode connectedCity : originCity.getConnectedCities()) {
             if (alreadyOutbroken.contains(connectedCity)) {
@@ -124,10 +182,10 @@ public class DiseaseManager {
         DiseaseColor color = city.getNativeColor();
         city.removeDiseaseCubes(color, amount);
 
-        this.infectionCubesLeft += amount;
-        if (this.infectionCubesLeft > 96) {
-            this.infectionCubesLeft = 96;
-        }
+        // Return removed cubes to the color's supply (cap at CUBES_PER_COLOR)
+        int currentLeft = getCubesLeftForColor(color);
+        int newLeft = Math.min(CUBES_PER_COLOR, currentLeft + amount);
+        cubesRemaining.put(color, newLeft);
 
         // If the disease has a discovered cure and now there are no cubes of that
         // color left on the entire board, mark it as eradicated.
@@ -142,6 +200,11 @@ public class DiseaseManager {
                     case YELLOW: this.isYellowEradicated = true; break;
                     case BLACK: this.isBlackEradicated = true; break;
                     case RED: this.isRedEradicated = true; break;
+                }
+
+                // Notify UI that eradication happened
+                if (gameManager != null) {
+                    try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
                 }
             }
         }
@@ -178,6 +241,10 @@ public class DiseaseManager {
             case YELLOW: this.isYellowCured = true; break;
             case BLACK: this.isBlackCured = true; break;
             case RED: this.isRedCured = true; break;
+        }
+        // Notify UI that a cure was discovered so widgets can update
+        if (gameManager != null) {
+            try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
         }
     }
 

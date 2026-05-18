@@ -532,6 +532,16 @@ public class MapTestScene {
         this.infectionRateManager = new InfectionRateManager(root, gameManager);
         this.cureManager = new CureManager(root, gameManager);
 
+        // Register a listener so UI widgets update automatically when model changes
+        try {
+            gameManager.addStateChangeListener(() -> Platform.runLater(() -> {
+                if (outbreakManager != null) outbreakManager.updateTrack();
+                if (infectionRateManager != null) infectionRateManager.updateTrack();
+                if (cureManager != null) cureManager.updateUI();
+                updateVirusVisuals();
+            }));
+        } catch (Exception ignored) {}
+
         HBox outbreakBox = new HBox(outbreakManager.getContainer());
         outbreakBox.setAlignment(Pos.CENTER_LEFT);
         outbreakBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
