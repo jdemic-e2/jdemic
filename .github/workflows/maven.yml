@@ -68,7 +68,6 @@ jobs:
             echo "No integration tests matching *IT.java or *ITCase.java were found."
             exit 0
           fi
-
           mvn -B -Dtest='*IT,*ITCase' test
 
       - name: Upload integration test reports
@@ -123,7 +122,6 @@ jobs:
             echo "JaCoCo CSV report was not generated."
             exit 0
           fi
-
           awk -F, '
             NR > 1 {
               missed += $4
