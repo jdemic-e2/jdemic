@@ -15,6 +15,12 @@ public class DiseaseManager {
     private boolean isBlackCured;
     private boolean isRedCured;
 
+    // Tracks whether a cured disease has been eradicated (no cubes left on the board)
+    private boolean isBlueEradicated;
+    private boolean isYellowEradicated;
+    private boolean isBlackEradicated;
+    private boolean isRedEradicated;
+
     private GameManager gameManager;
 
     // Start with all 96 cubes and all cures set to false.
@@ -27,6 +33,11 @@ public class DiseaseManager {
         this.isYellowCured = false;
         this.isBlackCured = false;
         this.isRedCured = false;
+
+        this.isBlueEradicated = false;
+        this.isYellowEradicated = false;
+        this.isBlackEradicated = false;
+        this.isRedEradicated = false;
     }
 
     public int getOutbreakScore() {
@@ -49,12 +60,19 @@ public class DiseaseManager {
         if (city == null || amount <= 0) {
             return;
         }
+
+        DiseaseColor color = city.getNativeColor();
+        // If the disease has been eradicated, it no longer appears on the board
+        if (isEradicated(color)) {
+            return;
+        }
+
         if (amount >= this.infectionCubesLeft) {
             this.infectionCubesLeft = 0;
             gameManager.checkLoseCondition();
             return;
         }
-        DiseaseColor color = city.getNativeColor();
+
         Set<CityNode> alreadyOutbroken = new HashSet<>();
         infectCity(city, amount, color, alreadyOutbroken);
     }
@@ -110,6 +128,23 @@ public class DiseaseManager {
         if (this.infectionCubesLeft > 96) {
             this.infectionCubesLeft = 96;
         }
+
+        // If the disease has a discovered cure and now there are no cubes of that
+        // color left on the entire board, mark it as eradicated.
+        if (isCured(color)) {
+            int total = 0;
+            for (CityNode c : gameManager.getState().getMap().getCityList()) {
+                total += c.getCubeCount(color);
+            }
+            if (total == 0) {
+                switch (color) {
+                    case BLUE: this.isBlueEradicated = true; break;
+                    case YELLOW: this.isYellowEradicated = true; break;
+                    case BLACK: this.isBlackEradicated = true; break;
+                    case RED: this.isRedEradicated = true; break;
+                }
+            }
+        }
     }
 
     public boolean isCured(DiseaseColor color) {
@@ -118,6 +153,21 @@ public class DiseaseManager {
             case YELLOW: return isYellowCured;
             case BLACK: return isBlackCured;
             case RED: return isRedCured;
+            default: return false;
+        }
+    }
+
+    /**
+     * Returns true if the disease color has been eradicated (cured and no cubes
+     * remain on the board). When eradicated, no further cubes of that color
+     * will be placed by infection effects.
+     */
+    public boolean isEradicated(DiseaseColor color) {
+        switch (color) {
+            case BLUE: return isBlueEradicated;
+            case YELLOW: return isYellowEradicated;
+            case BLACK: return isBlackEradicated;
+            case RED: return isRedEradicated;
             default: return false;
         }
     }

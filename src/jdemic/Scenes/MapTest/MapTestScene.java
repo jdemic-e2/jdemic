@@ -41,6 +41,9 @@ public class MapTestScene {
     private Map<CityNode, Circle> nodeVisuals = new HashMap<>();
     private Map<String, Line> edgeVisuals = new HashMap<>();
 
+    // UI helpers for virus visuals per city
+    private Map<CityNode, jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI> cityVirusUIs = new HashMap<>();
+
     //Variables for notifications
     private NotificationManager notificationManager;
     private VBox notificationContainer;
@@ -244,7 +247,10 @@ public class MapTestScene {
         PlayerState testPlayer = new PlayerState(playerName);
         testPlayer.setCurrentCity(startingCity);
         players.add(testPlayer);
-        return new GameManager(players);
+        GameManager manager = new GameManager(players);
+        // Ensure initial infections and setup occur for local single-player scenes
+        manager.startGame();
+        return manager;
     }
 
     private GameManager createNetworkGameManager(JsonNode gameState) {
@@ -317,6 +323,9 @@ public class MapTestScene {
             manager.getState().setGameStarted(gameState.get("gameStarted").asBoolean());
         }
         applyMapSnapshot(gameState);
+
+        // Refresh virus visuals to reflect any changes applied to city cube counts
+        updateVirusVisuals();
 
         JsonNode playersArray = getPlayersArray(gameState);
         if (playersArray != null && playersArray.isArray()) {
@@ -606,6 +615,7 @@ public class MapTestScene {
     private void refreshTurnUI() {
         updateCurrentPlayerLabel();
         updateHandUI();
+        updateVirusVisuals();
     }
 
     private PlayerState getDisplayedHandPlayer() {
@@ -1099,8 +1109,26 @@ public class MapTestScene {
             mapPane.getChildren().addAll(node, label);
         }
         setupPawns(mapPane);
+        // Create virus UI groups so disease cubes are rendered on the map
+        for (CityNode city : mapGraph.getCityList()) {
+            jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI group = new jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI(city, mapPane, mapPane.heightProperty());
+            cityVirusUIs.put(city, group);
+        }
         mapContainer.getChildren().add(mapPane);
         root.getChildren().add(mapContainer);
+    }
+
+    private void updateVirusVisuals() {
+        if (cityVirusUIs == null || cityVirusUIs.isEmpty()) return;
+        Platform.runLater(() -> {
+            for (jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI group : cityVirusUIs.values()) {
+                try {
+                    group.updateVisuals();
+                } catch (Exception ignored) {
+                    // Defensive: avoid crashing UI if a single city fails to render
+                }
+            }
+        });
     }
 
     private Color getFxColor(DiseaseColor color) {
