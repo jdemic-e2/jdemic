@@ -114,8 +114,9 @@ public class GameClient {
         System.out.println("[GameClient] Received packet: " + packet.getType());
         switch (packet.getType()) {
             case GAME_DATA:
-                // TODO: Update local game state from packet.getPayload()
                 System.out.println("[GameClient] Handling GAME_DATA packet.");
+                latestGameState = packet.getPayload();
+                notifyPlayersUpdated(packet.getPayload());
                 break;
             case PONG:
                 // Handle pong response
@@ -133,13 +134,15 @@ public class GameClient {
     private void handleIncomingData(String data) {
         System.out.println("[GameClient] Received data: " + data);
         try {
-            JsonNode gameState = objectMapper.readTree(data);
+            JsonNode root = objectMapper.readTree(data);
+            JsonNode gameState = root.has("type") && root.has("payload")
+                    ? Packet.fromJson(data).getPayload()
+                    : root;
             latestGameState = gameState;
             notifyPlayersUpdated(gameState);
         } catch (Exception e) {
             System.err.println("[GameClient] Error parsing incoming data: " + e.getMessage());
         }
-        // TODO: Parse as game state JSON and update local state
     }
 
     /**

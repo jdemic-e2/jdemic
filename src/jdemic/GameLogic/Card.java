@@ -51,6 +51,10 @@ public class Card {
         this.eventType = type;
     }
 
+    public EventType getEventType() {
+        return this.eventType;
+    }
+
     public String getCardName() {
         return this.cardName;
     }

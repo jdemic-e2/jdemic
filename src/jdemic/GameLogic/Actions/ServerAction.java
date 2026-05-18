@@ -4,6 +4,7 @@ import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.CardType;
 
 public class ServerAction extends GameAction {
 
@@ -15,13 +16,24 @@ public class ServerAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
+    public CityNode getDestinationCity() {
+        return destinationCity;
+    }
+
+    public Card getCardToDiscard() {
+        return cardToDiscard;
+    }
+
     @Override
     public boolean isValid(GameState state, PlayerState playerState) {
         if (playerState == null || cardToDiscard == null || destinationCity == null) {
             return false;
         }
 
-        return playerState.getHand().contains(cardToDiscard);
+        return playerState.getHand().contains(cardToDiscard)
+                && cardToDiscard.getType() == CardType.EVENT
+                && cardToDiscard.getEventType() == Card.EventType.SERVER
+                && !destinationCity.hasResearchStation();
     }
 
     @Override

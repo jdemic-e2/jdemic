@@ -51,8 +51,6 @@ class DiseaseManagerTest {
     }
 
     private GameManager newManager() {
-        CityNode atlanta = new CityNode("Atlanta", DiseaseColor.BLUE, 0.25f, 0.39f);
-        Player player = new Player(new PlayerState("Ruben", atlanta));
-        return new GameManager(List.of(player));
+        return new GameManager(List.of(new PlayerState("Ruben")));
     }
 }

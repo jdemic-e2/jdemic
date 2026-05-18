@@ -66,6 +66,7 @@ public class DiscoverCure extends GameAction {
         List<Card> hand = playerState.getHand();
         for (Card card : cardsToDiscard) {
             hand.remove(card);
+            state.getCardDeck().discard(card);
         }
 
         state.getDiseaseManager().discoverCure(targetColor);

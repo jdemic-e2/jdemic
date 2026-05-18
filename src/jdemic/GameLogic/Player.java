@@ -6,10 +6,16 @@ import jdemic.GameLogic.Actions.Movement.DriveFerryAction;
 import jdemic.GameLogic.Actions.Movement.DirectFlightAction;
 import jdemic.GameLogic.Actions.Movement.CharterFlightAction;
 import jdemic.GameLogic.Actions.Movement.ShuttleFlightAction;
+import jdemic.GameLogic.Actions.FirewallAction;
+import jdemic.GameLogic.Actions.SatelliteAction;
+import jdemic.GameLogic.Actions.ServerAction;
+import jdemic.GameLogic.Actions.SystemControlAction;
+import jdemic.GameLogic.Actions.ThreatAction;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 
 public class Player {
     
@@ -26,8 +32,7 @@ public class Player {
      * Method called by GUI
      */
     public void executeAction(GameAction action) {
-        // Action name, ex: "DriveAction", "ShuttleFlightAction"
-        String actionName = action.getClass().getSimpleName();
+        String actionName = toPacketAction(action);
         String playerId = state.getPlayerName();
 
         ObjectNode payload = objectMapper.createObjectNode();
@@ -36,19 +41,39 @@ public class Player {
 
         if (action instanceof DriveFerryAction) {
             DriveFerryAction moveAction = (DriveFerryAction) action;
-            payload.put("DestinationCity", moveAction.getDestination().getName());
+            payload.put("destination", moveAction.getDestination().getName());
         }
         else if (action instanceof DirectFlightAction) {
             DirectFlightAction moveAction = (DirectFlightAction) action;
-            payload.put("DestinationCity", moveAction.getDestination().getName());
+            payload.put("destination", moveAction.getDestination().getName());
+            payload.put("cardIndex", getCardIndex(moveAction.getCardToDiscard()));
         } 
         else if (action instanceof CharterFlightAction) {
             CharterFlightAction moveAction = (CharterFlightAction) action;
-            payload.put("DestinationCity", moveAction.getDestination().getName());
+            payload.put("destination", moveAction.getDestination().getName());
+            payload.put("cardIndex", getCardIndex(moveAction.getCardToDiscard()));
         } 
         else if (action instanceof ShuttleFlightAction) {
             ShuttleFlightAction moveAction = (ShuttleFlightAction) action;
-            payload.put("DestinationCity", moveAction.getDestination().getName());
+            payload.put("destination", moveAction.getDestination().getName());
+        } else if (action instanceof FirewallAction firewallAction) {
+            payload.put("cardIndex", getCardIndex(firewallAction.getCardToDiscard()));
+        } else if (action instanceof SatelliteAction satelliteAction) {
+            payload.put("cardIndex", getCardIndex(satelliteAction.getCardToDiscard()));
+            payload.put("targetPlayer", satelliteAction.getTargetPawn());
+            payload.put("destination", satelliteAction.getDestination().getName());
+        } else if (action instanceof ServerAction serverAction) {
+            payload.put("cardIndex", getCardIndex(serverAction.getCardToDiscard()));
+            payload.put("destination", serverAction.getDestinationCity().getName());
+        } else if (action instanceof SystemControlAction systemControlAction) {
+            payload.put("cardIndex", getCardIndex(systemControlAction.getCardToDiscard()));
+            payload.put("infectionCardName", systemControlAction.getInfectionCardToRemove().getCardName());
+        } else if (action instanceof ThreatAction threatAction) {
+            payload.put("cardIndex", getCardIndex(threatAction.getCardToDiscard()));
+            ArrayNode indices = payload.putArray("infectionCardIndices");
+            for (int i = 0; i < threatAction.getRearrangedCards().size(); i++) {
+                indices.add(i);
+            }
         }
 
         System.out.println("[Player] Executing action: " + actionName + ". Sending to server...");
@@ -77,31 +102,11 @@ public class Player {
     }
 
     public void requestDrawCards() {
-        if (gameClient == null) {
-            System.err.println("[Player] Cannot send DrawCards packet, gameClient is null!");
-            return;
-        }
-
-        ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("PlayerID", state.getPlayerName());
-        payload.put("GameAction", "DrawCards");
-
-        System.out.println("[Player] Requesting to draw 2 city cards...");
-        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+        requestEndTurn();
     }
 
     public void requestInfectionPhase() {
-        if (gameClient == null) {
-            System.err.println("[Player] Cannot send Infection packet - gameClient is null!");
-            return;
-        }
-
-        ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("PlayerID", state.getPlayerName());
-        payload.put("GameAction", "DrawInfection");
-
-        System.out.println("[Player] Requesting server to draw infection cards...");
-        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+        requestEndTurn();
     }
 
     public void useCard(Card card) {
@@ -112,8 +117,8 @@ public class Player {
 
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("PlayerID", state.getPlayerName());
-        payload.put("GameAction", "UseCard");
-        payload.put("CardName", card.getCardName());
+        payload.put("GameAction", card.getEventType() == null ? "USE_CARD" : card.getEventType().name());
+        payload.put("cardIndex", getCardIndex(card));
 
         System.out.println("[Player] Playing card: " + card.getCardName() + "...");
         gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
@@ -125,5 +130,33 @@ public class Player {
 
     public void updateState(PlayerState newState) {
         this.state = newState;
+    }
+
+    public void requestEndTurn() {
+        if (gameClient == null) {
+            System.err.println("[Player] Cannot send END_TURN packet, gameClient is null!");
+            return;
+        }
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("PlayerID", state.getPlayerName());
+        payload.put("GameAction", "END_TURN");
+        gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    private String toPacketAction(GameAction action) {
+        if (action instanceof DriveFerryAction) return "DRIVE_FERRY";
+        if (action instanceof DirectFlightAction) return "DIRECT_FLIGHT";
+        if (action instanceof CharterFlightAction) return "CHARTER_FLIGHT";
+        if (action instanceof ShuttleFlightAction) return "SHUTTLE_FLIGHT";
+        if (action instanceof FirewallAction) return "FIREWALL";
+        if (action instanceof SatelliteAction) return "SATELLITE";
+        if (action instanceof ServerAction) return "SERVER";
+        if (action instanceof SystemControlAction) return "SYSTEM_CONTROL";
+        if (action instanceof ThreatAction) return "THREAT";
+        return action.getClass().getSimpleName();
+    }
+
+    private int getCardIndex(Card card) {
+        return card == null ? -1 : state.getHand().indexOf(card);
     }
 }

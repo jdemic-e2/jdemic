@@ -7,6 +7,7 @@ import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.PlayerRoles;
 
+import java.util.Iterator;
 import java.util.List;
 
 public class BuildResearchStation extends GameAction {
@@ -45,7 +46,14 @@ public class BuildResearchStation extends GameAction {
             return;
         }
 
-        playerState.getHand()
-                .removeIf(card -> card.getCardName().equals(currentCity.getName()));
+        Iterator<Card> iterator = playerState.getHand().iterator();
+        while (iterator.hasNext()) {
+            Card card = iterator.next();
+            if (card.getCardName().equals(currentCity.getName())) {
+                iterator.remove();
+                state.getCardDeck().discard(card);
+                return;
+            }
+        }
     }
 }

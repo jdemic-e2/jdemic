@@ -3,6 +3,7 @@ package jdemic.GameLogic.Actions;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.CardType;
 import java.util.List;
 
 public class ThreatAction extends GameAction {
@@ -15,6 +16,14 @@ public class ThreatAction extends GameAction {
         this.rearrangedCards = rearrangedCards;
     }
 
+    public Card getCardToDiscard() {
+        return cardToDiscard;
+    }
+
+    public List<Card> getRearrangedCards() {
+        return rearrangedCards;
+    }
+
     @Override
     public boolean isValid(GameState state, PlayerState playerState) {
         if (playerState == null || cardToDiscard == null || rearrangedCards == null) {
@@ -23,7 +32,12 @@ public class ThreatAction extends GameAction {
         if (rearrangedCards.size() > 6) {
             return false;
         }
-        return playerState.getHand().contains(cardToDiscard);
+        List<Card> topCards = state.getCardDeck().getTopInfectionCards(rearrangedCards.size());
+        return playerState.getHand().contains(cardToDiscard)
+                && cardToDiscard.getType() == CardType.EVENT
+                && cardToDiscard.getEventType() == Card.EventType.THREAT
+                && rearrangedCards.size() == topCards.size()
+                && topCards.containsAll(rearrangedCards);
     }
 
     @Override

@@ -44,6 +44,11 @@ public class DiseaseManager {
 
     // Main entry point for adding cubes
     public void addInfectionCubes(CityNode city, int amount) {
+        if (amount >= this.infectionCubesLeft) {
+            this.infectionCubesLeft = 0;
+            gameManager.checkLoseCondition();
+            return;
+        }
         DiseaseColor color = city.getNativeColor();
         Set<CityNode> alreadyOutbroken = new HashSet<>();
         infectCity(city, amount, color, alreadyOutbroken);
@@ -57,14 +62,13 @@ public class DiseaseManager {
         }
 
         boolean wasAdded = city.addDiseaseCube(color, amount);
+        this.infectionCubesLeft -= amount;
+        if (this.infectionCubesLeft <= 0) {
+            this.infectionCubesLeft = 0;
+            gameManager.checkLoseCondition();
+        }
 
-        if (wasAdded) {
-            this.infectionCubesLeft -= amount;
-            if (this.infectionCubesLeft <= 0) {
-                this.infectionCubesLeft = 0;
-                gameManager.checkLoseCondition();
-            }
-        } else {
+        if (!wasAdded) {
             // If addDiseaseCube returns false, it means we hit the 3-cube limit
             triggerOutbreak(city, color, alreadyOutbroken);
         }
@@ -79,10 +83,6 @@ public class DiseaseManager {
         alreadyOutbroken.add(originCity);
         increaseOutbreakScore();
 
-        // Spread 1 cube to all connected cities in the graph
-        for (CityNode neighbor : originCity.getConnectedCities()) {
-            infectCity(neighbor, 1, color, alreadyOutbroken);
-        }
     }
 
     public void removeInfectionCubes(CityNode city, int amount) {

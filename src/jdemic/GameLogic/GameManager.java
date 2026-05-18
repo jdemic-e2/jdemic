@@ -13,6 +13,7 @@ public class GameManager {
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
     private static final int MAX_OUTBREAKS = 8;
     private boolean initialHandsDealt;
+    private boolean epidemicsAdded;
 
     public GameManager(List<PlayerState> players) {
         this(players, true);
@@ -35,6 +36,7 @@ public class GameManager {
         setupGame();
         if (dealInitialHands) {
             dealInitialHands();
+            addEpidemicsAfterInitialDeal();
         }
     }
 
@@ -60,6 +62,7 @@ public class GameManager {
         state.setActionsRemaining(ACTIONS_PER_TURN);
         state.setLobbyCountdownStartedAt(0);
         dealInitialHands();
+        addEpidemicsAfterInitialDeal();
         state.setGameStarted(true);
     }
 
@@ -79,9 +82,17 @@ public class GameManager {
 
     private int getInitialHandSize(int playerCount)
     {
-        if(playerCount <= 2) return 4;
+        if(playerCount < 2) return 0;
+        if(playerCount == 2) return 4;
         if(playerCount == 3) return 3;
         return 2;
+    }
+
+    private void addEpidemicsAfterInitialDeal() {
+        if(!epidemicsAdded && state.getCardDeck() != null) {
+            state.getCardDeck().addEpidemicCards(4);
+            epidemicsAdded = true;
+        }
     }
 
     public void performAction(Player player, GameAction action)
@@ -158,6 +169,13 @@ public class GameManager {
             currentPlayer.setIsDiscarding(true);
             state.setActionsRemaining(0);
             return;
+        }
+
+        if(state.isSkipInfection()) {
+            state.setSkipInfection(false);
+        } else {
+            infectCities();
+            if(state.isGameOver()) return;
         }
 
         advanceToNextPlayer();

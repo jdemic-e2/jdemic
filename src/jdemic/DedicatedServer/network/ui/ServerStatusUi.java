@@ -4,15 +4,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import jdemic.DedicatedServer.network.core.DedicatedServerConfig;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.GameLogic.GameManager;
 
 import java.awt.Desktop;
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -20,37 +24,94 @@ public class ServerStatusUi {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    private final DedicatedServerConfig config;
     private final Supplier<GameManager> gameManagerSupplier;
     private final IntSupplier connectedPlayerCountSupplier;
     private final Supplier<Packet> latestPacketSupplier;
     private final Runnable shutdownAction;
     private HttpServer httpServer;
+    private ExecutorService executor;
 
     public ServerStatusUi(
+            DedicatedServerConfig config,
             Supplier<GameManager> gameManagerSupplier,
             IntSupplier connectedPlayerCountSupplier,
             Supplier<Packet> latestPacketSupplier,
             Runnable shutdownAction
     ) {
+        this.config = config;
         this.gameManagerSupplier = gameManagerSupplier;
         this.connectedPlayerCountSupplier = connectedPlayerCountSupplier;
         this.latestPacketSupplier = latestPacketSupplier;
         this.shutdownAction = shutdownAction;
     }
 
-    public void start() {
-        try {
-            httpServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-            httpServer.createContext("/", this::handleIndex);
-            httpServer.createContext("/state", this::handleState);
-            httpServer.createContext("/shutdown", this::handleShutdown);
-            httpServer.start();
+    public synchronized void start() throws IOException {
+        if (!config.statusEnabled()) {
+            System.out.println("[ServerStatusUi] UI disabled.");
+            return;
+        }
+        if (httpServer != null) {
+            return;
+        }
 
-            String url = "http://localhost:" + httpServer.getAddress().getPort() + "/";
-            System.out.println("[ServerStatusUi] UI available at " + url);
-            openBrowser(url);
-        } catch (IOException e) {
-            System.err.println("[ServerStatusUi] Could not start server UI: " + e.getMessage());
+        httpServer = HttpServer.create(new InetSocketAddress(config.statusHost(), config.statusPort()), 0);
+        httpServer.createContext("/", this::handleIndex);
+        httpServer.createContext("/state", this::handleState);
+        httpServer.createContext("/health", this::handleHealth);
+        httpServer.createContext("/shutdown", this::handleShutdown);
+        executor = Executors.newCachedThreadPool(runnable -> {
+            Thread thread = new Thread(runnable, "jdemic-status-ui");
+            thread.setDaemon(true);
+            return thread;
+        });
+        httpServer.setExecutor(executor);
+        httpServer.start();
+
+        String url = getBrowserUrl();
+        System.out.println("[ServerStatusUi] UI available at " + url);
+        openBrowser(url);
+    }
+
+    public synchronized void stop() {
+        if (httpServer != null) {
+            httpServer.stop(0);
+            httpServer = null;
+        }
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
+        }
+    }
+
+    private String getBrowserUrl() {
+        String browserHost = "0.0.0.0".equals(config.statusHost()) ? "localhost" : config.statusHost();
+        return "http://" + browserHost + ":" + httpServer.getAddress().getPort() + "/";
+    }
+
+    private void handleHealth(HttpExchange exchange) throws IOException {
+        ObjectNode response = OBJECT_MAPPER.createObjectNode();
+        response.put("status", "ok");
+        response.put("service", "jdemic-dedicated-server");
+        response.put("gameServerPort", config.serverPort());
+        response.put("connectedPlayers", connectedPlayerCountSupplier.getAsInt());
+        sendResponse(exchange, "application/json; charset=UTF-8", OBJECT_MAPPER.writeValueAsString(response));
+    }
+
+    private void openBrowser(String url) {
+        if (!config.openBrowser()) {
+            return;
+        }
+        if (GraphicsEnvironment.isHeadless() || !Desktop.isDesktopSupported()) {
+            System.out.println("[ServerStatusUi] Browser launch skipped because this environment is headless.");
+            return;
+        }
+        try {
+            if (Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(URI.create(url));
+            }
+        } catch (Exception e) {
+            System.err.println("[ServerStatusUi] Could not open browser automatically: " + e.getMessage());
         }
     }
 
@@ -81,12 +142,7 @@ public class ServerStatusUi {
 
     private void handleShutdown(HttpExchange exchange) throws IOException {
         sendResponse(exchange, "text/plain; charset=UTF-8", "Server closing");
-        new Thread(() -> {
-            shutdownAction.run();
-            if (httpServer != null) {
-                httpServer.stop(1);
-            }
-        }, "server-ui-shutdown").start();
+        new Thread(shutdownAction, "server-ui-shutdown").start();
     }
 
     private void sendResponse(HttpExchange exchange, String contentType, String body) throws IOException {
@@ -96,16 +152,6 @@ public class ServerStatusUi {
         exchange.sendResponseHeaders(200, bytes.length);
         try (OutputStream outputStream = exchange.getResponseBody()) {
             outputStream.write(bytes);
-        }
-    }
-
-    private void openBrowser(String url) {
-        try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(URI.create(url));
-            }
-        } catch (Exception e) {
-            System.err.println("[ServerStatusUi] Could not open browser automatically: " + e.getMessage());
         }
     }
 

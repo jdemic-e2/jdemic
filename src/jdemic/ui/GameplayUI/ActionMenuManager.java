@@ -63,11 +63,11 @@ public class ActionMenuManager {
         this.playerName = playerName;
         this.onTurnChangeCallback = onTurnChangeCallback;
         this.mainActions = List.of(
-                new MenuAction("DISCOVER", "DISCOVER"),
+                new MenuAction("DISCOVER", "DISCOVER_CURE"),
                 new MenuAction("MOVE", "MOVE"),
-                new MenuAction("TREAT", "TREAT"),
-                new MenuAction("SHARE", "SHARE"),
-                new MenuAction("BUILD", "BUILD")
+                new MenuAction("TREAT", "TREAT_DISEASE"),
+                new MenuAction("SHARE", "SHARE_KNOWLEDGE"),
+                new MenuAction("BUILD", "BUILD_RESEARCH_STATION")
         );
         this.moveActions = List.of(
                 new MenuAction("DRIVE/FERRY", "DRIVE_FERRY"),
@@ -225,7 +225,7 @@ public class ActionMenuManager {
         List<MenuAction> visibleActions = menuMode == MenuMode.MOVE
                 ? moveActions
                 : mainActions.stream()
-                    .filter(action -> !"DISCOVER".equals(action.packetAction()) || currentPlayerCanDiscover())
+                    .filter(action -> !"DISCOVER_CURE".equals(action.packetAction()) || currentPlayerCanDiscover())
                     .toList();
 
         return visibleActions.stream()

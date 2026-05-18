@@ -4,6 +4,11 @@ import jdemic.GameLogic.GameManager;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.Player;
 import jdemic.GameLogic.Actions.GameAction;
+import jdemic.GameLogic.Actions.FirewallAction;
+import jdemic.GameLogic.Actions.SatelliteAction;
+import jdemic.GameLogic.Actions.ServerAction;
+import jdemic.GameLogic.Actions.SystemControlAction;
+import jdemic.GameLogic.Actions.ThreatAction;
 import jdemic.GameLogic.Actions.Movement.CharterFlightAction;
 import jdemic.GameLogic.Actions.Movement.DirectFlightAction;
 import jdemic.GameLogic.Actions.Movement.DriveFerryAction;
@@ -58,6 +63,12 @@ public class PacketProcessor {
             System.err.println("[PacketProcessor] Cannot process a null packet.");
             return;
         }
+        if (packet.getType() == null) {
+            System.err.println("[PacketProcessor] Unsupported packet type: null");
+            return;
+        }
+
+        System.out.println("[PacketProcessor] Routing packet: " + packet);
 
         switch (packet.getType()) {
             case PING:          handlePing(packet);         break;
@@ -68,7 +79,6 @@ public class PacketProcessor {
             case LOBBY_READY:   handleLobbyReady(packet);   break;
             case DISCONNECT:    handleDisconnect(packet);   break;
             case ERROR:         handleError(packet);        break;
-            case END_TURN:      handleEndTurn(packet);      break;
             default:
                 System.err.println("[PacketProcessor] Unsupported packet type: " + packet.getType());
         }
@@ -79,12 +89,12 @@ public class PacketProcessor {
     // ─────────────────────────────────────────────────────────────────────────
 
     private void handlePing(Packet packet) {
-        System.out.println("[PacketProcessor] Received PING.");
+        System.out.println("[PacketProcessor] Received PING packet.");
         // Pong is sent back via the client handler if needed — nothing to do here
     }
 
     private void handlePong(Packet packet) {
-        System.out.println("[PacketProcessor] Received PONG.");
+        System.out.println("[PacketProcessor] Received PONG packet.");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -108,7 +118,7 @@ public class PacketProcessor {
         // ── Resolve player ────────────────────────────────────────────────────
         String playerId = resolvePlayerId(payload);
         if (playerId == null) {
-            System.err.println("[PacketProcessor] Missing PlayerID in GAME_DATA packet.");
+            System.err.println("[PacketProcessor] Missing or spoofed PlayerID in GAME_DATA packet.");
             return;
         }
 
@@ -131,26 +141,32 @@ public class PacketProcessor {
             return;
         }
 
+        if ("END_TURN".equals(gameAction)) {
+            gameManager.getState().setActionsRemaining(0);
+            gameManager.nextTurn();
+            broadcastGameState();
+            return;
+        }
+
+        if ("DISCARD_CARD".equals(gameAction)) {
+            handleDiscardCard(payload, playerState);
+            return;
+        }
+
         // ── Route to action builder ───────────────────────────────────────────
         Player player = new Player(playerState, null);
         GameAction action = buildAction(gameAction, payload, playerState);
 
         if (action == null) {
-            // buildAction already logged the reason
+            if ("MOVE".equals(gameAction)) {
+                gameManager.consumeAction(playerState);
+                broadcastGameState();
+            }
             return;
         }
 
         gameManager.performAction(player, action);
         System.out.println("[PacketProcessor] Action performed: " + gameAction + " by " + playerId);
-
-        // ── Auto end-of-turn ──────────────────────────────────────────────────
-        // When the last action is spent, run the full end-of-turn sequence:
-        // draw player cards (epidemic fires inside drawHand if triggered),
-        // then infect cities, then advance to the next player.
-        if (gameManager.getState().getActionsRemaining() == 0) {
-            System.out.println("[PacketProcessor] All actions spent — ending turn for " + playerId);
-            gameManager.nextTurn();
-        }
 
         broadcastGameState();
     }
@@ -160,11 +176,20 @@ public class PacketProcessor {
      * in the ClientHandler for this connection.
      */
     private String resolvePlayerId(JsonNode payload) {
+        if (clientHandler != null && clientHandler.getConnectedPlayerName() != null) {
+            String connectedName = clientHandler.getConnectedPlayerName();
+            if (payload.has("PlayerID")) {
+                String claimedName = payload.get("PlayerID").asText();
+                if (claimedName.isBlank() || !claimedName.equalsIgnoreCase(connectedName)) {
+                    System.err.println("[PacketProcessor] PlayerID spoof rejected. Connected="
+                            + connectedName + ", claimed=" + claimedName);
+                    return null;
+                }
+            }
+            return connectedName;
+        }
         if (payload.has("PlayerID") && !payload.get("PlayerID").asText().isBlank()) {
             return payload.get("PlayerID").asText();
-        }
-        if (clientHandler != null && clientHandler.getConnectedPlayerName() != null) {
-            return clientHandler.getConnectedPlayerName();
         }
         return null;
     }
@@ -283,6 +308,42 @@ public class PacketProcessor {
                 }
 
                 return new DiscoverCure(color, chosenCards);
+            }
+
+            case "FIREWALL": {
+                Card card = resolveCardByIndex(payload, "cardIndex", playerState);
+                if (card == null) return null;
+                return new FirewallAction(card);
+            }
+
+            case "SATELLITE": {
+                Card card = resolveCardByIndex(payload, "cardIndex", playerState);
+                CityNode dest = resolveDestination(payload, "destination");
+                String targetPlayer = payload.has("targetPlayer") ? payload.get("targetPlayer").asText() : null;
+                if (card == null || dest == null || targetPlayer == null || targetPlayer.isBlank()) return null;
+                return new SatelliteAction(targetPlayer, dest, card);
+            }
+
+            case "SERVER": {
+                Card card = resolveCardByIndex(payload, "cardIndex", playerState);
+                CityNode dest = resolveDestination(payload, "destination");
+                if (card == null || dest == null) return null;
+                return new ServerAction(dest, card);
+            }
+
+            case "SYSTEM_CONTROL":
+            case "CONTROL": {
+                Card card = resolveCardByIndex(payload, "cardIndex", playerState);
+                Card infectionCard = resolveInfectionDiscardByIndex(payload, "infectionDiscardIndex");
+                if (card == null || infectionCard == null) return null;
+                return new SystemControlAction(card, infectionCard);
+            }
+
+            case "THREAT": {
+                Card card = resolveCardByIndex(payload, "cardIndex", playerState);
+                List<Card> reorderedCards = resolveTopInfectionCards(payload, "infectionCardIndices");
+                if (card == null || reorderedCards == null) return null;
+                return new ThreatAction(card, reorderedCards);
             }
 
             default:
@@ -421,6 +482,15 @@ public class PacketProcessor {
         System.err.println("[PacketProcessor] Received ERROR packet: " + packet);
     }
 
+    private void handleDiscardCard(JsonNode payload, PlayerState playerState) {
+        if (!payload.has("cardIndex") || !payload.get("cardIndex").isInt()) {
+            System.err.println("[PacketProcessor] DISCARD_CARD missing cardIndex.");
+            return;
+        }
+        gameManager.discardCurrentPlayerCard(playerState, payload.get("cardIndex").asInt());
+        broadcastGameState();
+    }
+
     /**
      * Handles an explicit END_TURN packet from the client.
      * The player may still have actions remaining but chooses to skip them.
@@ -505,10 +575,48 @@ public class PacketProcessor {
         }
     }
 
+    private Card resolveInfectionDiscardByIndex(JsonNode payload, String field) {
+        if (!payload.has(field) || !payload.get(field).isInt()) {
+            System.err.println("[PacketProcessor] Missing or non-integer field: " + field);
+            return null;
+        }
+        int idx = payload.get(field).asInt();
+        List<Card> discardPile = gameManager.getState().getCardDeck().getInfectionDiscardPile();
+        if (idx < 0 || idx >= discardPile.size()) {
+            System.err.println("[PacketProcessor] Infection discard index out of bounds: " + idx);
+            return null;
+        }
+        return discardPile.get(idx);
+    }
+
+    private List<Card> resolveTopInfectionCards(JsonNode payload, String field) {
+        if (!payload.has(field) || !payload.get(field).isArray()) {
+            System.err.println("[PacketProcessor] THREAT missing infectionCardIndices array.");
+            return null;
+        }
+
+        List<Card> topCards = gameManager.getState().getCardDeck().getTopInfectionCards(6);
+        List<Card> reordered = new ArrayList<>();
+        for (JsonNode indexNode : payload.get(field)) {
+            int idx = indexNode.asInt(-1);
+            if (idx < 0 || idx >= topCards.size()) {
+                System.err.println("[PacketProcessor] THREAT invalid top infection card index: " + idx);
+                return null;
+            }
+            Card selected = topCards.get(idx);
+            if (reordered.contains(selected)) {
+                System.err.println("[PacketProcessor] THREAT duplicate infection card index: " + idx);
+                return null;
+            }
+            reordered.add(selected);
+        }
+        return reordered;
+    }
+
     //CASE SENSITIVE !!!!!!
     private PlayerState findPlayerState(String playerName) {
         for (PlayerState ps : gameManager.getState().getPlayers()) {
-            if (ps.getPlayerName().equalsIgnoreCase(playerName)) {
+            if (ps.getPlayerName().equals(playerName)) {
                 return ps;
             }
         }
@@ -579,8 +687,6 @@ public class PacketProcessor {
                             System.out.println("[PacketProcessor] Lobby countdown finished. Game started.");
                         }
                     }
-                    gameManager.startGame();
-                    System.out.println("[PacketProcessor] Lobby countdown finished. Game started.");
                     broadcastGameState();
                 }
             }, GAME_START_DELAY_SECONDS, TimeUnit.SECONDS);

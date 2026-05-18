@@ -64,11 +64,6 @@ public class Deck {
         firewall.setEventType(EventType.FIREWALL);
         playerCards.add(firewall);
 
-        // Epidemic cards
-        for(int i = 1; i <= 4; i++){
-            playerCards.add(new Card("System Breach", CardType.EPIDEMIC, null));
-        }
-
         // Initial shuffle of both piles
         initShuffle();
     }
@@ -80,13 +75,31 @@ public class Deck {
 
     public void drawInitialHand(PlayerState player, int cardCount) {
         for (int i = 0; i < cardCount; i++) {
-            drawOneCard(player);
+            drawOneInitialCard(player);
+            if (manager.isGameOver()) {
+                return;
+            }
         }
+    }
+
+    private void drawOneInitialCard(PlayerState player) {
+        for (int i = 0; i < playerCards.size(); i++) {
+            Card drawn = playerCards.get(i);
+            if (drawn.getType() != CardType.EPIDEMIC) {
+                playerCards.remove(i);
+                player.addCard(drawn);
+                return;
+            }
+        }
+
+        manager.getState().setGameOver(true);
+        manager.getState().setGameWon(false);
     }
 
     private void drawOneCard(PlayerState player) {
         if (playerCards.isEmpty()) {
-            manager.checkLoseCondition();
+            manager.getState().setGameOver(true);
+            manager.getState().setGameWon(false);
             return;
         }
 
@@ -157,6 +170,9 @@ public class Deck {
     }
 
     public void reorderTopInfectionCards(List<Card> rearrangedCards) {
+        if (rearrangedCards == null) {
+            return;
+        }
         for (int i = 0; i < rearrangedCards.size(); i++) {
             if (!this.infectionCards.isEmpty()) {
                 this.infectionCards.remove(0);
@@ -165,10 +181,22 @@ public class Deck {
         this.infectionCards.addAll(0, rearrangedCards);
     }
 
+    public List<Card> getTopInfectionCards(int count) {
+        int safeCount = Math.max(0, Math.min(count, infectionCards.size()));
+        return new ArrayList<>(infectionCards.subList(0, safeCount));
+    }
+
     // Initial shuffle for both piles at the start of the game
     public void initShuffle() {
         Collections.shuffle(playerCards);
         Collections.shuffle(infectionCards);
+    }
+
+    public void addEpidemicCards(int count) {
+        for (int i = 0; i < count; i++) {
+            playerCards.add(new Card("System Breach", CardType.EPIDEMIC, null));
+        }
+        Collections.shuffle(playerCards);
     }
 
     public void shuffle(List<Card> list) {

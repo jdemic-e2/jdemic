@@ -675,14 +675,15 @@ public class MapTestScene {
                     
                     // Add click handler for movement
                     nodeCircle.setOnMouseClicked(ev -> {
-                        // Consume an action point
                         int actionsLeft = gameManager.getState().getActionsRemaining();
                         if (actionsLeft > 0) {
-                            gameManager.getState().setActionsRemaining(actionsLeft - 1);
-                            if (gameClient == null && gameManager.getState().getActionsRemaining() <= 0) {
-                                gameManager.nextTurn();
+                            if (gameClient == null) {
+                                gameManager.getState().setActionsRemaining(actionsLeft - 1);
+                                if (gameManager.getState().getActionsRemaining() <= 0) {
+                                    gameManager.nextTurn();
+                                }
                             }
-                            
+
                             sendDriveFerryPacket(neighbor);
                             notificationManager.showNotification(
                                     gameClient == null

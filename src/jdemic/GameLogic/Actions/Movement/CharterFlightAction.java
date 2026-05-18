@@ -21,6 +21,10 @@ public class CharterFlightAction extends GameAction {
     public CityNode getDestination() {
         return this.destination;
     }
+
+    public Card getCardToDiscard() {
+        return this.cardToDiscard;
+    }
     
     public boolean isValid(GameState gameState, PlayerState playerState)
     {
@@ -37,6 +41,9 @@ public class CharterFlightAction extends GameAction {
         if(isValid(state, playerState))
         {
             playerState.getHand().remove(cardToDiscard);
+            if (state != null && state.getCardDeck() != null) {
+                state.getCardDeck().discard(cardToDiscard);
+            }
             playerState.setCurrentCity(destination);
         }
     }

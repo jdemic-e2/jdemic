@@ -4,6 +4,7 @@ import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.CardType;
 
 public class SatelliteAction extends GameAction {
     private String targetPawn;
@@ -16,10 +17,24 @@ public class SatelliteAction extends GameAction {
         this.cardToDiscard = cardToDiscard;
     }
 
+    public String getTargetPawn() {
+        return targetPawn;
+    }
+
+    public CityNode getDestination() {
+        return destination;
+    }
+
+    public Card getCardToDiscard() {
+        return cardToDiscard;
+    }
+
     @Override
     public boolean isValid(GameState state, PlayerState playerState) {
-        if (playerState == null || cardToDiscard == null) return false;
-        return playerState.getHand().contains(cardToDiscard);
+        if (playerState == null || cardToDiscard == null || destination == null || targetPawn == null) return false;
+        return playerState.getHand().contains(cardToDiscard)
+                && cardToDiscard.getType() == CardType.EVENT
+                && cardToDiscard.getEventType() == Card.EventType.SATELLITE;
     }
 
     @Override

@@ -3,6 +3,7 @@ package jdemic.GameLogic.Actions;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.CardType;
 
 public class SystemControlAction extends GameAction {
 
@@ -14,12 +15,23 @@ public class SystemControlAction extends GameAction {
         this.infectionCardToRemove = infectionCardToRemove;
     }
 
+    public Card getCardToDiscard() {
+        return cardToDiscard;
+    }
+
+    public Card getInfectionCardToRemove() {
+        return infectionCardToRemove;
+    }
+
     @Override
     public boolean isValid(GameState state, PlayerState playerState) {
         if (playerState == null || cardToDiscard == null || infectionCardToRemove == null) {
             return false;
         }
-        return playerState.getHand().contains(cardToDiscard);
+        return playerState.getHand().contains(cardToDiscard)
+                && state.getCardDeck().getInfectionDiscardPile().contains(infectionCardToRemove)
+                && cardToDiscard.getType() == CardType.EVENT
+                && cardToDiscard.getEventType() == Card.EventType.CONTROL;
     }
 
     @Override

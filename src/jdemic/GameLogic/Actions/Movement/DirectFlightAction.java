@@ -21,6 +21,10 @@ public class DirectFlightAction extends GameAction {
     public CityNode getDestination() {
         return this.destination;
     }
+
+    public Card getCardToDiscard() {
+        return this.cardToDiscard;
+    }
     
     public boolean isValid(GameState state, PlayerState playerState)
     {
@@ -35,6 +39,9 @@ public class DirectFlightAction extends GameAction {
         if(isValid(state, playerState))
         {
             playerState.getHand().remove(cardToDiscard);
+            if (state != null && state.getCardDeck() != null) {
+                state.getCardDeck().discard(cardToDiscard);
+            }
             playerState.setCurrentCity(destination);
         }
     }
