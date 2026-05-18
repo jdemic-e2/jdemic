@@ -22,8 +22,7 @@ import static org.testfx.matcher.control.LabeledMatchers.hasText;
 
 /**
  * {@link WaitingRoomScene}: chrome ({@code LOBBY} / {@code WAITING ROOM}), the host-row status label,
- * the {@code READY/UNREADY} toggle (the constructor starts the host as ready, so the button label starts as
- * {@code UNREADY}), and the chat-send flow that prepends the host's uppercase nickname.
+ * the {@code READY} toggle in an offline scene, and the chat-send flow when no lobby client is attached.
  * <p>
  * {@code CANCEL} delegates to {@link jdemic.Scenes.SceneManager#switchScene(String)} and is asserted as present only.
  */
@@ -66,30 +65,18 @@ class WaitingRoomSceneFxTest {
     }
 
     @Test
-    void readyToggleSwitchesLabelAndHostStatus(FxRobot robot) {
+    void readyToggleStaysLocalWhenNoClientIsAttached(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
-        // Constructor sets the host status to "READY" and the button text to "UNREADY".
-        Labeled readyBtnLabel = robot.lookup(hasText("UNREADY")).queryLabeled();
+        Labeled readyBtnLabel = robot.lookup(hasText("READY")).queryLabeled();
         assertNotNull(readyBtnLabel);
-        // Host status row currently reads READY.
-        assertNotNull(robot.lookup(hasText("READY")).query());
+        assertNotNull(robot.lookup(hasText("NOT READY")).query());
 
-        ButtonsUtil readyBtn = LobbySceneFxTest.buttonByText(robot, "UNREADY");
+        ButtonsUtil readyBtn = LobbySceneFxTest.buttonByText(robot, "READY");
         robot.clickOn(readyBtn);
         WaitForAsyncUtils.waitForFxEvents();
 
-        // Button flips to READY, host row to WAITING...
         assertNotNull(robot.lookup(hasText("READY")).queryLabeled());
-        // The HOST row WAITING... is now present (other rows already had it, so this is by count).
-        long waitingCount = robot.lookup(hasText("WAITING...")).queryAll().size();
-        assertTrue(waitingCount >= 4, "host row should now also display WAITING...");
-
-        // Toggle back.
-        ButtonsUtil readyBtnAgain = LobbySceneFxTest.buttonByText(robot, "READY");
-        robot.clickOn(readyBtnAgain);
-        WaitForAsyncUtils.waitForFxEvents();
-        long waitingCountAfter = robot.lookup(hasText("WAITING...")).queryAll().size();
-        assertEquals(3, waitingCountAfter, "after toggling back, only the 3 placeholder rows wait");
+        assertNotNull(robot.lookup(hasText("NOT READY")).query());
     }
 
     @Test
@@ -114,8 +101,7 @@ class WaitingRoomSceneFxTest {
         robot.clickOn(sendBtn);
         WaitForAsyncUtils.waitForFxEvents();
 
-        // The scene stores the uppercased nickname in its field and prepends that to chat lines.
-        assertEquals("GUEST: hello team", chatArea.getText());
+        assertEquals("", chatArea.getText());
         assertTrue(chatInput.getText().isEmpty(), "input should clear after send");
     }
 

@@ -27,8 +27,10 @@ import static org.testfx.matcher.control.LabeledMatchers.hasText;
  * <p>
  * Not covered here:
  * <ul>
- *   <li>{@code JOIN BY CODE} and {@code BACK} buttons — both go through {@link jdemic.Scenes.SceneManager#switchScene(String)},
- *       which holds static state and would instantiate sibling scenes; verifying that the buttons exist is sufficient.</li>
+ *   <li>{@code CREATE SERVER} starts real networking on a background thread; the unit-style FX tests cover
+ *       the synchronous validation path instead of opening sockets.</li>
+ *   <li>{@code BACK} goes through {@link jdemic.Scenes.SceneManager#switchScene(String)}, which holds static state;
+ *       verifying that the button exists is sufficient.</li>
  * </ul>
  */
 @ExtendWith(ApplicationExtension.class)
@@ -50,7 +52,7 @@ class LobbySceneFxTest {
         WaitForAsyncUtils.waitForFxEvents();
         assertNotNull(lobbyScene.getRoot());
         assertFalse(lobbyScene.getRoot().getChildren().isEmpty());
-        assertNotNull(robot.lookup(hasText("LOBBY")).query());
+        assertNotNull(robot.lookup(hasText("HOST")).query());
         assertNotNull(robot.lookup(hasText("NICKNAME:")).query());
     }
 
@@ -65,8 +67,8 @@ class LobbySceneFxTest {
     @Test
     void hostJoinAndBackButtonsArePresent(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
-        assertNotNull(buttonByText(robot, "HOST GAME"));
-        assertNotNull(buttonByText(robot, "JOIN BY CODE"));
+        assertNotNull(buttonByText(robot, "CREATE SERVER"));
+        assertNotNull(buttonByText(robot, "JOIN BY IP"));
         assertNotNull(buttonByText(robot, "BACK"));
     }
 
@@ -85,7 +87,7 @@ class LobbySceneFxTest {
         robot.interact(() -> nicknameField.setText("   "));
         WaitForAsyncUtils.waitForFxEvents();
 
-        ButtonsUtil hostBtn = buttonByText(robot, "HOST GAME");
+        ButtonsUtil hostBtn = buttonByText(robot, "CREATE SERVER");
         robot.clickOn(hostBtn);
         WaitForAsyncUtils.waitForFxEvents();
 
@@ -94,7 +96,7 @@ class LobbySceneFxTest {
     }
 
     @Test
-    void hostGameWithValidNicknameSwapsSceneRoot(FxRobot robot) {
+    void joinByIpWithValidNicknameSwapsSceneRoot(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
         Node lobbyRoot = lobbyScene.getRoot();
         assertSame(lobbyRoot, stage.getScene().getRoot());
@@ -103,14 +105,12 @@ class LobbySceneFxTest {
         robot.interact(() -> nicknameField.setText("Emirhan"));
         WaitForAsyncUtils.waitForFxEvents();
 
-        ButtonsUtil hostBtn = buttonByText(robot, "HOST GAME");
-        robot.clickOn(hostBtn);
+        ButtonsUtil joinBtn = buttonByText(robot, "JOIN BY IP");
+        robot.clickOn(joinBtn);
         WaitForAsyncUtils.waitForFxEvents();
 
-        assertNotSame(lobbyRoot, stage.getScene().getRoot(), "HOST GAME should swap the scene root");
-        // The new root belongs to HostGameScene — chrome confirms that.
-        assertNotNull(robot.lookup(hasText("HOST GAME")).query());
-        assertNotNull(robot.lookup(hasText("CODE:")).query());
+        assertNotSame(lobbyRoot, stage.getScene().getRoot(), "JOIN BY IP should swap the scene root");
+        assertNotNull(robot.lookup(hasText("ENTER IP ADDRESS")).query());
     }
 
     private static void assertSame(Object expected, Object actual) {
