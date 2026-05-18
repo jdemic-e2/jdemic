@@ -127,6 +127,12 @@ public class LobbyScene {
                 return;
             }
 
+            try {
+                Thread.sleep(250);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+
             GameClient hostClient = connectAndRegister("localhost", DEFAULT_GAME_PORT, nickname);
             if (hostClient == null) {
                 JdemicNetworkServer.shutdown();

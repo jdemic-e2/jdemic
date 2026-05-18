@@ -355,6 +355,7 @@ public class WaitingRoomScene {
         stage.getScene().setRoot(new MapTestScene(stage, nickname, gameClient, gameState).getRoot());
     }
 
+    @SuppressWarnings("unused")
     private TextField createCyberInput() {
         TextField field = new TextField();
         field.setStyle(
