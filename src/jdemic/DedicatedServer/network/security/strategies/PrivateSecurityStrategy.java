@@ -6,9 +6,14 @@ import org.json.JSONObject;
 public class PrivateSecurityStrategy implements MaskingStrategy {
     @Override
     public void apply(JSONObject gameState, String targetPlayerId) {
-        if (!gameState.has("players")) return;
+        maskPlayers(gameState.optJSONArray("players"), targetPlayerId);
+        maskPlayers(gameState.optJSONArray("playerStates"), targetPlayerId);
+    }
 
-        JSONArray players = gameState.getJSONArray("players");
+    private void maskPlayers(JSONArray players, String targetPlayerId) {
+        if (players == null) {
+            return;
+        }
 
         for (int i = 0; i < players.length(); i++) {
             JSONObject player = players.getJSONObject(i);
@@ -28,7 +33,30 @@ public class PrivateSecurityStrategy implements MaskingStrategy {
                         player.put("hiddenCardCount", cardCount);
                     }
                 }
+            if (!isTargetPlayer(player, targetPlayerId)) {
+                player.remove("ipAddress");
+                maskCards(player, "cardsInHand");
+                maskCards(player, "hand");
             }
         }
+    }
+
+    private boolean isTargetPlayer(JSONObject player, String targetPlayerId) {
+        if (targetPlayerId == null || targetPlayerId.isBlank()) {
+            return false;
+        }
+
+        return targetPlayerId.equalsIgnoreCase(player.optString("id"))
+                || targetPlayerId.equalsIgnoreCase(player.optString("playerName"));
+    }
+
+    private void maskCards(JSONObject player, String cardsField) {
+        JSONArray cards = player.optJSONArray(cardsField);
+        if (cards == null) {
+            return;
+        }
+
+        player.remove(cardsField);
+        player.put("hiddenCardCount", cards.length());
     }
 }
