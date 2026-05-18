@@ -22,6 +22,8 @@ Configure this repository secret:
 
 - Secret: `SONAR_TOKEN`
 
+Generate the token from a SonarCloud user that can run analysis on the `jdemic-e2_jdemic` project. If Sonar analysis fails with a 401/403/404 after the token is present, regenerate the token from a user that belongs to the `jdemic-e2` SonarCloud organization and has permission to execute analysis for the project.
+
 The workflow defaults to the SonarCloud project `jdemic-e2_jdemic` in organization `jdemic-e2`. Override these only if the Sonar project changes:
 
 - Variable: `SONAR_PROJECT_KEY`

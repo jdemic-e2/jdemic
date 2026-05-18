@@ -298,6 +298,7 @@ jobs:
         run: |
           args=(
             "org.sonarsource.scanner.maven:sonar-maven-plugin:5.0.0.4389:sonar"
+            "-Dsonar.token=${SONAR_TOKEN}"
             "-Dsonar.projectKey=${SONAR_PROJECT_KEY}"
             "-Dsonar.host.url=${SONAR_HOST_URL}"
             "-Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml"
