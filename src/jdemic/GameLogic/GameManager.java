@@ -8,9 +8,7 @@ import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 public class GameManager {
     GameState state;
     private final Object stateLock = new Object();
-    private final Object stateLock = new Object();
     private static final int ACTIONS_PER_TURN = 4;
-    private static final int HAND_LIMIT = 7;
     private static final int HAND_LIMIT = 7;
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
     private static final int MAX_OUTBREAKS = 8;
@@ -191,33 +189,6 @@ public class GameManager {
         }
     }
 
-    /**
-     * Completes the current player's turn in the correct Pandemic sequence:
-     *
-     *  1. Draw 2 player cards (epidemic resolves inside Deck.drawHand if triggered).
-     *  2. Infect cities according to the current infection rate.
-     *  3. Check win/lose conditions.
-     *  4. Advance to the next player.
-     *
-     * PacketProcessor calls this after the player has used all 4 actions
-     * (or explicitly sends END_TURN).
-     */
-    public void nextTurn() {
-        if (state.isGameOver()) return;
-
-        PlayerState currentPlayer = state.getCurrentPlayer();
-        if(currentPlayer == null) return;
-
-        if(currentPlayer.getIsDiscarding())
-        {
-            if(currentPlayer.getHand().size() <= HAND_LIMIT) {
-                currentPlayer.setIsDiscarding(false);
-                advanceToNextPlayer();
-            }
-        if(state.getActionsRemaining() <= 0){
-            nextTurn();
-        }
-    }
 
     /**
      * Completes the current player's turn in the correct Pandemic sequence:
