@@ -485,7 +485,11 @@ public class GameLogicTest {
     @Test
     public void testDiseaseManagerDiscoverCureNoException() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
-        gm.getState().getDiseaseManager().discoverCure(DiseaseColor.BLUE);
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+
+        dm.discoverCure(DiseaseColor.BLUE);
+
+        assertTrue(dm.isCured(DiseaseColor.BLUE));
     }
 
     @Test
@@ -512,12 +516,19 @@ public class GameLogicTest {
         CityNode city = gm.getState().getMap().getCity("Atlanta");
         dm.addInfectionCubes(city, 2);
         dm.removeInfectionCubes(city, 1);
+
+        assertEquals(1, city.getCubeCount(DiseaseColor.BLUE));
+        assertEquals(95, dm.getInfectionCubesLeft());
     }
 
     @Test
     public void testDiseaseManagerIncreaseOutbreakScoreNoException() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
-        gm.getState().getDiseaseManager().increaseOutbreakScore();
+        DiseaseManager dm = gm.getState().getDiseaseManager();
+
+        dm.increaseOutbreakScore();
+
+        assertEquals(1, dm.getOutbreakScore());
     }
 
     @Test
@@ -1106,7 +1117,11 @@ public class GameLogicTest {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         Card infCard = new Card("London", CardType.INFECTION,
                 gm.getState().getMap().getCity("London"));
-        gm.getState().getCardDeck().discard(infCard);
+        Deck deck = gm.getState().getCardDeck();
+
+        deck.discard(infCard);
+
+        assertTrue(deck.getInfectionDiscardPile().contains(infCard));
     }
 
     @Test
@@ -1114,7 +1129,11 @@ public class GameLogicTest {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         Card cityCard = new Card("London", CardType.CITY,
                 gm.getState().getMap().getCity("London"));
-        gm.getState().getCardDeck().discard(cityCard);
+        Deck deck = gm.getState().getCardDeck();
+
+        deck.discard(cityCard);
+
+        assertTrue(deck.getPlayerDiscardPile().contains(cityCard));
     }
 
     @Test
@@ -1325,8 +1344,13 @@ public class GameLogicTest {
     public void testPerformActionIsNoOpWhenGameOver() {
         GameManager gm = singlePlayerGame(playerInAtlanta);
         gm.getState().setGameOver(true);
+        CityNode startingCity = playerInAtlanta.getPlayerCurrentCity();
+        int actionsRemaining = gm.getState().getActionsRemaining();
         Player player = new Player(playerInAtlanta, null);
-        gm.performAction(player, new DriveFerryAction(chicago)); // must not throw
+
+        assertDoesNotThrow(() -> gm.performAction(player, new DriveFerryAction(chicago)));
+        assertEquals(startingCity, playerInAtlanta.getPlayerCurrentCity());
+        assertEquals(actionsRemaining, gm.getState().getActionsRemaining());
     }
 
     @Test

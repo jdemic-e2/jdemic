@@ -106,8 +106,6 @@
                         <exclude>jdemic/Main*</exclude>
                         <exclude>jdemic/Scenes/**/*</exclude>
                         <exclude>jdemic/ui/**/*</exclude>
-                        <exclude>jdemic/DedicatedServer/*Test*</exclude>
-                        <exclude>jdemic/DedicatedServer/TestClient*</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -159,25 +157,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.testfx</groupId>
-            <artifactId>testfx-core</artifactId>
-            <version>4.0.18</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testfx</groupId>
-            <artifactId>testfx-junit5</artifactId>
-            <version>4.0.18</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testfx</groupId>
-            <artifactId>openjfx-monocle</artifactId>
-            <version>jdk-12.0.1+2</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>5.10.2</version>
@@ -214,6 +193,12 @@
             <version>${testfx.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>openjfx-monocle</artifactId>
+            <version>jdk-12.0.1+2</version>
+            <scope>test</scope>
+        </dependency>
         
         <!-- ===== GSON (Json) ===== -->
         <dependency>
@@ -237,6 +222,7 @@
             <artifactId>joml</artifactId>
             <version>${joml.version}</version>
         </dependency>
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-base</artifactId>

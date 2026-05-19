@@ -16,7 +16,10 @@ public class PrivateSecurityStrategy implements MaskingStrategy {
         }
 
         for (int i = 0; i < players.length(); i++) {
-            JSONObject player = players.getJSONObject(i);
+            JSONObject player = players.optJSONObject(i);
+            if (player == null) {
+                continue;
+            }
 
             if (!isTargetPlayer(player, targetPlayerId)) {
                 player.remove("ipAddress");

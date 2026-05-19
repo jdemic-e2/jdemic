@@ -103,6 +103,7 @@ public class SecureConnectionManager {
     public static class SecureSocket {
         private final Socket rawSocket;
         private final SecretKey aesKey;
+        private final SecureRandom secureRandom = new SecureRandom();
 
         public SecureSocket(Socket rawSocket, SecretKey aesKey) {
             this.rawSocket = rawSocket;
@@ -111,7 +112,7 @@ public class SecureConnectionManager {
 
         public String encrypt(String data) throws Exception {
             byte[] iv = new byte[12];
-            new SecureRandom().nextBytes(iv);
+            secureRandom.nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(AES_ALGO);
             GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);

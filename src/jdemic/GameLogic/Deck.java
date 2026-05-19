@@ -1,12 +1,15 @@
 package jdemic.GameLogic;
 import jdemic.GameLogic.Card.EventType;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
+import java.util.logging.Logger;
 
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 
 public class Deck {
+
+    private static final Logger LOGGER = Logger.getLogger(Deck.class.getName());
 
     public enum DeckTypes{
         PLAYER,
@@ -113,19 +116,19 @@ public class Deck {
     }
 
     private void resolveEpidemic(Card epidemicCard) {
-        System.out.println("[Deck] EPIDEMIC triggered! Resolving...");
+        LOGGER.info("[Deck] EPIDEMIC triggered! Resolving...");
 
         // INCREASE
         manager.increaseInfectionRate();
         manager.getState().setEpidemicCount(manager.getState().getEpidemicCount() + 1);
-        System.out.println("[Deck] Infection rate increased to: " + manager.getInfectionRate());
+        LOGGER.info("[Deck] Infection rate increased to: " + manager.getInfectionRate());
 
         // INFECT
         if (!infectionCards.isEmpty()) {
             Card bottomCard = infectionCards.remove(infectionCards.size() - 1);
             CityNode targetCity = bottomCard.getTargetCity();
 
-            System.out.println("[Deck] Epidemic infecting city: " + targetCity.getName() + " with 3 cubes.");
+            LOGGER.info("[Deck] Epidemic infecting city: " + targetCity.getName() + " with 3 cubes.");
             manager.getState().getDiseaseManager().addInfectionCubes(targetCity, 3);
 
             infectionDiscardPile.add(bottomCard);
@@ -135,7 +138,7 @@ public class Deck {
         infectionDiscardPile.addAll(infectionCards); // existing deck goes underneath
         infectionCards = new ArrayList<>(infectionDiscardPile);
         infectionDiscardPile.clear();
-        System.out.println("[Deck] Infection deck intensified. New size: " + infectionCards.size());
+        LOGGER.info("[Deck] Infection deck intensified. New size: " + infectionCards.size());
 
         playerDiscardPile.add(epidemicCard);
 

@@ -35,6 +35,63 @@ import jdemic.ui.GameplayUI.*;
 import java.util.*;
 
 public class MapTestScene {
+    private static final String FONT_HKMODULAR = "hkmodular";
+    private static final String DEFAULT_LOCAL_PLAYER_NAME = "Tester";
+    private static final String DEFAULT_PLAYER_NAME = "PLAYER";
+    private static final String CYAN_COLOR = "#00b5d4";
+    private static final String BRIGHT_CYAN_COLOR = "#00d4ff";
+    private static final String HIGHLIGHT_GREEN_COLOR = "#00ff00";
+    private static final String YELLOW_COLOR = "#d1d412";
+    private static final String RED_COLOR = "#ff2d2d";
+    private static final String BLACK_COLOR = "#333333";
+    private static final String MAP_BACKGROUND_RESOURCE = "/backgroundMap.png";
+    private static final String GAME_BACKGROUND_RESOURCE = "/bgGame.png";
+    private static final String SCENE_MAIN_MENU = "MAIN_MENU";
+    private static final String JSON_ACTIONS_REMAINING = "actionsRemaining";
+    private static final String JSON_INFECTION_RATE = "infectionRate";
+    private static final String JSON_EPIDEMIC_COUNT = "epidemicCount";
+    private static final String JSON_GAME_OVER = "gameOver";
+    private static final String JSON_GAME_WON = "gameWon";
+    private static final String JSON_GAME_STARTED = "gameStarted";
+    private static final String JSON_HAND = "hand";
+    private static final String JSON_IS_DISCARDING = "isDiscarding";
+    private static final String JSON_DISCARDING_CARDS = "discardingCards";
+    private static final String JSON_CURRENT_PLAYER_INDEX = "currentPlayerIndex";
+    private static final String JSON_MAP = "map";
+    private static final String JSON_CITY_LIST = "cityList";
+    private static final String JSON_NAME = "name";
+    private static final String JSON_RESEARCH_STATION = "researchStation";
+    private static final String JSON_HAS_RESEARCH_STATION = "hasResearchStation";
+    private static final String JSON_DISEASE_CUBES = "diseaseCubes";
+    private static final String JSON_PLAYERS = "players";
+    private static final String JSON_PLAYER_ARRAY = "playerArray";
+    private static final String JSON_PLAYER_NAME = "playerName";
+    private static final String JSON_PLAYER_CURRENT_CITY = "playerCurrentCity";
+    private static final String JSON_CURRENT_CITY = "currentCity";
+    private static final String JSON_CARD_NAME = "cardName";
+    private static final String JSON_TYPE = "type";
+    private static final String JSON_TARGET_CITY = "targetCity";
+    private static final String JSON_EVENT_TYPE = "eventType";
+    private static final String JSON_LOBBY_CHAT_MESSAGES = "lobbyChatMessages";
+    private static final String PAYLOAD_GAME_ACTION = "GameAction";
+    private static final String PAYLOAD_DESTINATION = "destination";
+    private static final String PAYLOAD_CARD_INDEX = "cardIndex";
+    private static final String PAYLOAD_COLOR = "color";
+    private static final String PAYLOAD_CARD_INDICES = "cardIndices";
+    private static final String PAYLOAD_TARGET_PLAYER = "targetPlayer";
+    private static final String PAYLOAD_DIRECTION = "direction";
+    private static final String PAYLOAD_PLAYER_ID = "PlayerID";
+    private static final String DIRECTION_GIVE = "give";
+    private static final String ACTION_DRIVE_FERRY = "DRIVE_FERRY";
+    private static final String ACTION_SHUTTLE_FLIGHT = "SHUTTLE_FLIGHT";
+    private static final String ACTION_DIRECT_FLIGHT = "DIRECT_FLIGHT";
+    private static final String ACTION_CHARTER_FLIGHT = "CHARTER_FLIGHT";
+    private static final String ACTION_TREAT_DISEASE = "TREAT_DISEASE";
+    private static final String ACTION_DISCOVER_CURE = "DISCOVER_CURE";
+    private static final String ACTION_SHARE_KNOWLEDGE = "SHARE_KNOWLEDGE";
+    private static final String ACTION_BUILD_RESEARCH_STATION = "BUILD_RESEARCH_STATION";
+    private static final String ACTION_DISCARD_CARD = "DISCARD_CARD";
+
     private Stage stage;
     private StackPane root;
     private PandemicMapGraph mapGraph;
@@ -504,7 +561,7 @@ public class MapTestScene {
 
         ButtonsUtil backBtn = new ButtonsUtil(
                 "BACK",
-                "#00b5d4", "black", "#00b5d4", "#00b5d4",
+                CYAN_COLOR, "black", CYAN_COLOR, CYAN_COLOR,
                 2, 10, 10,
                 0.12, 0.06, 0.015,
                 root
@@ -1012,7 +1069,7 @@ public class MapTestScene {
         Color activeLineColor = Color.web("#00ffea");
 
         DropShadow glowEffect = new DropShadow();
-        glowEffect.setColor(Color.web("#00d4ff"));
+        glowEffect.setColor(Color.web(BRIGHT_CYAN_COLOR));
         glowEffect.setRadius(20);
         glowEffect.setSpread(0.6);
 
@@ -1110,7 +1167,7 @@ public class MapTestScene {
 
             Text label = new Text(city.getName());
             label.setFill(Color.WHITE);
-            label.setFont(Font.font("hkmodular", FontWeight.BOLD, 10));
+            label.setFont(Font.font(FONT_HKMODULAR, FontWeight.BOLD, 10));
             label.setMouseTransparent(true);
 
             label.layoutXProperty().bind(Bindings.createDoubleBinding(() -> node.getCenterX() - label.getLayoutBounds().getWidth() / 2, node.centerXProperty(),label.layoutBoundsProperty()));
@@ -1143,10 +1200,10 @@ public class MapTestScene {
 
     private Color getFxColor(DiseaseColor color) {
         return switch (color) {
-            case BLUE -> Color.web("#00b5d4");
+            case BLUE -> Color.web(CYAN_COLOR);
             case YELLOW -> Color.web("#cfc900");
-            case BLACK -> Color.web("#333333");
-            case RED -> Color.web("#ff2d2d");
+            case BLACK -> Color.web(BLACK_COLOR);
+            case RED -> Color.web(RED_COLOR);
         };
     }
 

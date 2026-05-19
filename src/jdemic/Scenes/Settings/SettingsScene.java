@@ -16,6 +16,21 @@ import jdemic.ui.TextUtil;
 import java.util.function.UnaryOperator;
 
 public class SettingsScene {
+    private static final String FONT_HKMODULAR = "hkmodular";
+    private static final String CYAN = "#00b5d4";
+    private static final String RED = "#ff0000";
+    private static final String BLACK = "black";
+    private static final String WHITE = "#ffffff";
+    private static final String TAB_GENERAL = "GENERAL";
+    private static final String TAB_AUDIO = "AUDIO";
+    private static final String TAB_DISPLAY = "DISPLAY";
+    private static final String TAB_GAMEPLAY = "GAMEPLAY";
+    private static final String SCENE_MAIN_MENU = "MAIN_MENU";
+    private static final String BACKGROUND_RESOURCE = "/background.png";
+    private static final String BUTTON_LABEL_BACK = "BACK";
+    private static final String DISCARD_CHANGES_MESSAGE = "DISCARD CHANGES?";
+    private static final String COMBO_STYLE = "-fx-background-color: black; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-font-family: 'hkmodular';";
+
     private StackPane root;
     private Stage stage;
 
@@ -65,10 +80,10 @@ public class SettingsScene {
         StackPane.setAlignment(transparentBox, Pos.CENTER_LEFT);
         layout.setAlignment(Pos.CENTER_LEFT);
 
-        ButtonsUtil genBtn = new ButtonsUtil("GENERAL", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
-        ButtonsUtil audBtn = new ButtonsUtil("AUDIO", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
-        ButtonsUtil dispBtn = new ButtonsUtil("DISPLAY", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
-        ButtonsUtil gameBtn = new ButtonsUtil("GAMEPLAY", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 15, 15, 0.18, 0.08, 0.02, root);
+        ButtonsUtil genBtn = new ButtonsUtil(TAB_GENERAL, CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
+        ButtonsUtil audBtn = new ButtonsUtil(TAB_AUDIO, CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
+        ButtonsUtil dispBtn = new ButtonsUtil(TAB_DISPLAY, CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
+        ButtonsUtil gameBtn = new ButtonsUtil(TAB_GAMEPLAY, CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
         sidebar.getChildren().addAll(genBtn, audBtn, dispBtn, gameBtn);
         sidebar.translateXProperty().bind(root.widthProperty().multiply(0.01));
 
@@ -83,13 +98,13 @@ public class SettingsScene {
         gameplayView = createGameplayContent();
 
         // Navigation Logic (Using the switchTab helper)
-        genBtn.setOnMouseClicked(e -> switchTab("GENERAL", generalView));
-        audBtn.setOnMouseClicked(e -> switchTab("AUDIO", audioView));
-        dispBtn.setOnMouseClicked(e -> switchTab("DISPLAY", displayView));
-        gameBtn.setOnMouseClicked(e -> switchTab("GAMEPLAY", gameplayView));
+        genBtn.setOnMouseClicked(e -> switchTab(TAB_GENERAL, generalView));
+        audBtn.setOnMouseClicked(e -> switchTab(TAB_AUDIO, audioView));
+        dispBtn.setOnMouseClicked(e -> switchTab(TAB_DISPLAY, displayView));
+        gameBtn.setOnMouseClicked(e -> switchTab(TAB_GAMEPLAY, gameplayView));
 
         // Start on Display tab
-        switchTab("DISPLAY", displayView);
+        switchTab(TAB_DISPLAY, displayView);
 
         Region spaceLeft = new Region();
         HBox.setHgrow(spaceLeft,Priority.ALWAYS);
@@ -106,19 +121,19 @@ public class SettingsScene {
         StackPane.setMargin(footer, new Insets(0, 0, 40, 0));
         footer.setPickOnBounds(false);
 
-        ButtonsUtil backBtn = new ButtonsUtil("BACK", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 10, 10, 0.12, 0.06, 0.01, root);
-        ButtonsUtil resetBtn = new ButtonsUtil("RESET", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 10, 10, 0.12, 0.06, 0.01, root);
-        ButtonsUtil applyBtn = new ButtonsUtil("APPLY", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 10, 10, 0.12, 0.06, 0.01, root);
-        ButtonsUtil exitBtn = new ButtonsUtil("EXIT", "#00b5d4", "black", "#00b5d4", "00b5d4", 2, 10, 10, 0.12, 0.06, 0.01, root);
+        ButtonsUtil backBtn = new ButtonsUtil(BUTTON_LABEL_BACK, CYAN, BLACK, CYAN, CYAN, 2, 10, 10, 0.12, 0.06, 0.01, root);
+        ButtonsUtil resetBtn = new ButtonsUtil("RESET", CYAN, BLACK, CYAN, CYAN, 2, 10, 10, 0.12, 0.06, 0.01, root);
+        ButtonsUtil applyBtn = new ButtonsUtil("APPLY", CYAN, BLACK, CYAN, CYAN, 2, 10, 10, 0.12, 0.06, 0.01, root);
+        ButtonsUtil exitBtn = new ButtonsUtil("EXIT", CYAN, BLACK, CYAN, CYAN, 2, 10, 10, 0.12, 0.06, 0.01, root);
 
         backBtn.setOnMouseClicked(e -> {
-            if (hasUnsavedChanges) showOverlay("DISCARD CHANGES?", this::returnToMainMenu);
+            if (hasUnsavedChanges) showOverlay(DISCARD_CHANGES_MESSAGE, this::returnToMainMenu);
             else returnToMainMenu();
         });
 
         resetBtn.setOnMouseClicked(e -> {
             if (hasUnsavedChanges) {
-                showOverlay("DISCARD CHANGES?", () -> {
+                showOverlay(DISCARD_CHANGES_MESSAGE, () -> {
                     resetUIToManager(); // Pulls original data back into UI
                 });
             }
@@ -220,7 +235,7 @@ public class SettingsScene {
     }
 
     private void returnToMainMenu() {
-        SceneManager.switchScene("MAIN_MENU");
+        SceneManager.switchScene(SCENE_MAIN_MENU);
     }
 
     private void markDirty() {
@@ -234,18 +249,18 @@ public class SettingsScene {
         box.setAlignment(Pos.TOP_CENTER);
         SettingsManager sm = SettingsManager.getInstance();
 
-        Label header = TextUtil.createText("DISPLAY SETTINGS", "hkmodular", 0.03, "#ffffff", root);
+        Label header = TextUtil.createText("DISPLAY SETTINGS", FONT_HKMODULAR, 0.03, WHITE, root);
 
         resCombo = new ComboBox<>();
         resCombo.getItems().addAll("800x600","1280x720", "1600x900", "1920x1080");
         resCombo.setValue(sm.resolutionProperty().get()); // Load from manager
-        resCombo.setStyle("-fx-background-color: black; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-font-family: 'hkmodular';");
+        resCombo.setStyle(COMBO_STYLE);
         resCombo.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty ? null : item);
-                setStyle("-fx-text-fill: #00b5d4; -fx-background-color: black;");
+                setStyle("-fx-text-fill: " + CYAN + "; -fx-background-color: " + BLACK + ";");
             }
         });
         resCombo.setOnAction(e -> markDirty());
@@ -265,9 +280,9 @@ public class SettingsScene {
     private void updateFsToggleStyle() {
         boolean isOn = fsToggle.isSelected();
         fsToggle.setText(isOn ? "ON" : "OFF");
-        String bgColor = isOn ? "black" : "#00b5d4";
-        String textColor = isOn ? "#00b5d4" : "black";
-        fsToggle.setStyle("-fx-background-color: " + bgColor + "; -fx-text-fill: " + textColor + "; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-font-family: 'hkmodular'; -fx-padding: 5 15 5 15;");
+        String bgColor = isOn ? BLACK : CYAN;
+        String textColor = isOn ? CYAN : BLACK;
+        fsToggle.setStyle("-fx-background-color: " + bgColor + "; -fx-text-fill: " + textColor + "; -fx-border-color: " + CYAN + "; -fx-border-width: 2; -fx-font-family: '" + FONT_HKMODULAR + "'; -fx-padding: 5 15 5 15;");
     }
 
     private VBox createAudioContent() {
@@ -275,7 +290,7 @@ public class SettingsScene {
         box.setAlignment(Pos.TOP_CENTER);
         SettingsManager sm = SettingsManager.getInstance();
 
-        Label header = TextUtil.createText("AUDIO SETTINGS", "hkmodular", 0.03, "#ffffff", root);
+        Label header = TextUtil.createText("AUDIO SETTINGS", FONT_HKMODULAR, 0.03, WHITE, root);
 
         masterVol = new Slider(0, 100, sm.masterVolumeProperty().get() * 100);
         masterVol.valueProperty().addListener((obs, oldVal, newVal) -> markDirty());
@@ -292,7 +307,7 @@ public class SettingsScene {
         box.setAlignment(Pos.TOP_CENTER);
         SettingsManager sm = SettingsManager.getInstance();
 
-        Label header = TextUtil.createText("GENERAL SETTINGS", "hkmodular", 0.03, "#ffffff", root);
+        Label header = TextUtil.createText("GENERAL SETTINGS", FONT_HKMODULAR, 0.03, WHITE, root);
         nameField = new TextField();
 
         UnaryOperator<TextFormatter.Change> filter = change -> {
@@ -304,7 +319,7 @@ public class SettingsScene {
         nameField.setTextFormatter(new TextFormatter<>(filter));
         nameField.setPromptText("Enter Username");
         nameField.setText(sm.playerNameProperty().get()); // Load from manager
-        nameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #00b5d4; -fx-border-color: #00b5d4; -fx-border-width: 1; -fx-font-family: 'hkmodular'; -fx-font-size: 12px;");
+        nameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: " + CYAN + "; -fx-border-color: " + CYAN + "; -fx-border-width: 1; -fx-font-family: '" + FONT_HKMODULAR + "'; -fx-font-size: 12px;");
         nameField.setMaxWidth(300);
         nameField.textProperty().addListener((obs, oldVal, newVal) -> markDirty());
 
@@ -317,19 +332,19 @@ public class SettingsScene {
         box.setAlignment(Pos.TOP_CENTER);
         SettingsManager sm = SettingsManager.getInstance();
 
-        Label header = TextUtil.createText("GAMEPLAY SETTINGS", "hkmodular", 0.03, "#ffffff", root);
+        Label header = TextUtil.createText("GAMEPLAY SETTINGS", FONT_HKMODULAR, 0.03, WHITE, root);
 
         speedCombo = new ComboBox<>();
         speedCombo.getItems().addAll("SLOW", "MEDIUM", "FAST");
         speedCombo.setValue(sm.animationSpeedProperty().get()); // Load from manager
-        speedCombo.setStyle("-fx-background-color: black; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-font-family: 'hkmodular';");
+        speedCombo.setStyle(COMBO_STYLE);
 
         speedCombo.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : item);
-                setStyle("-fx-text-fill: #00b5d4; -fx-background-color: black; -fx-font-family: 'hkmodular';");
+                setStyle("-fx-text-fill: " + CYAN + "; -fx-background-color: " + BLACK + "; -fx-font-family: '" + FONT_HKMODULAR + "';");
             }
         });
 
@@ -340,7 +355,7 @@ public class SettingsScene {
     }
 
     private HBox createSettingRow(String labelText, Node control) {
-        Label lbl = TextUtil.createText(labelText, "hkmodular", 0.015, "#00b5d4", root);
+        Label lbl = TextUtil.createText(labelText, FONT_HKMODULAR, 0.015, CYAN, root);
         HBox row = new HBox(20, lbl, control);
         row.setAlignment(Pos.CENTER_LEFT);
         Region spacer = new Region();
@@ -354,19 +369,19 @@ public class SettingsScene {
         confirmationOverlay.setStyle("-fx-background-color: rgba(0,0,0,0.8);");
         confirmationOverlay.setVisible(false);
 
-        StackPane dialogBox = PanelUtil.createPanel(0.4, 0.3, "#ff0000", 2, 15, 0, root);
-        dialogBox.setStyle("-fx-background-color: black; -fx-border-color: #ff0000; -fx-border-width: 2;");
+        StackPane dialogBox = PanelUtil.createPanel(0.4, 0.3, RED, 2, 15, 0, root);
+        dialogBox.setStyle("-fx-background-color: " + BLACK + "; -fx-border-color: " + RED + "; -fx-border-width: 2;");
 
         VBox content = new VBox(30);
         content.setAlignment(Pos.CENTER);
 
-        overlayText = TextUtil.createText("UNSAVED CHANGES", "hkmodular", 0.02, "#ffffff", root);
+        overlayText = TextUtil.createText("UNSAVED CHANGES", FONT_HKMODULAR, 0.02, WHITE, root);
 
         HBox btnBox = new HBox(20);
         btnBox.setAlignment(Pos.CENTER);
 
-        ButtonsUtil yesBtn = new ButtonsUtil("YES", "#ff0000", "black", "#ff0000", "#ff0000", 2, 10, 10, 0.1, 0.05, 0.01, root);
-        ButtonsUtil noBtn = new ButtonsUtil("NO", "#00b5d4", "black", "#00b5d4", "#00b5d4", 2, 10, 10, 0.1, 0.05, 0.01, root);
+        ButtonsUtil yesBtn = new ButtonsUtil("YES", RED, BLACK, RED, RED, 2, 10, 10, 0.1, 0.05, 0.01, root);
+        ButtonsUtil noBtn = new ButtonsUtil("NO", CYAN, BLACK, CYAN, CYAN, 2, 10, 10, 0.1, 0.05, 0.01, root);
 
         yesBtn.setOnMouseClicked(e -> {
             confirmationOverlay.setVisible(false);
@@ -391,9 +406,9 @@ public class SettingsScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource("/background.png");
+        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
         if (bgUrl == null) {
-            System.err.println("[SettingsScene] Missing resource: /background.png");
+            System.err.println("[SettingsScene] Missing resource: " + BACKGROUND_RESOURCE);
             return;
         }
         ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));

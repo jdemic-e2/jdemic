@@ -2,7 +2,6 @@ package jdemic.frontend;
 
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Labeled;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import jdemic.Scenes.Lobby.JoinCodeScene;
@@ -14,10 +13,12 @@ import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.testfx.matcher.control.LabeledMatchers.hasText;
 
@@ -47,16 +48,16 @@ class JoinCodeSceneFxTest {
         assertNotNull(joinCodeScene.getRoot());
         assertFalse(joinCodeScene.getRoot().getChildren().isEmpty());
         assertNotNull(robot.lookup(hasText("LOBBY")).query());
-        assertNotNull(robot.lookup(hasText("ENTER ACCESS CODE")).query());
+        assertNotNull(robot.lookup(hasText("ENTER IP ADDRESS")).query());
     }
 
     @Test
     void codeFieldShowsPlaceholderAndStartsEmpty(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
-        TextField codeField = robot.lookup(".text-field").queryAs(TextField.class);
+        TextField codeField = codeField(robot);
         assertNotNull(codeField);
         assertTrue(codeField.getText() == null || codeField.getText().isEmpty());
-        assertEquals("XXXX-YYYY", codeField.getPromptText());
+        assertEquals("192.168.1.100", codeField.getPromptText());
     }
 
     @Test
@@ -69,44 +70,61 @@ class JoinCodeSceneFxTest {
     @Test
     void errorLabelHiddenInitially(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
-        Labeled err = robot.lookup(hasText("ERROR: INVALID CODE")).queryLabeled();
-        assertNotNull(err);
-        assertFalse(err.isVisible());
+        long visibleIpPromptCount = robot.lookup(hasText("ENTER IP ADDRESS")).queryAll().stream()
+                .filter(Node::isVisible)
+                .count();
+        assertEquals(1, visibleIpPromptCount, "only the input prompt should be visible initially");
     }
 
     @Test
-    void invalidCodeRevealsErrorLabelAndKeepsScene(FxRobot robot) {
+    void emptyIpRevealsErrorLabelAndKeepsScene(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
         Node originalRoot = stage.getScene().getRoot();
 
-        TextField codeField = robot.lookup(".text-field").queryAs(TextField.class);
-        robot.interact(() -> codeField.setText("ZZZZ-9999"));
+        TextField codeField = codeField(robot);
+        robot.interact(() -> codeField.setText("   "));
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil joinBtn = LobbySceneFxTest.buttonByText(robot, "JOIN");
         robot.clickOn(joinBtn);
         WaitForAsyncUtils.waitForFxEvents();
 
-        Labeled err = robot.lookup(hasText("ERROR: INVALID CODE")).queryLabeled();
-        assertTrue(err.isVisible(), "invalid code should reveal the error label");
-        // Scene root must NOT change on invalid input.
+        long visibleIpPromptCount = robot.lookup(hasText("ENTER IP ADDRESS")).queryAll().stream()
+                .filter(Node::isVisible)
+                .count();
+        assertTrue(visibleIpPromptCount >= 2, "empty IP should reveal the validation error label");
         assertEquals(originalRoot, stage.getScene().getRoot());
     }
 
     @Test
-    void validCodeAdvancesToWaitingRoom(FxRobot robot) {
+    void blankNicknameRevealsErrorBeforeNetworking(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
         Node originalRoot = stage.getScene().getRoot();
 
-        TextField codeField = robot.lookup(".text-field").queryAs(TextField.class);
-        robot.interact(() -> codeField.setText("1234"));
+        List<TextField> fields = textFields(robot);
+        TextField nicknameField = fields.get(0);
+        TextField codeField = fields.get(1);
+        robot.interact(() -> {
+            nicknameField.setText("   ");
+            codeField.setText("127.0.0.1");
+        });
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil joinBtn = LobbySceneFxTest.buttonByText(robot, "JOIN");
         robot.clickOn(joinBtn);
         WaitForAsyncUtils.waitForFxEvents();
 
-        assertNotSame(originalRoot, stage.getScene().getRoot());
-        assertNotNull(robot.lookup(hasText("WAITING ROOM")).query());
+        assertNotNull(robot.lookup(hasText("ENTER NICKNAME")).queryLabeled());
+        assertEquals(originalRoot, stage.getScene().getRoot());
+    }
+
+    private static TextField codeField(FxRobot robot) {
+        return textFields(robot).get(1);
+    }
+
+    private static List<TextField> textFields(FxRobot robot) {
+        return new ArrayList<>(robot.lookup(".text-field").queryAll()).stream()
+                .map(TextField.class::cast)
+                .toList();
     }
 }

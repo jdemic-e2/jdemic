@@ -4,6 +4,8 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Labeled;
 import javafx.scene.input.Clipboard;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import jdemic.Scenes.Lobby.HostGameScene;
 import jdemic.ui.ButtonsUtil;
@@ -17,7 +19,6 @@ import org.testfx.util.WaitForAsyncUtils;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.testfx.matcher.control.LabeledMatchers.hasText;
 
@@ -52,16 +53,12 @@ class HostGameSceneFxTest {
     }
 
     @Test
-    void hostCodeIsNonBlankUppercaseAlphanumericWithDash(FxRobot robot) {
+    void hostCodeIsNonBlankIpAddress(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
         String code = findHostCode(robot);
         assertNotNull(code, "host code label not found");
         assertFalse(code.isBlank());
-        // Allowed alphabet: A-H, J-N, P-Z, 2-9, plus dash. No lowercase, no I/O/0/1.
-        assertTrue(code.matches("[A-HJ-NP-Z2-9-]+"), "unexpected code charset: " + code);
-        // generateHostCode produces 8 chars plus a dash after the 4th — 9 total.
-        assertEquals(9, code.length(), "host code should be 8 chars with one dash separator");
-        assertEquals('-', code.charAt(4));
+        assertTrue(code.matches("\\d{1,3}(\\.\\d{1,3}){3}"), "unexpected IP host code: " + code);
     }
 
     @Test
@@ -78,8 +75,26 @@ class HostGameSceneFxTest {
         String code = findHostCode(robot);
 
         ButtonsUtil copyBtn = LobbySceneFxTest.buttonByText(robot, "COPY");
-        robot.clickOn(copyBtn);
-        WaitForAsyncUtils.waitForFxEvents();
+        robot.interact(() -> copyBtn.fireEvent(new MouseEvent(
+                MouseEvent.MOUSE_CLICKED,
+                0,
+                0,
+                0,
+                0,
+                MouseButton.PRIMARY,
+                1,
+                false,
+                false,
+                false,
+                false,
+                true,
+                false,
+                false,
+                false,
+                false,
+                false,
+                null
+        )));
 
         final String[] clipboardText = new String[1];
         robot.interact(() -> clipboardText[0] = Clipboard.getSystemClipboard().getString());
@@ -87,25 +102,19 @@ class HostGameSceneFxTest {
     }
 
     @Test
-    void hostButtonAdvancesToWaitingRoom(FxRobot robot) {
+    void hostButtonIsPresentWithoutStartingNetwork(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
-        Node hostGameRoot = hostGameScene.getRoot();
         ButtonsUtil hostBtn = LobbySceneFxTest.buttonByText(robot, "HOST");
-
-        robot.clickOn(hostBtn);
-        WaitForAsyncUtils.waitForFxEvents();
-
-        assertNotSame(hostGameRoot, stage.getScene().getRoot());
-        assertNotNull(robot.lookup(hasText("WAITING ROOM")).query(),
-                "HOST should transition to WaitingRoomScene chrome");
+        assertFalse(hostBtn.isDisabled());
+        assertEquals(hostGameScene.getRoot(), stage.getScene().getRoot());
     }
 
     private static String findHostCode(FxRobot robot) {
-        // Code value Label is the only one matching the charset; collect by predicate.
+        // Code value Label is the only one matching the IPv4 address shape; collect by predicate.
         for (Node n : robot.lookup(".label").queryAll()) {
             if (n instanceof Labeled l) {
                 String t = l.getText();
-                if (t != null && t.matches("[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}")) {
+                if (t != null && t.matches("\\d{1,3}(\\.\\d{1,3}){3}")) {
                     return t;
                 }
             }

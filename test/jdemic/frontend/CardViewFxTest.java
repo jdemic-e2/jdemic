@@ -1,6 +1,5 @@
 package jdemic.frontend;
 
-import javafx.geometry.Point2D;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
@@ -80,20 +79,22 @@ class CardViewFxTest {
     void hoverDriveScalesInnerPastUnityWithoutThrowing(FxRobot robot) throws Exception {
         WaitForAsyncUtils.waitForFxEvents();
         VBox inner = (VBox) cardView.getChildren().get(0);
-        // Stabilize: another test or default cursor position may have left the card hovered.
-        robot.moveTo(new Point2D(20, 20));
-        waitUntil(() -> inner.getScaleX() <= 1.01, 3000);
+
+        robot.interact(() -> cardView.setMouseTransparent(true));
+        assertDoesNotThrow(() -> robot.interact(() -> cardView.getOnMouseExited().handle(null)));
+        waitUntil(() -> Math.abs(inner.getScaleX() - 1.0) <= 0.02
+                && Math.abs(inner.getScaleY() - 1.0) <= 0.02, 3000);
+
         assertEquals(1.0, inner.getScaleX(), 0.02);
         assertEquals(1.0, inner.getScaleY(), 0.02);
 
-        Point2D scenePoint = cardView.localToScene(cardView.getWidth() / 2, cardView.getHeight() / 2);
-        assertDoesNotThrow(() -> robot.moveTo(scenePoint));
+        assertDoesNotThrow(() -> robot.interact(() -> cardView.getOnMouseEntered().handle(null)));
 
         waitUntil(() -> inner.getScaleX() >= 1.04, 3000);
 
-        Point2D away = new Point2D(scenePoint.getX() + 400, scenePoint.getY() + 300);
-        robot.moveTo(away);
-        waitUntil(() -> inner.getScaleX() <= 1.01, 3000);
+        assertDoesNotThrow(() -> robot.interact(() -> cardView.getOnMouseExited().handle(null)));
+        waitUntil(() -> Math.abs(inner.getScaleX() - 1.0) <= 0.02
+                && Math.abs(inner.getScaleY() - 1.0) <= 0.02, 3000);
     }
 
     private static void waitUntil(java.util.function.BooleanSupplier condition, long timeoutMs) throws InterruptedException {

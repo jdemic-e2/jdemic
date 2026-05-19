@@ -28,7 +28,7 @@ public class ButtonsUtil extends StackPane {
             double fontRatio,
             StackPane root
     ) {
-        setPickOnBounds(false);
+        setPickOnBounds(true);
 
         // Bind size to scene
         sceneProperty().addListener((obs, oldScene, newScene) -> {
