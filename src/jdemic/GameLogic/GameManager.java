@@ -16,6 +16,24 @@ public class GameManager {
     private boolean epidemicsAdded;
     private boolean initialInfectionsDealt;
 
+    // Simple state-change listener hooks for UI to react to model updates
+    private final java.util.List<Runnable> stateChangeListeners = new java.util.ArrayList<>();
+
+    public void addStateChangeListener(Runnable listener) {
+        if (listener == null) return;
+        stateChangeListeners.add(listener);
+    }
+
+    public void removeStateChangeListener(Runnable listener) {
+        stateChangeListeners.remove(listener);
+    }
+
+    public void notifyStateChange() {
+        for (Runnable r : new java.util.ArrayList<>(stateChangeListeners)) {
+            try { r.run(); } catch (Exception ignored) {}
+        }
+    }
+
     public GameManager(List<PlayerState> players) {
         this(players, true);
     }
@@ -129,14 +147,23 @@ public class GameManager {
     {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
-        if(state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
-        
+        // If the current player is discarding, reject attempts from other players.
+        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()
+                && (player == null || !state.isPlayerTurn(player.getState()))) return;
+
         // Only allow the current player to perform actions
         if(!state.isPlayerTurn(player.getState())) return;
 
         if (action.isValid(state, player.getState())) {
             action.execute(state, player.getState());
             state.setActionsRemaining(state.getActionsRemaining() - 1);
+            checkWinCondition();
+            if(state.isGameOver()) return;
+            
+            // Automatically advance to next turn when actions reach 0
+            if(state.getActionsRemaining() <= 0){
+                nextTurn();
+            }
             checkWinCondition();
             if(state.isGameOver()) return;
             
@@ -151,7 +178,8 @@ public class GameManager {
     {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
-        if(state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
+        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()
+                && !state.isPlayerTurn(playerState)) return;
         if(!state.isPlayerTurn(playerState)) return;
 
         state.setActionsRemaining(state.getActionsRemaining() - 1);
@@ -160,6 +188,7 @@ public class GameManager {
             nextTurn();
         }
     }
+
 
     /**
      * Completes the current player's turn in the correct Pandemic sequence:
@@ -360,7 +389,14 @@ public class GameManager {
 
 
     public void increaseInfectionRate() {
-        state.setInfectionRate(state.getInfectionRate() + 1);
+        // Advance the infection-rate pointer but cap to the last index of the track
+        int currentIndex = state.getInfectionRate();
+        int maxIndex = INFECTION_RATE_TRACK.length - 1;
+        int nextIndex = Math.min(currentIndex + 1, maxIndex);
+        state.setInfectionRate(nextIndex);
+
+        // Notify UI/widgets that infection rate changed
+        notifyStateChange();
     }
 
     public PlayerState getCurrentPlayer() {
