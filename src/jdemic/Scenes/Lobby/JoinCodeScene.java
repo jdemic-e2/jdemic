@@ -126,7 +126,7 @@ public class JoinCodeScene {
         new Thread(() -> {
             try {
                 String targetIp = code;
-                int targetPort = 9000;
+                int targetPort = 9001;
 
                 if (code.contains(":")) {
                     String[] parts = code.split(":");
