@@ -22,18 +22,16 @@ WORKDIR /app
 COPY --from=build --chown=jdemic:jdemic /app/target/jdemic-engine-1.0-SNAPSHOT.jar ./jdemic-engine.jar
 COPY --from=build --chown=jdemic:jdemic /app/target/dependency ./dependency
 
-ENV JDEMIC_SERVER_PORT=9000
-ENV JDEMIC_STATUS_ENABLED=true
-ENV JDEMIC_STATUS_HOST=0.0.0.0
-ENV JDEMIC_STATUS_PORT=8080
-ENV JDEMIC_OPEN_BROWSER=false
+ENV JDEMIC_ORCHESTRATOR_PORT=8080
+ENV JDEMIC_SERVER_PORT_MIN=9001
+ENV JDEMIC_SERVER_PORT_MAX=9999
 
-EXPOSE 9000
 EXPOSE 8080
+EXPOSE 9001-9999
 
 USER jdemic
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD if [ "$JDEMIC_STATUS_ENABLED" = "false" ]; then exit 0; fi; curl -fsS "http://127.0.0.1:${JDEMIC_STATUS_PORT}/health" >/dev/null || exit 1
+  CMD curl -fsS "http://127.0.0.1:${JDEMIC_ORCHESTRATOR_PORT}/health" >/dev/null || exit 1
 
-CMD ["java", "-cp", "jdemic-engine.jar:dependency/*", "jdemic.DedicatedServer.network.core.JdemicNetworkServer"]
+CMD ["java", "-cp", "jdemic-engine.jar:dependency/*", "jdemic.DedicatedServer.network.core.MasterOrchestrator"]

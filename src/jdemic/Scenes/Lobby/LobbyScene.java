@@ -17,12 +17,18 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.TextUtil;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 
 public class LobbyScene {
     private final StackPane root;
     private final Stage stage;
     private static final int DEFAULT_GAME_PORT = 9000;
+    private static final int DEFAULT_ORCHESTRATOR_PORT = 8080;
 
     public LobbyScene(Stage stage) {
         this.stage = stage;
@@ -109,6 +115,12 @@ public class LobbyScene {
 
     private void startLocalServerAndEnterLobby(String nickname, ButtonsUtil hostBtn, Label errorLabel) {
         new Thread(() -> {
+            Integer orchestratedPort = requestServerFromOrchestrator();
+            if (orchestratedPort != null) {
+                connectHostAndOpenWaitingRoom("localhost", orchestratedPort, nickname, hostBtn, errorLabel, false);
+                return;
+            }
+
             DedicatedServerConfig config = new DedicatedServerConfig(
                     DEFAULT_GAME_PORT,
                     true,
@@ -127,28 +139,61 @@ public class LobbyScene {
                 return;
             }
 
-            try {
-                Thread.sleep(250);
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-            }
-
-            GameClient hostClient = connectAndRegister("localhost", DEFAULT_GAME_PORT, nickname);
-            if (hostClient == null) {
+            if (!connectHostAndOpenWaitingRoom("localhost", DEFAULT_GAME_PORT, nickname, hostBtn, errorLabel, true)) {
                 JdemicNetworkServer.shutdown();
-                Platform.runLater(() -> {
-                    errorLabel.setText("FAILED TO CONNECT TO SERVER");
-                    errorLabel.setVisible(true);
-                    hostBtn.setDisable(false);
-                });
-                return;
+            }
+        }, "jdemic-create-server").start();
+    }
+
+    private Integer requestServerFromOrchestrator() {
+        try (Socket orchestratorSocket = new Socket()) {
+            orchestratorSocket.connect(new InetSocketAddress("localhost", DEFAULT_ORCHESTRATOR_PORT), 500);
+            orchestratorSocket.setSoTimeout(1000);
+
+            PrintWriter out = new PrintWriter(orchestratorSocket.getOutputStream(), true);
+            BufferedReader in = new BufferedReader(new InputStreamReader(orchestratorSocket.getInputStream()));
+
+            out.println("HOST");
+            String response = in.readLine();
+            if (response == null || !response.startsWith("SUCCESS:")) {
+                System.err.println("[LobbyScene] Orchestrator unavailable or invalid response: " + response);
+                return null;
             }
 
-            String roomCode = getLocalHostAddress() + ":" + DEFAULT_GAME_PORT;
-            Platform.runLater(() ->
-                    stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, roomCode, hostClient, true).getRoot())
-            );
-        }, "jdemic-create-server").start();
+            return Integer.parseInt(response.split(":")[1]);
+        } catch (Exception ex) {
+            System.err.println("[LobbyScene] Orchestrator unavailable: " + ex.getMessage());
+            return null;
+        }
+    }
+
+    private boolean connectHostAndOpenWaitingRoom(
+            String host,
+            int port,
+            String nickname,
+            ButtonsUtil hostBtn,
+            Label errorLabel,
+            boolean ownsServer
+    ) {
+        try {
+            Thread.sleep(250);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            showHostError("FAILED TO CONNECT TO SERVER", hostBtn, errorLabel);
+            return false;
+        }
+
+        GameClient hostClient = connectAndRegister(host, port, nickname);
+        if (hostClient == null) {
+            showHostError("FAILED TO CONNECT TO SERVER", hostBtn, errorLabel);
+            return false;
+        }
+
+        String roomCode = getLocalHostAddress() + ":" + port;
+        Platform.runLater(() ->
+                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, roomCode, hostClient, ownsServer).getRoot())
+        );
+        return true;
     }
 
     private GameClient connectAndRegister(String host, int port, String nickname) {
@@ -172,5 +217,13 @@ public class LobbyScene {
         } catch (Exception e) {
             return "127.0.0.1";
         }
+    }
+
+    private void showHostError(String message, ButtonsUtil hostBtn, Label errorLabel) {
+        Platform.runLater(() -> {
+            errorLabel.setText(message);
+            errorLabel.setVisible(true);
+            hostBtn.setDisable(false);
+        });
     }
 }
