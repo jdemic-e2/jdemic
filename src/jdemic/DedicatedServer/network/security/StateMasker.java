@@ -39,7 +39,7 @@ public class StateMasker {
             return gameState.toString();
 
         } catch (JSONException e) {
-            // FALLBACK: Allows your existing TestClient/SecurityTest to pass simple strings
+            // Keep non-JSON diagnostic messages flowing through unchanged.
             return rawData;
         } catch (Exception e) {
             System.err.println("[StateMasker] Critical error: " + e.getMessage());

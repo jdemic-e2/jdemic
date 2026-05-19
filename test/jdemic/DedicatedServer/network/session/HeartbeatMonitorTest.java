@@ -96,6 +96,17 @@ class HeartbeatMonitorTest {
         }
     }
 
+    @Test
+    void startAndStopShouldCompleteWithoutThrowing() {
+        HeartbeatMonitor monitor = new HeartbeatMonitor();
+
+        assertDoesNotThrow(() -> {
+            monitor.start();
+            Thread.sleep(50);
+            monitor.stop();
+        });
+    }
+
     private ConnectedSockets openConnectedSockets() throws Exception {
         try (ServerSocket listener = new ServerSocket(0)) {
             ExecutorService executor = Executors.newSingleThreadExecutor();

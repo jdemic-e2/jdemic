@@ -13,7 +13,7 @@
 package jdemic.e2e;
 
 import jdemic.GameLogic.*;
-import jdemic.GameLogic.Actions.*;
+import jdemic.GameLogic.Actions.Movement.*;
 import jdemic.GameLogic.ServerRelatedClasses.*;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +29,8 @@ class GameFlowE2ETest {
     private GameManager gameManager;
     private Player player1;
     private Player player2;
+    private PlayerState state1;
+    private PlayerState state2;
 
     /**
      * Creates a fresh 2-player game before every test.
@@ -40,13 +42,13 @@ class GameFlowE2ETest {
         PandemicMapGraph map = new PandemicMapGraph();
         CityNode atlanta = map.getCity("Atlanta");
 
-        PlayerState state1 = new PlayerState("Ruben", atlanta);
-        PlayerState state2 = new PlayerState("Alvaro", atlanta);
+        state1 = new PlayerState("Ruben");
+        state1.setCurrentCity(atlanta);
+        state2 = new PlayerState("Alvaro");
+        state2.setCurrentCity(atlanta);
 
-        player1 = new Player(state1);
-        player2 = new Player(state2);
 
-        gameManager = new GameManager(List.of(player1, player2));
+        gameManager = new GameManager(List.of(state1, state2));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -90,7 +92,7 @@ class GameFlowE2ETest {
     @Test
     @DisplayName("E2E-05 | First player to act is player 1 (index 0)")
     void firstCurrentPlayerShouldBePlayerOne() {
-        assertEquals(player1, gameManager.getCurrentPlayer(),
+        assertEquals(state1, gameManager.getCurrentPlayer(),
                 "Player 1 must be the current player at game start.");
     }
 
@@ -110,9 +112,9 @@ class GameFlowE2ETest {
         atlanta.addConnection(chicago);
 
         DriveFerryAction move = new DriveFerryAction(chicago);
-        gameManager.performAction(player1, move);
+        gameManager.performAction(state1.getPlayer(), move);
 
-        assertEquals(chicago, player1.getState().getPlayerCurrentCity(),
+        assertEquals(chicago, state1.getPlayerCurrentCity(),
                 "Player 1 should be in Chicago after a Drive/Ferry action.");
     }
 
@@ -123,10 +125,10 @@ class GameFlowE2ETest {
         CityNode tokyo = map.getCity("Tokyo"); // Tokyo is not adjacent to Atlanta
 
         DriveFerryAction illegalMove = new DriveFerryAction(tokyo);
-        gameManager.performAction(player1, illegalMove);
+        gameManager.performAction(state1.getPlayer(), illegalMove);
 
         // Player must remain in Atlanta
-        assertNotEquals(tokyo, player1.getState().getPlayerCurrentCity(),
+        assertNotEquals(tokyo, state1.getPlayerCurrentCity(),
                 "Player 1 must not teleport to Tokyo without a valid connection.");
     }
 
@@ -140,7 +142,7 @@ class GameFlowE2ETest {
         atlanta.addConnection(chicago);
 
         int before = gameManager.getState().getActionsRemaining();
-        gameManager.performAction(player1, new DriveFerryAction(chicago));
+        gameManager.performAction(state1.getPlayer(), new DriveFerryAction(chicago));
         int after = gameManager.getState().getActionsRemaining();
 
         assertEquals(before - 1, after,
@@ -162,11 +164,11 @@ class GameFlowE2ETest {
         player1.getState().addCard(tokyoCard);
 
         DirectFlightAction flight = new DirectFlightAction(tokyo, tokyoCard);
-        gameManager.performAction(player1, flight);
+        gameManager.performAction(state1.getPlayer(), flight);
 
-        assertEquals(tokyo, player1.getState().getPlayerCurrentCity(),
+        assertEquals(tokyo, state1.getPlayerCurrentCity(),
                 "Player 1 should be in Tokyo after a Direct Flight action.");
-        assertFalse(player1.getState().getHand().contains(tokyoCard),
+        assertFalse(state1.getHand().contains(tokyoCard),
                 "The Tokyo card must be discarded after the Direct Flight.");
     }
 
@@ -183,9 +185,9 @@ class GameFlowE2ETest {
         player1.getState().addCard(wrongCard);
 
         DirectFlightAction illegalFlight = new DirectFlightAction(tokyo, wrongCard);
-        gameManager.performAction(player1, illegalFlight);
+        gameManager.performAction(state1.getPlayer(), illegalFlight);
 
-        assertEquals(atlanta, player1.getState().getPlayerCurrentCity(),
+        assertEquals(atlanta, state1.getPlayerCurrentCity(),
                 "Player 1 must stay in Atlanta when the required card is not in hand.");
     }
 
@@ -197,7 +199,7 @@ class GameFlowE2ETest {
     @DisplayName("E2E-11 | Turn advances to player 2 after nextTurn()")
     void turnShouldAdvanceToSecondPlayer() {
         gameManager.nextTurn();
-        assertEquals(player2, gameManager.getCurrentPlayer(),
+        assertEquals(state2, gameManager.getCurrentPlayer(),
                 "After the first nextTurn(), player 2 should be the active player.");
     }
 
@@ -206,7 +208,7 @@ class GameFlowE2ETest {
     void turnShouldWrapAroundToFirstPlayer() {
         gameManager.nextTurn(); // → player 2
         gameManager.nextTurn(); // → player 1 again
-        assertEquals(player1, gameManager.getCurrentPlayer(),
+        assertEquals(state1, gameManager.getCurrentPlayer(),
                 "Turn must cycle back to player 1 after both players have gone.");
     }
 
@@ -218,7 +220,7 @@ class GameFlowE2ETest {
         CityNode atlanta = map.getCity("Atlanta");
         CityNode chicago = map.getCity("Chicago");
         atlanta.addConnection(chicago);
-        gameManager.performAction(player1, new DriveFerryAction(chicago));
+        gameManager.performAction(state1.getPlayer(), new DriveFerryAction(chicago));
 
         gameManager.nextTurn();
 
@@ -363,7 +365,7 @@ class GameFlowE2ETest {
         // Game should still be running normally
         assertFalse(gameManager.isGameOver(),
                 "Game must still be active after a normal 2-turn sequence.");
-        assertEquals(player1, gameManager.getCurrentPlayer(),
+        assertEquals(state1, gameManager.getCurrentPlayer(),
                 "After 2 full turns, it should be Player 1's turn again.");
     }
 

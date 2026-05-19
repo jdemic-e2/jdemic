@@ -20,9 +20,10 @@ import jdemic.DedicatedServer.network.transport.PacketType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.util.logging.Logger;
 
 public class Player {
-    
+    private static final Logger LOGGER = Logger.getLogger(Player.class.getName());
     private PlayerState state;
     private GameClient gameClient; // Class that sends packages to the server
     private static final ObjectMapper objectMapper = new ObjectMapper();
