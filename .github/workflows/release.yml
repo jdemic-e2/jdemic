@@ -28,12 +28,11 @@ jobs:
         run: mvn clean package -DskipTests
 
       - name: Generate Version Tag
-        id: versioning
-        run: |
-          # Generate a unique version based on the run number (e.g., v1.0.42)
-          VERSION="v1.0.${{ github.run_number }}"
-          echo "RELEASE_TAG=$VERSION" >> $GITHUB_ENV
-          echo "Created version tag: $VERSION"
+      id: versioning
+      run: |# Generate a unique version based on run number and attempt (e.g., v1.0.42.1)
+        VERSION="v1.0.${{ github.run_number }}.${{ github.run_attempt }}"
+        echo "RELEASE_TAG=$VERSION" >> $GITHUB_ENV
+        echo "Created version tag: $VERSION"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
