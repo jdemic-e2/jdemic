@@ -117,7 +117,7 @@ public class LobbyScene {
         new Thread(() -> {
             Integer orchestratedPort = requestServerFromOrchestrator();
             if (orchestratedPort != null) {
-                connectHostAndOpenWaitingRoom("localhost", orchestratedPort, nickname, hostBtn, errorLabel, false);
+                connectHostAndOpenWaitingRoom("79.118.90.140", orchestratedPort, nickname, hostBtn, errorLabel, false);
                 return;
             }
 
@@ -139,7 +139,7 @@ public class LobbyScene {
                 return;
             }
 
-            if (!connectHostAndOpenWaitingRoom("localhost", DEFAULT_GAME_PORT, nickname, hostBtn, errorLabel, true)) {
+            if (!connectHostAndOpenWaitingRoom("79.118.90.140", DEFAULT_GAME_PORT, nickname, hostBtn, errorLabel, true)) {
                 JdemicNetworkServer.shutdown();
             }
         }, "jdemic-create-server").start();
@@ -147,7 +147,7 @@ public class LobbyScene {
 
     private Integer requestServerFromOrchestrator() {
         try (Socket orchestratorSocket = new Socket()) {
-            orchestratorSocket.connect(new InetSocketAddress("localhost", DEFAULT_ORCHESTRATOR_PORT), 500);
+            orchestratorSocket.connect(new InetSocketAddress("79.118.90.140", DEFAULT_ORCHESTRATOR_PORT), 500);
             orchestratorSocket.setSoTimeout(1000);
 
             PrintWriter out = new PrintWriter(orchestratorSocket.getOutputStream(), true);
