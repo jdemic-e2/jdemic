@@ -601,6 +601,10 @@ public class MapTestScene {
         }
     }
 
+    private static void configurePassiveHudRegion(Region region) {
+        region.setPickOnBounds(false);
+    }
+
     private void setupPauseMenu() {
         pauseMenuOverlay = new PauseMenuOverlay(root, this::disconnectFromGame, this::bringPauseControlToFront);
     }
@@ -632,7 +636,7 @@ public class MapTestScene {
         HBox outbreakBox = new HBox(outbreakManager.getContainer());
         outbreakBox.setAlignment(Pos.CENTER_LEFT);
         outbreakBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        outbreakBox.setPickOnBounds(false);
+        configurePassiveHudRegion(outbreakBox);
 
         StackPane.setAlignment(outbreakBox, Pos.TOP_LEFT);
         StackPane.setMargin(outbreakBox, new Insets(40, 0, 0, 40));
@@ -640,14 +644,14 @@ public class MapTestScene {
         HBox infectionBox = new HBox(infectionRateManager.getContainer());
         infectionBox.setAlignment(Pos.CENTER);
         infectionBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        infectionBox.setPickOnBounds(false);
+        configurePassiveHudRegion(infectionBox);
 
         StackPane.setAlignment(infectionBox, Pos.TOP_CENTER);
         StackPane.setMargin(infectionBox, new Insets(40, 0, 0, 0));
 
         VBox curesBox = cureManager.getContainer();
         curesBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        curesBox.setPickOnBounds(false);
+        configurePassiveHudRegion(curesBox);
 
         StackPane.setAlignment(curesBox, Pos.TOP_RIGHT);
         StackPane.setMargin(curesBox, new Insets(100, 40, 0, 0));
@@ -677,7 +681,7 @@ public class MapTestScene {
         ));
         notificationContainer.setAlignment(Pos.TOP_RIGHT);
         notificationContainer.setMouseTransparent(true);
-        notificationContainer.setPickOnBounds(false);
+        configurePassiveHudRegion(notificationContainer);
 
         notificationManager = new NotificationManager(notificationContainer);
         root.getChildren().add(notificationContainer);
