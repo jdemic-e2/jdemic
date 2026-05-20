@@ -47,6 +47,7 @@ public class ChatManager {
         chatPanel.maxHeightProperty().bind(chatPanel.prefHeightProperty());
         StackPane wrapper = new StackPane(chatPanel);
         chatPanel.prefWidthProperty().bind(wrapper.prefWidthProperty());
+        wrapper.setPickOnBounds(false);
         wrapper.setMaxSize(StackPane.USE_PREF_SIZE, StackPane.USE_PREF_SIZE);
         wrapper.setStyle("-fx-background-color: black;" + "-fx-border-color: transparent #00b5d4 transparent transparent;" + "-fx-border-width: 0 1 0 0;");
         wrapper.prefWidthProperty().bind(root.widthProperty().multiply(0.24));
