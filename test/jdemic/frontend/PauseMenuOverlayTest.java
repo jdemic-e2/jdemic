@@ -314,7 +314,7 @@ class PauseMenuOverlayTest {
     private static boolean hasVisibleText(Parent searchRoot, String text) {
         return flatten(searchRoot).stream()
                 .filter(Node::isVisible)
-                .filter(n -> n instanceof Labeled)
+                .filter(Labeled.class::isInstance)
                 .map(n -> ((Labeled) n).getText())
                 .anyMatch(text::equals);
     }

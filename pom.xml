@@ -105,7 +105,9 @@
                         <exclude>Launcher*</exclude>
                         <exclude>jdemic/Main*</exclude>
                         <exclude>jdemic/Scenes/**/*</exclude>
-                        <exclude>jdemic/ui/**/*</exclude>
+                        <!-- Exclude heavy JavaFX gameplay widgets; keep shared UI (e.g. PauseMenuOverlay) instrumented for Sonar. -->
+                        <exclude>jdemic/ui/GameplayUI/**</exclude>
+                        <exclude>jdemic/ui/gameplay/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>
