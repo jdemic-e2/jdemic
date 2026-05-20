@@ -1,6 +1,7 @@
 package jdemic.ui;
 
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.DoubleProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
@@ -29,6 +30,29 @@ public class PauseMenuOverlay {
     private static final String WHITE = "#ffffff";
     private static final String YELLOW = "#ffff00";
 
+    private static final String LABEL_PAUSED = "PAUSED";
+    private static final String LABEL_RESUME = "RESUME";
+    private static final String LABEL_SETTINGS = "SETTINGS";
+    private static final String LABEL_TUTORIAL = "TUTORIAL";
+    private static final String LABEL_DISCONNECT = "DISCONNECT";
+    private static final String LABEL_BACK = "BACK";
+    private static final String LABEL_YES = "YES";
+    private static final String LABEL_NO = "NO";
+    private static final String MSG_DISCONNECT_CONFIRM = "DISCONNECT AND RETURN TO MAIN MENU?";
+
+    private static final double OVERLAY_WIDTH_RATIO = 0.42;
+    private static final double OVERLAY_HEIGHT_RATIO = 0.55;
+    private static final double DIM_OPACITY = 0.75;
+    private static final int PANEL_BORDER_WIDTH = 2;
+    private static final int PANEL_CORNER_RADIUS = 12;
+    private static final double MAIN_PANEL_GLOW_RADIUS = 20.0;
+    private static final double VOLUME_SLIDER_MAX = 100.0;
+    private static final double VOLUME_PERCENT_SCALE = 100.0;
+
+    private static final double BTN_WIDTH_RATIO = 0.75;
+    private static final double BTN_HEIGHT_RATIO = 0.09;
+    private static final double BTN_FONT_RATIO = 0.018;
+
     public enum Panel {
         MAIN,
         SETTINGS,
@@ -37,13 +61,12 @@ public class PauseMenuOverlay {
 
     private final StackPane parent;
     private final Runnable onDisconnectConfirmed;
+    private final Runnable onOverlayHidden;
     private final StackPane overlayRoot;
     private final StackPane contentHolder;
     private final VBox mainMenuContent;
     private Panel activePanel = Panel.MAIN;
     private StackPane activeConfirmationRoot;
-
-    private final Runnable onOverlayHidden;
 
     public PauseMenuOverlay(StackPane parent, Runnable onDisconnectConfirmed) {
         this(parent, onDisconnectConfirmed, null);
@@ -63,13 +86,13 @@ public class PauseMenuOverlay {
         Rectangle dim = new Rectangle();
         dim.widthProperty().bind(parent.widthProperty());
         dim.heightProperty().bind(parent.heightProperty());
-        dim.setFill(Color.rgb(5, 10, 20, 0.75));
+        dim.setFill(Color.rgb(5, 10, 20, DIM_OPACITY));
         dim.setMouseTransparent(false);
 
         contentHolder = new StackPane();
         StackPane.setAlignment(contentHolder, Pos.CENTER);
-        contentHolder.prefWidthProperty().bind(parent.widthProperty().multiply(0.42));
-        contentHolder.prefHeightProperty().bind(parent.heightProperty().multiply(0.55));
+        contentHolder.prefWidthProperty().bind(parent.widthProperty().multiply(OVERLAY_WIDTH_RATIO));
+        contentHolder.prefHeightProperty().bind(parent.heightProperty().multiply(OVERLAY_HEIGHT_RATIO));
         contentHolder.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
         mainMenuContent = buildMainMenu();
@@ -120,22 +143,22 @@ public class PauseMenuOverlay {
         }
     }
 
+    public void toggle() {
+        if (!isVisible()) {
+            show();
+            return;
+        }
+        if (activePanel != Panel.MAIN) {
+            showPanel(Panel.MAIN);
+        } else {
+            hide();
+        }
+    }
+
     private void dismissActiveConfirmation() {
         if (activeConfirmationRoot != null) {
             parent.getChildren().remove(activeConfirmationRoot);
             activeConfirmationRoot = null;
-        }
-    }
-
-    public void toggle() {
-        if (isVisible()) {
-            if (activePanel != Panel.MAIN) {
-                showPanel(Panel.MAIN);
-            } else {
-                hide();
-            }
-        } else {
-            show();
         }
     }
 
@@ -150,36 +173,16 @@ public class PauseMenuOverlay {
     }
 
     private VBox buildMainMenu() {
-        StackPane panelBox = PanelUtil.createPanel(1.0, 1.0, CYAN, 2, 15, 10, parent);
-        panelBox.setStyle(
-                "-fx-background-color: rgba(10, 20, 40, 0.95);"
-                        + "-fx-border-color: " + BRIGHT_CYAN + ";"
-                        + "-fx-border-width: 2;"
-                        + "-fx-background-radius: 12;"
-                        + "-fx-border-radius: 12;"
-        );
-        GlowUtil.applyGlow(panelBox, BRIGHT_CYAN, 20);
+        StackPane panelBox = createPanelBox(BRIGHT_CYAN, MAIN_PANEL_GLOW_RADIUS);
+        VBox layout = createCenteredLayout(panelBox, 0.06, 0.08, 0.1);
 
-        VBox layout = new VBox();
-        layout.setAlignment(Pos.CENTER);
-        layout.spacingProperty().bind(panelBox.heightProperty().multiply(0.06));
-        layout.paddingProperty().bind(Bindings.createObjectBinding(
-                () -> new Insets(
-                        panelBox.getHeight() * 0.08,
-                        panelBox.getWidth() * 0.1,
-                        panelBox.getHeight() * 0.08,
-                        panelBox.getWidth() * 0.1),
-                panelBox.widthProperty(),
-                panelBox.heightProperty()
-        ));
-
-        Label title = TextUtil.createText("PAUSED", FONT_HKMODULAR, 0.035, BRIGHT_CYAN, parent);
+        Label title = TextUtil.createText(LABEL_PAUSED, FONT_HKMODULAR, 0.035, BRIGHT_CYAN, parent);
         title.setTextAlignment(TextAlignment.CENTER);
 
-        ButtonsUtil resumeBtn = menuButton("RESUME", CYAN);
-        ButtonsUtil settingsBtn = menuButton("SETTINGS", CYAN);
-        ButtonsUtil tutorialBtn = menuButton("TUTORIAL", CYAN);
-        ButtonsUtil disconnectBtn = menuButton("DISCONNECT", RED);
+        ButtonsUtil resumeBtn = menuButton(LABEL_RESUME, CYAN);
+        ButtonsUtil settingsBtn = menuButton(LABEL_SETTINGS, CYAN);
+        ButtonsUtil tutorialBtn = menuButton(LABEL_TUTORIAL, CYAN);
+        ButtonsUtil disconnectBtn = menuButton(LABEL_DISCONNECT, RED);
 
         resumeBtn.setOnMouseClicked(e -> hide());
         settingsBtn.setOnMouseClicked(e -> showPanel(Panel.SETTINGS));
@@ -188,24 +191,12 @@ public class PauseMenuOverlay {
 
         layout.getChildren().addAll(title, resumeBtn, settingsBtn, tutorialBtn, disconnectBtn);
         panelBox.getChildren().add(layout);
-
-        VBox wrapper = new VBox(panelBox);
-        wrapper.setAlignment(Pos.CENTER);
-        VBox.setVgrow(panelBox, Priority.ALWAYS);
-        return wrapper;
+        return wrapPanel(panelBox);
     }
 
     private VBox buildSettingsPanel() {
-        StackPane panelBox = PanelUtil.createPanel(1.0, 1.0, CYAN, 2, 15, 10, parent);
-        panelBox.setStyle(
-                "-fx-background-color: rgba(10, 20, 40, 0.95);"
-                        + "-fx-border-color: " + CYAN + ";"
-                        + "-fx-border-width: 2;"
-                        + "-fx-background-radius: 12;"
-                        + "-fx-border-radius: 12;"
-        );
-
-        SettingsManager sm = SettingsManager.getInstance();
+        StackPane panelBox = createPanelBox(CYAN, 0);
+        SettingsManager settingsManager = SettingsManager.getInstance();
 
         VBox layout = new VBox(16);
         layout.setAlignment(Pos.TOP_CENTER);
@@ -226,47 +217,24 @@ public class PauseMenuOverlay {
         note.setTextAlignment(TextAlignment.CENTER);
         note.maxWidthProperty().bind(panelBox.widthProperty().multiply(0.9));
 
-        Slider masterVol = volumeSlider(sm.masterVolumeProperty().get() * 100);
-        masterVol.valueProperty().addListener((obs, oldVal, newVal) -> {
-            sm.masterVolumeProperty().set(newVal.doubleValue() / 100.0);
-            AudioManager.getInstance().updateVolume();
-            sm.saveSettings();
-        });
-
-        Slider musicVol = volumeSlider(sm.musicVolumeProperty().get() * 100);
-        musicVol.valueProperty().addListener((obs, oldVal, newVal) -> {
-            sm.musicVolumeProperty().set(newVal.doubleValue() / 100.0);
-            AudioManager.getInstance().updateVolume();
-            sm.saveSettings();
-        });
+        Slider masterVol = volumeSlider(settingsManager.masterVolumeProperty().get() * VOLUME_PERCENT_SCALE);
+        Slider musicVol = volumeSlider(settingsManager.musicVolumeProperty().get() * VOLUME_PERCENT_SCALE);
+        bindVolumeSlider(masterVol, settingsManager.masterVolumeProperty());
+        bindVolumeSlider(musicVol, settingsManager.musicVolumeProperty());
 
         layout.getChildren().addAll(
                 title,
                 note,
                 settingsRow("MASTER VOLUME", masterVol),
-                settingsRow("MUSIC VOLUME", musicVol)
+                settingsRow("MUSIC VOLUME", musicVol),
+                backButton()
         );
-
-        ButtonsUtil backBtn = menuButton("BACK", CYAN);
-        backBtn.setOnMouseClicked(e -> showPanel(Panel.MAIN));
-        layout.getChildren().add(backBtn);
-
         panelBox.getChildren().add(layout);
-
-        VBox wrapper = new VBox(panelBox);
-        wrapper.setAlignment(Pos.CENTER);
-        return wrapper;
+        return wrapPanel(panelBox);
     }
 
     private VBox buildRulesPanel() {
-        StackPane panelBox = PanelUtil.createPanel(1.0, 1.0, CYAN, 2, 15, 10, parent);
-        panelBox.setStyle(
-                "-fx-background-color: rgba(10, 20, 40, 0.95);"
-                        + "-fx-border-color: " + CYAN + ";"
-                        + "-fx-border-width: 2;"
-                        + "-fx-background-radius: 12;"
-                        + "-fx-border-radius: 12;"
-        );
+        StackPane panelBox = createPanelBox(CYAN, 0);
 
         VBox layout = new VBox(12);
         layout.setAlignment(Pos.TOP_LEFT);
@@ -276,30 +244,69 @@ public class PauseMenuOverlay {
         ));
 
         Label title = TextUtil.createText("GAME RULES", FONT_HKMODULAR, 0.028, YELLOW, parent);
-
-        String rulesText = """
-                Goal: develop countermeasures for all four cyber threats before the system collapses.
-
-                Turn phases: take actions (Move, Treat, Share, Build, Discover), draw cards, then infect cities.
-
-                Win: all four cures are discovered.
-                Lose: too many outbreaks, out of malware cubes, or the player deck is empty.
-
-                Full interactive tutorial is available from the main menu.""";
-
-        Label body = TextUtil.createText(rulesText, FONT_HKMODULAR, 0.011, WHITE, parent);
+        Label body = TextUtil.createText(RULES_SUMMARY_TEXT, FONT_HKMODULAR, 0.011, WHITE, parent);
         body.setWrapText(true);
         body.setTextAlignment(TextAlignment.LEFT);
         body.maxWidthProperty().bind(panelBox.widthProperty().multiply(0.92));
 
-        ButtonsUtil backBtn = menuButton("BACK", CYAN);
-        backBtn.setOnMouseClicked(e -> showPanel(Panel.MAIN));
-
-        layout.getChildren().addAll(title, body, backBtn);
+        layout.getChildren().addAll(title, body, backButton());
         panelBox.getChildren().add(layout);
+        return wrapPanel(panelBox);
+    }
 
+    private static final String RULES_SUMMARY_TEXT = """
+            Goal: develop countermeasures for all four cyber threats before the system collapses.
+
+            Turn phases: take actions (Move, Treat, Share, Build, Discover), draw cards, then infect cities.
+
+            Win: all four cures are discovered.
+            Lose: too many outbreaks, out of malware cubes, or the player deck is empty.
+
+            Full interactive tutorial is available from the main menu.""";
+
+    private ButtonsUtil backButton() {
+        ButtonsUtil backBtn = menuButton(LABEL_BACK, CYAN);
+        backBtn.setOnMouseClicked(e -> showPanel(Panel.MAIN));
+        return backBtn;
+    }
+
+    private StackPane createPanelBox(String borderColor, double glowRadius) {
+        StackPane panelBox = PanelUtil.createPanel(1.0, 1.0, CYAN, PANEL_BORDER_WIDTH, 15, 10, parent);
+        panelBox.setStyle(panelBoxStyle(borderColor));
+        if (glowRadius > 0) {
+            GlowUtil.applyGlow(panelBox, borderColor, glowRadius);
+        }
+        return panelBox;
+    }
+
+    private static String panelBoxStyle(String borderColor) {
+        return "-fx-background-color: rgba(10, 20, 40, 0.95);"
+                + "-fx-border-color: " + borderColor + ";"
+                + "-fx-border-width: " + PANEL_BORDER_WIDTH + ";"
+                + "-fx-background-radius: " + PANEL_CORNER_RADIUS + ";"
+                + "-fx-border-radius: " + PANEL_CORNER_RADIUS + ";";
+    }
+
+    private VBox createCenteredLayout(StackPane panelBox, double spacingRatio, double padVertical, double padHorizontal) {
+        VBox layout = new VBox();
+        layout.setAlignment(Pos.CENTER);
+        layout.spacingProperty().bind(panelBox.heightProperty().multiply(spacingRatio));
+        layout.paddingProperty().bind(Bindings.createObjectBinding(
+                () -> new Insets(
+                        panelBox.getHeight() * padVertical,
+                        panelBox.getWidth() * padHorizontal,
+                        panelBox.getHeight() * padVertical,
+                        panelBox.getWidth() * padHorizontal),
+                panelBox.widthProperty(),
+                panelBox.heightProperty()
+        ));
+        return layout;
+    }
+
+    private static VBox wrapPanel(StackPane panelBox) {
         VBox wrapper = new VBox(panelBox);
         wrapper.setAlignment(Pos.CENTER);
+        VBox.setVgrow(panelBox, Priority.ALWAYS);
         return wrapper;
     }
 
@@ -312,12 +319,20 @@ public class PauseMenuOverlay {
         return row;
     }
 
+    private void bindVolumeSlider(Slider slider, DoubleProperty volumeProperty) {
+        slider.valueProperty().addListener((obs, oldVal, newVal) ->
+                applyVolumePercent(volumeProperty, newVal.doubleValue()));
+    }
+
+    private void applyVolumePercent(DoubleProperty volumeProperty, double percent) {
+        volumeProperty.set(percent / VOLUME_PERCENT_SCALE);
+        AudioManager.getInstance().updateVolume();
+        SettingsManager.getInstance().saveSettings();
+    }
+
     private Slider volumeSlider(double initialPercent) {
-        Slider slider = new Slider(0, 100, initialPercent);
-        slider.setStyle(
-                "-fx-control-inner-background: black;"
-                        + "-fx-accent: " + CYAN + ";"
-        );
+        Slider slider = new Slider(0, VOLUME_SLIDER_MAX, initialPercent);
+        slider.setStyle("-fx-control-inner-background: black; -fx-accent: " + CYAN + ";");
         return slider;
     }
 
@@ -328,12 +343,12 @@ public class PauseMenuOverlay {
                 BLACK,
                 accentColor,
                 accentColor,
-                2,
+                PANEL_BORDER_WIDTH,
                 10,
                 10,
-                0.75,
-                0.09,
-                0.018,
+                BTN_WIDTH_RATIO,
+                BTN_HEIGHT_RATIO,
+                BTN_FONT_RATIO,
                 parent
         );
     }
@@ -342,20 +357,26 @@ public class PauseMenuOverlay {
         dismissActiveConfirmation();
         ConfirmationOverlay confirm = new ConfirmationOverlay(
                 parent,
-                "DISCONNECT AND RETURN TO MAIN MENU?",
-                "YES",
-                "NO",
-                () -> {
-                    activeConfirmationRoot = null;
-                    hide();
-                    if (onDisconnectConfirmed != null) {
-                        onDisconnectConfirmed.run();
-                    }
-                },
-                () -> activeConfirmationRoot = null
+                MSG_DISCONNECT_CONFIRM,
+                LABEL_YES,
+                LABEL_NO,
+                this::handleDisconnectConfirmed,
+                this::clearActiveConfirmationReference
         );
         activeConfirmationRoot = confirm.getRoot();
         parent.getChildren().add(activeConfirmationRoot);
         activeConfirmationRoot.toFront();
+    }
+
+    private void handleDisconnectConfirmed() {
+        clearActiveConfirmationReference();
+        hide();
+        if (onDisconnectConfirmed != null) {
+            onDisconnectConfirmed.run();
+        }
+    }
+
+    private void clearActiveConfirmationReference() {
+        activeConfirmationRoot = null;
     }
 }

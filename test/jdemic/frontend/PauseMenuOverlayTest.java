@@ -31,6 +31,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PauseMenuOverlayTest {
 
+    private static final String LABEL_PAUSED = "PAUSED";
+    private static final String LABEL_RESUME = "RESUME";
+    private static final String LABEL_SETTINGS = "SETTINGS";
+    private static final String LABEL_TUTORIAL = "TUTORIAL";
+    private static final String LABEL_DISCONNECT = "DISCONNECT";
+    private static final String LABEL_YES = "YES";
+    private static final String LABEL_NO = "NO";
+    private static final String MSG_DISCONNECT_CONFIRM = "DISCONNECT AND RETURN TO MAIN MENU?";
+    private static final String LABEL_IN_GAME_SETTINGS = "IN-GAME SETTINGS";
+    private static final String LABEL_GAME_RULES = "GAME RULES";
+
     private StackPane root;
     private AtomicBoolean disconnectCalled;
     private PauseMenuOverlay overlay;
@@ -39,8 +50,9 @@ class PauseMenuOverlayTest {
     static void initJfx() {
         try {
             Platform.startup(() -> {});
-        } catch (IllegalStateException ignored) {
-            // Toolkit already initialized (e.g. another test class)
+        } catch (IllegalStateException alreadyInitialized) {
+            // Expected when multiple test classes share one JVM JavaFX toolkit.
+            assertNotNull(alreadyInitialized.getMessage());
         }
     }
 
@@ -71,7 +83,7 @@ class PauseMenuOverlayTest {
 
             assertTrue(overlay.isVisible());
             assertEquals(before + 1, root.getChildren().size());
-            assertTrue(hasVisibleText(root, "PAUSED"));
+            assertTrue(hasVisibleText(root, LABEL_PAUSED));
         });
     }
 
@@ -116,13 +128,13 @@ class PauseMenuOverlayTest {
     void hideDismissesDisconnectConfirmationSoInputIsNotBlocked() throws Exception {
         runOnFxThread(() -> {
             overlay.show();
-            clickButton(root, "DISCONNECT");
+            clickButton(root, LABEL_DISCONNECT);
             assertTrue(overlay.blocksMouseInput());
 
             overlay.hide();
 
             assertFalse(overlay.blocksMouseInput());
-            assertFalse(hasVisibleText(root, "DISCONNECT AND RETURN TO MAIN MENU?"));
+            assertFalse(hasVisibleText(root, MSG_DISCONNECT_CONFIRM));
         });
     }
 
@@ -130,7 +142,7 @@ class PauseMenuOverlayTest {
     void resumeClosesOverlay() throws Exception {
         runOnFxThread(() -> {
             overlay.show();
-            clickButton(root, "RESUME");
+            clickButton(root, LABEL_RESUME);
 
             assertFalse(overlay.isVisible());
             assertTrue(root.getChildren().isEmpty());
@@ -158,12 +170,12 @@ class PauseMenuOverlayTest {
             overlay.show();
             int childCountAfterShow = root.getChildren().size();
 
-            clickButton(root, "SETTINGS");
+            clickButton(root, LABEL_SETTINGS);
 
             assertTrue(overlay.isVisible());
             assertEquals(childCountAfterShow, root.getChildren().size());
-            assertFalse(hasVisibleText(root, "PAUSED"));
-            assertTrue(hasVisibleText(root, "IN-GAME SETTINGS"));
+            assertFalse(hasVisibleText(root, LABEL_PAUSED));
+            assertTrue(hasVisibleText(root, LABEL_IN_GAME_SETTINGS));
         });
     }
 
@@ -173,12 +185,12 @@ class PauseMenuOverlayTest {
             overlay.show();
             int childCountAfterShow = root.getChildren().size();
 
-            clickButton(root, "TUTORIAL");
+            clickButton(root, LABEL_TUTORIAL);
 
             assertTrue(overlay.isVisible());
             assertEquals(childCountAfterShow, root.getChildren().size());
-            assertFalse(hasVisibleText(root, "PAUSED"));
-            assertTrue(hasVisibleText(root, "GAME RULES"));
+            assertFalse(hasVisibleText(root, LABEL_PAUSED));
+            assertTrue(hasVisibleText(root, LABEL_GAME_RULES));
         });
     }
 
@@ -186,10 +198,10 @@ class PauseMenuOverlayTest {
     void disconnectShowsConfirmationBeforeCallback() throws Exception {
         runOnFxThread(() -> {
             overlay.show();
-            clickButton(root, "DISCONNECT");
+            clickButton(root, LABEL_DISCONNECT);
 
             assertFalse(disconnectCalled.get());
-            assertTrue(hasVisibleText(root, "DISCONNECT AND RETURN TO MAIN MENU?"));
+            assertTrue(hasVisibleText(root, MSG_DISCONNECT_CONFIRM));
             assertTrue(root.getChildren().size() >= 2, "Pause overlay and confirmation should both be on root");
         });
     }
@@ -198,8 +210,8 @@ class PauseMenuOverlayTest {
     void disconnectYesInvokesCallbackAndClosesPauseOverlay() throws Exception {
         runOnFxThread(() -> {
             overlay.show();
-            clickButton(root, "DISCONNECT");
-            clickButton(root, "YES");
+            clickButton(root, LABEL_DISCONNECT);
+            clickButton(root, LABEL_YES);
 
             assertTrue(disconnectCalled.get());
             assertFalse(overlay.isVisible());
@@ -207,13 +219,57 @@ class PauseMenuOverlayTest {
     }
 
     @Test
+    void toggleFromSettingsReturnsToMainPanelWithoutHiding() throws Exception {
+        runOnFxThread(() -> {
+            overlay.show();
+            clickButton(root, LABEL_SETTINGS);
+            assertTrue(hasVisibleText(root, LABEL_IN_GAME_SETTINGS));
+
+            overlay.toggle();
+
+            assertTrue(overlay.isVisible());
+            assertTrue(hasVisibleText(root, LABEL_PAUSED));
+            assertFalse(hasVisibleText(root, LABEL_IN_GAME_SETTINGS));
+        });
+    }
+
+    @Test
+    void toggleWhenHiddenShowsOverlay() throws Exception {
+        runOnFxThread(() -> {
+            overlay.toggle();
+            assertTrue(overlay.isVisible());
+            assertTrue(hasVisibleText(root, LABEL_PAUSED));
+        });
+    }
+
+    @Test
+    void toggleWhenVisibleOnMainPanelHidesOverlay() throws Exception {
+        runOnFxThread(() -> {
+            overlay.show();
+            overlay.toggle();
+            assertFalse(overlay.isVisible());
+        });
+    }
+
+    @Test
+    void disconnectYesWithNullCallbackStillClosesOverlay() throws Exception {
+        runOnFxThread(() -> {
+            PauseMenuOverlay noCallbackOverlay = new PauseMenuOverlay(root, null);
+            noCallbackOverlay.show();
+            clickButton(root, LABEL_DISCONNECT);
+            clickButton(root, LABEL_YES);
+            assertFalse(noCallbackOverlay.isVisible());
+        });
+    }
+
+    @Test
     void disconnectNoDismissesConfirmationWithoutCallback() throws Exception {
         runOnFxThread(() -> {
             overlay.show();
-            clickButton(root, "DISCONNECT");
+            clickButton(root, LABEL_DISCONNECT);
             int withConfirm = root.getChildren().size();
 
-            clickButton(root, "NO");
+            clickButton(root, LABEL_NO);
 
             assertFalse(disconnectCalled.get());
             assertTrue(overlay.isVisible());
@@ -230,7 +286,7 @@ class PauseMenuOverlayTest {
     private StackPane findOverlayRoot() {
         for (Node node : root.getChildren()) {
             if (node instanceof StackPane stackPane
-                    && flatten(stackPane).stream().anyMatch(n -> n instanceof Labeled labeled && "PAUSED".equals(labeled.getText()))) {
+                    && flatten(stackPane).stream().anyMatch(n -> n instanceof Labeled labeled && LABEL_PAUSED.equals(labeled.getText()))) {
                 return stackPane;
             }
         }
