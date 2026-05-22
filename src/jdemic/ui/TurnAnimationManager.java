@@ -497,4 +497,53 @@ public class TurnAnimationManager {
                 });
                 full.play();
         }
+
+        public void playResearchStationBuilt(Node cityNode, Runnable onFinished) {
+                Label title = TextUtil.createText("RESEARCH\nSTATION", "hkmodular",0.035,"#00b5d4",root);
+
+                title.setTextAlignment(TextAlignment.CENTER);
+                title.setOpacity(0);
+                title.setScaleX(0.5);
+                title.setScaleY(0.5);
+                GlowUtil.applyGlow(title, "#00b5d4", 22);
+                StackPane.setAlignment(title, Pos.CENTER);
+
+                Circle ring = new Circle();
+                ring.setRadius(0);
+                ring.setStroke(Color.web("#00b5d4"));
+                ring.setStrokeWidth(4);
+                ring.setFill(Color.TRANSPARENT);
+                ring.setOpacity(0.85);
+                StackPane.setAlignment(ring, Pos.CENTER);
+                DropShadow stationGlow = new DropShadow();
+                stationGlow.setColor(Color.web("#00e5ff"));
+                stationGlow.setRadius(0);
+                cityNode.setEffect(stationGlow);
+                Timeline cityPulse = new Timeline(new KeyFrame(Duration.ZERO, new KeyValue(stationGlow.radiusProperty(), 0)),
+                                new KeyFrame(Duration.millis(400),new KeyValue(stationGlow.radiusProperty(), 45)),
+                                new KeyFrame(Duration.millis(900),new KeyValue(stationGlow.radiusProperty(), 0)));
+                root.getChildren().addAll(ring, title);
+                ring.toFront();
+                title.toFront();
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(260), title);
+                fadeIn.setToValue(1);
+                ScaleTransition scale = new ScaleTransition(Duration.millis(420), title);
+                scale.setToX(1);
+                scale.setToY(1);
+
+                ParallelTransition titleIntro = new ParallelTransition( fadeIn, scale);
+                Timeline ringExpand = new Timeline(new KeyFrame(Duration.ZERO, new KeyValue(ring.radiusProperty(), 0),new KeyValue(ring.opacityProperty(), 0.8)), new KeyFrame(Duration.seconds(1.2),new KeyValue(ring.radiusProperty(),280), new KeyValue(ring.opacityProperty(), 0)));
+                PauseTransition hold = new PauseTransition(Duration.seconds(0.5));
+
+                FadeTransition fadeOut = new FadeTransition(Duration.millis(250), title);
+                fadeOut.setToValue(0);
+                SequentialTransition full = new SequentialTransition(new ParallelTransition(titleIntro, ringExpand, cityPulse), hold, fadeOut);
+
+                full.setOnFinished(e -> {
+                        cityNode.setEffect(null);
+                        root.getChildren().removeAll(ring, title);
+                        if (onFinished != null) { onFinished.run(); }
+                });
+                full.play();
+        }
 }

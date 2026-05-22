@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.binding.DoubleExpression;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
@@ -151,6 +152,7 @@ public class MapTestScene {
     private GameClient.PlayerUpdateListener playerUpdateListener;
     private Pane mapPane;
 
+    private Map<CityNode, ResearchStationUI> researchStations = new HashMap<>();
     // simulation - Andreea
     private static final boolean DEBUG_LOCAL = true;
 
@@ -308,6 +310,18 @@ public class MapTestScene {
                 }
             }
         }
+    }
+
+    private void buildResearchStation(CityNode city) {
+        if (researchStations.containsKey(city)) return;
+        ResearchStationUI station = new ResearchStationUI(root.heightProperty());
+        DoubleExpression cityX =mapPane.widthProperty().multiply(city.getRenderX());
+        DoubleExpression cityY =mapPane.heightProperty().multiply(city.getRenderY());
+        station.bindToCity(cityX, cityY);
+        mapPane.getChildren().add(station.getNode());
+        station.getNode().toFront();
+        station.playBuildAnimation();
+        researchStations.put(city,station);
     }
     // simulation - Andreea - decomment this, delete the other createLocalGameManager
     /*private GameManager createLocalGameManager() {
@@ -1316,7 +1330,36 @@ public class MapTestScene {
         sequence.add(() -> turnAnimationManager.playCureDiscovered(DiseaseColor.BLUE, sequence::playNext ));   
         sequence.add(() -> turnAnimationManager.playVictory(sequence::playNext));     
         sequence.add(() -> turnAnimationManager.playDefeat(sequence::playNext));
+        sequence.add(() -> turnAnimationManager.playResearchStationBuilt(nodeVisuals.get(mapGraph.getCity("Atlanta")),sequence::playNext)); 
+        sequence.add(() -> {
+            CityNode stationCity =mapGraph.getCity("Tokyo");
+            buildResearchStation(stationCity);
+            turnAnimationManager.playResearchStationBuilt(nodeVisuals.get(stationCity), sequence::playNext);
+        });
+        sequence.add(() -> {
+            buildResearchStation(mapGraph.getCity("Paris"));
+            sequence.playNext();
+        });
 
+        sequence.add(() -> {
+            buildResearchStation(mapGraph.getCity("Sydney"));
+            sequence.playNext();
+        });
+
+        sequence.add(() -> {
+            buildResearchStation(mapGraph.getCity("Lagos"));
+            sequence.playNext();
+        });
+
+        sequence.add(() -> {
+            buildResearchStation(mapGraph.getCity("Chicago"));
+            sequence.playNext();
+        });
+
+        sequence.add(() -> {
+            buildResearchStation(mapGraph.getCity("Moscow"));
+            sequence.playNext();
+        });
         sequence.play();
         if (infectionRateManager != null) infectionRateManager.updateTrack();
         if (outbreakManager != null) outbreakManager.updateTrack();
