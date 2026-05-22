@@ -147,9 +147,7 @@ public class GameManager {
     {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
-        // If the current player is discarding, reject attempts from other players.
-        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()
-                && (player == null || !state.isPlayerTurn(player.getState()))) return;
+        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
 
         // Only allow the current player to perform actions
         if(!state.isPlayerTurn(player.getState())) return;
@@ -178,8 +176,7 @@ public class GameManager {
     {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
-        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()
-                && !state.isPlayerTurn(playerState)) return;
+        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
         if(!state.isPlayerTurn(playerState)) return;
 
         state.setActionsRemaining(state.getActionsRemaining() - 1);
