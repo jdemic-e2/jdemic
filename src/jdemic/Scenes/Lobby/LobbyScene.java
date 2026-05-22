@@ -28,7 +28,7 @@ public class LobbyScene {
     private final StackPane root;
     private final Stage stage;
     private static final int DEFAULT_GAME_PORT = 9000;
-    private static final int DEFAULT_ORCHESTRATOR_PORT = 8080;
+    private static final int DEFAULT_ORCHESTRATOR_PORT = 8090;
 
     public LobbyScene(Stage stage) {
         this.stage = stage;

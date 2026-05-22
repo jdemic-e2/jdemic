@@ -17,7 +17,7 @@ class DedicatedServerConfigTest {
         assertEquals(9000, config.serverPort());
         assertTrue(config.statusEnabled());
         assertEquals("localhost", config.statusHost());
-        assertEquals(8080, config.statusPort());
+        assertEquals(8090, config.statusPort());
         assertFalse(config.openBrowser());
     }
 
@@ -51,7 +51,7 @@ class DedicatedServerConfigTest {
         assertEquals(9000, config.serverPort());
         assertTrue(config.statusEnabled());
         assertEquals("localhost", config.statusHost());
-        assertEquals(8080, config.statusPort());
+        assertEquals(8090, config.statusPort());
         assertFalse(config.openBrowser());
     }
 }

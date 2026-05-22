@@ -180,7 +180,7 @@ public class HostGameScene {
 
     private Integer requestServerFromOrchestrator() {
         try (Socket orchestratorSocket = new Socket()) {
-            orchestratorSocket.connect(new InetSocketAddress("localhost", 8080), 500);
+            orchestratorSocket.connect(new InetSocketAddress("localhost", 8090), 500);
             orchestratorSocket.setSoTimeout(1000);
 
             java.io.PrintWriter out = new java.io.PrintWriter(orchestratorSocket.getOutputStream(), true);
