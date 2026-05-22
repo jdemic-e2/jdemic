@@ -14,13 +14,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MasterOrchestrator {
-    private static final int DEFAULT_MASTER_PORT = 8080;
+    private static final int DEFAULT_MASTER_PORT = 8090;// 1st change-> 8090 instead of 8080 in master and config
     private static final String MASTER_PORT_ENV = "JDEMIC_ORCHESTRATOR_PORT";
     private static final String SERVER_MIN_PORT_ENV = "JDEMIC_SERVER_PORT_MIN";
     private static final String SERVER_MAX_PORT_ENV = "JDEMIC_SERVER_PORT_MAX";
     private static final String HOST_COMMAND = "HOST";
     private static final int DEFAULT_BASE_PORT = 9001;
-    private static final int DEFAULT_MAX_PORT = 9999;
+    private static final int DEFAULT_MAX_PORT = 9010;//2nd change-> reduced the number of servers from 1000 to 10
 
     private static final int masterPort = parsePort(System.getenv(MASTER_PORT_ENV), DEFAULT_MASTER_PORT);
     private static final int basePort = parsePort(System.getenv(SERVER_MIN_PORT_ENV), DEFAULT_BASE_PORT);

@@ -5,9 +5,9 @@ services:
       dockerfile: Dockerfile.dedicated-server
     image: jdemic-dedicated-server:dev
     environment:
-      JDEMIC_ORCHESTRATOR_PORT: "8080"
+      JDEMIC_ORCHESTRATOR_PORT: "8090"
       JDEMIC_SERVER_PORT_MIN: "9001"
       JDEMIC_SERVER_PORT_MAX: "9010"
     ports:
-      - "8080:8080"
+      - "8090:8090"
       - "9001-9010:9001-9010"

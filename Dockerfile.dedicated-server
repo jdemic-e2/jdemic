@@ -22,12 +22,12 @@ WORKDIR /app
 COPY --from=build --chown=jdemic:jdemic /app/target/jdemic-engine-1.0-SNAPSHOT.jar ./jdemic-engine.jar
 COPY --from=build --chown=jdemic:jdemic /app/target/dependency ./dependency
 
-ENV JDEMIC_ORCHESTRATOR_PORT=8080
+ENV JDEMIC_ORCHESTRATOR_PORT=8090
 ENV JDEMIC_SERVER_PORT_MIN=9001
-ENV JDEMIC_SERVER_PORT_MAX=9999
+ENV JDEMIC_SERVER_PORT_MAX=9010
 
-EXPOSE 8080
-EXPOSE 9001-9999
+EXPOSE 8090
+EXPOSE 9001-9010
 
 USER jdemic
 
