@@ -172,6 +172,10 @@ public class ActionMenuManager {
                     notificationManager.showNotification("Action " + action.label() + " sent to server");
                 } else {
                     gameManager.getState().setActionsRemaining(left - 1);
+                    //animation
+                    if (onTurnChangeCallback != null) {
+                        onTurnChangeCallback.run();
+                    }
                     int actionsAfter = gameManager.getState().getActionsRemaining();
                     notificationManager.showNotification("Action " + action.label() + " executed. Moves left: " + actionsAfter);
                     

@@ -23,11 +23,15 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
+import jdemic.ui.AnimationSequence;
 import jdemic.ui.ButtonsUtil;
+import jdemic.ui.DeckAnimationManager;
+import jdemic.ui.TurnAnimationManager;
 import jdemic.GameLogic.*;
 import javafx.scene.layout.VBox;
 import jdemic.ui.GameplayUI.*;
@@ -147,6 +151,9 @@ public class MapTestScene {
     private GameClient.PlayerUpdateListener playerUpdateListener;
     private Pane mapPane;
 
+    // simulation - Andreea
+    private static final boolean DEBUG_LOCAL = true;
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
@@ -168,9 +175,10 @@ public class MapTestScene {
         this.gameManager = createNetworkGameManager(gameState);
         initializeScene();
 
-        if (this.gameClient != null) {
-            playerUpdateListener = updatedGameState ->
-                    Platform.runLater(() -> applyGameStateSnapshot(updatedGameState));
+        // simulation - Andreea
+        if (this.gameClient != null && !DEBUG_LOCAL) {
+            playerUpdateListener = updatedGameState -> Platform
+                    .runLater(() -> applyGameStateSnapshot(updatedGameState));
             this.gameClient.addPlayerUpdateListener(playerUpdateListener);
         }
     }
@@ -186,7 +194,10 @@ public class MapTestScene {
         setupChat();
         deckManager = new DeckManager(root);
         handManager = new HandManager(root, deckManager);
-        updateHandUI();
+        
+        // simulation - Andreea
+        // updateHandUI(); //commented out for local testing since it causes issues with the debug simulation setup
+        if (DEBUG_LOCAL) {  setupDebugSimulation(); } else { updateHandUI(); }
 
         Platform.runLater(() -> {
             updatePawnPositions();
@@ -216,7 +227,8 @@ public class MapTestScene {
                 // Keep your other debug keys as standard handlers
                 newScene.setOnKeyPressed(event -> {
                     if (event.getCode() == javafx.scene.input.KeyCode.I) {
-                        if (gameManager.getState().getInfectionRate() < gameManager.getInfectionRateTrack().length - 1) {
+                        if (gameManager.getState().getInfectionRate() < gameManager.getInfectionRateTrack().length
+                                - 1) {
                             gameManager.increaseInfectionRate();
                             infectionRateManager.updateTrack();
                             notificationManager.showNotification("DEBUG: Infection Rate Increased!");
@@ -297,8 +309,8 @@ public class MapTestScene {
             }
         }
     }
-
-    private GameManager createLocalGameManager() {
+    // simulation - Andreea - decomment this, delete the other createLocalGameManager
+    /*private GameManager createLocalGameManager() {
         List<PlayerState> players = new ArrayList<>();
         CityNode startingCity = mapGraph.getCity("Atlanta");
         PlayerState testPlayer = new PlayerState(playerName);
@@ -306,6 +318,28 @@ public class MapTestScene {
         players.add(testPlayer);
         GameManager manager = new GameManager(players);
         // Ensure initial infections and setup occur for local single-player scenes
+        manager.startGame();
+        return manager;
+    }*/
+
+    private GameManager createLocalGameManager() {
+        List<PlayerState> players = new ArrayList<>();
+        CityNode startingCity = mapGraph.getCity("Atlanta");
+        PlayerState p1 = new PlayerState("POne");
+        PlayerState p2 = new PlayerState("PTwo");
+        PlayerState p3 = new PlayerState("PThree");
+        PlayerState p4 = new PlayerState("PFour");
+
+        p1.setCurrentCity(startingCity);
+        p2.setCurrentCity(startingCity);
+        p3.setCurrentCity(startingCity);
+        p4.setCurrentCity(startingCity);
+
+        players.add(p1);
+        players.add(p2);
+        players.add(p3);
+        players.add(p4);
+        GameManager manager = new GameManager(players);
         manager.startGame();
         return manager;
     }
@@ -1006,19 +1040,35 @@ public class MapTestScene {
             notificationManager.showNotification("No actions remaining!");
             return;
         }
-
+        // simulation - Andreea
         if (gameClient == null) {
             PlayerState currentPlayer = gameManager.getCurrentPlayer();
             if (currentPlayer != null) {
+                animatePawnMovement(currentPlayer, destination); // added
                 currentPlayer.setCurrentCity(destination);
             }
             gameManager.getState().setActionsRemaining(actionsLeft - 1);
             if (gameManager.getState().getActionsRemaining() <= 0) {
                 gameManager.nextTurn();
             }
+            updateCurrentPlayerLabel();
+            updateHandUI();
         }
 
-        sendMovementActionPacket(movementType, destination);
+        // sendMovementActionPacket(movementType, destination);
+        if (gameClient != null && !DEBUG_LOCAL) {
+            sendMovementActionPacket(movementType, destination);
+        }
+        // if (gameClient == null) {
+        // PlayerState currentPlayer = gameManager.getCurrentPlayer();
+        // if (currentPlayer != null) {
+        // currentPlayer.setCurrentCity(destination);
+        // }
+        // gameManager.getState().setActionsRemaining(actionsLeft - 1);
+        // if (gameManager.getState().getActionsRemaining() <= 0) {
+        // gameManager.nextTurn();
+        // }
+        // }
         notificationManager.showNotification(
                 gameClient == null
                         ? "Moved to " + destination.getName() + ". Actions left: " + gameManager.getState().getActionsRemaining()
@@ -1198,11 +1248,120 @@ public class MapTestScene {
         });
     }
 
+
+    private void setupDebugSimulation() {
+        System.out.println("[DEBUG] Starting local simulation...");
+        List<PlayerState> players = gameManager.getState().getPlayers();
+        if (players == null || players.isEmpty()) {
+            System.out.println("[DEBUG] No players found.");
+            return;
+        }
+
+        CityNode atlanta = mapGraph.getCity("Atlanta");
+        for (PlayerState player : players) { player.setCurrentCity(atlanta); }
+        PlayerState currentPlayer = players.get(0);
+        currentPlayer.getHand().clear();
+        List<CityNode> cities = new ArrayList<>(mapGraph.getCityList());
+
+        Collections.shuffle(cities);
+
+        int cardCount = Math.min(7, cities.size());
+        for (int i = 0; i < cardCount; i++) {
+            CityNode city = cities.get(i);
+            currentPlayer.addCard(new Card(city.getName(), CardType.CITY, city));
+        }
+
+        updatePawnPositions();
+
+        DeckAnimationManager animationManager = new DeckAnimationManager(root, deckManager, handManager);
+        TurnAnimationManager turnAnimationManager = new TurnAnimationManager(root);
+        StackPane tokyoCard = deckManager.createEpidemicCard(mapGraph.getCity("Tokyo"));
+        StackPane chicagoCard = deckManager.createEpidemicCard(mapGraph.getCity("Chicago"));
+        StackPane lagosCard = deckManager.createEpidemicCard(mapGraph.getCity("Lagos"));
+        AnimationSequence sequence = new AnimationSequence();
+        sequence.add(() -> animationManager.playInitialHandAnimation(currentPlayer, () -> {
+                    updateHandUI();
+                    sequence.playNext(); })
+                );
+
+        sequence.add(() -> animationManager.playEpidemicAnimation(sequence::playNext));
+        sequence.add(() -> turnAnimationManager.playTurnStart(currentPlayer.getPlayerName(), sequence::playNext));
+        sequence.add(() -> turnAnimationManager.playTurnEnd(sequence::playNext));
+        sequence.add(() -> turnAnimationManager.playInfectionPhaseIntro(sequence::playNext));
+        sequence.add(() -> animationManager.playInfectionCardDraw(tokyoCard, sequence::playNext));
+        sequence.add(() -> turnAnimationManager.playCityInfection(nodeVisuals.get(mapGraph.getCity("Tokyo")),() -> {
+                            CityNode tokyo = mapGraph.getCity("Tokyo");
+                            tokyo.addDiseaseCube(DiseaseColor.RED,1);
+                            cityVirusUIs.get(tokyo).animateNewVirus(DiseaseColor.RED);
+                            sequence.playNext();
+                        })
+                    );
+        sequence.add(() -> turnAnimationManager.playOutbreak(nodeVisuals.get(mapGraph.getCity("Tokyo")), sequence::playNext));
+        sequence.add(() -> animationManager.playInfectionCardDraw(chicagoCard, sequence::playNext));
+        sequence.add(() -> turnAnimationManager.playCityInfection(nodeVisuals.get(mapGraph.getCity("Chicago")), () -> {
+                    CityNode chicago = mapGraph.getCity("Chicago");
+                    chicago.addDiseaseCube(DiseaseColor.BLUE,1);
+                    cityVirusUIs.get(chicago).animateNewVirus(DiseaseColor.BLUE);
+                    sequence.playNext();})
+                );
+
+        sequence.add(() -> animationManager.playInfectionCardDraw(lagosCard, sequence::playNext));
+        sequence.add(() -> turnAnimationManager.playCityInfection(
+                nodeVisuals.get(mapGraph.getCity("Lagos")), () -> {
+                    CityNode lagos = mapGraph.getCity("Lagos");
+                    lagos.addDiseaseCube(DiseaseColor.YELLOW, 1);
+                    cityVirusUIs.get(lagos).animateNewVirus(DiseaseColor.YELLOW);
+                    sequence.playNext();})
+                );
+        sequence.add(() -> turnAnimationManager.playCureDiscovered(DiseaseColor.BLUE, sequence::playNext ));   
+        sequence.add(() -> turnAnimationManager.playVictory(sequence::playNext));     
+        sequence.add(() -> turnAnimationManager.playDefeat(sequence::playNext));
+
+        sequence.play();
+        if (infectionRateManager != null) infectionRateManager.updateTrack();
+        if (outbreakManager != null) outbreakManager.updateTrack();
+        if (cureManager != null) cureManager.updateUI();
+        System.out.println( "[DEBUG] Local simulation ready.");
+
+        if (infectionRateManager != null) infectionRateManager.updateTrack();
+        if (outbreakManager != null) outbreakManager.updateTrack();
+        if (cureManager != null) cureManager.updateUI();
+        System.out.println("[DEBUG] Local simulation ready.");
+    }
+
+    private void animatePawnMovement(PlayerState player, CityNode destination) {
+        if (player == null || destination == null) return;
+        PawnUI pawnUI = playerPawns.get(player.getPlayerName());
+        if (pawnUI == null)  return;
+
+        CityNode oldCity = player.getPlayerCurrentCity();
+
+        if (oldCity == null) return;
+
+        double oldX = mapPane.getWidth() * oldCity.getRenderX();
+        double oldY = mapPane.getHeight() * oldCity.getRenderY();
+        double newX = mapPane.getWidth() * destination.getRenderX();
+        double newY = mapPane.getHeight() * destination.getRenderY();
+
+        player.setCurrentCity(destination);
+
+        pawnUI.unbindPosition();
+        pawnUI.bindToCenter(mapPane.widthProperty().multiply(destination.getRenderX()), mapPane.heightProperty().multiply(destination.getRenderY()));
+        pawnUI.getImage().setTranslateX(oldX - newX);
+        pawnUI.getImage().setTranslateY(oldY - newY);
+
+        pawnUI.animateMoveTo(0, 0, () -> {
+            pawnUI.getNode().setTranslateX(0);
+            pawnUI.getNode().setTranslateY(0);
+            System.out.println("[DEBUG] Pawn movement finished.");
+        });
+    }
+
     private Color getFxColor(DiseaseColor color) {
         return switch (color) {
             case BLUE -> Color.web(CYAN_COLOR);
             case YELLOW -> Color.web("#cfc900");
-            case BLACK -> Color.web(BLACK_COLOR);
+            case BLACK -> Color.web(BLACK_COLOR); // Black should be green everywhere but if its functional everywhere, we can leave it as is?
             case RED -> Color.web(RED_COLOR);
         };
     }

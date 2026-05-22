@@ -4,7 +4,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.*;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CityNode;
@@ -35,52 +34,34 @@ public class HandManager {
         handContainer.setPickOnBounds(false);
         handContainer.spacingProperty().bind(Bindings.createDoubleBinding(() -> {
                     int cardCount = handContainer.getChildren().size();
-                    if (cardCount <= 1) return -20.0;
-                    double cardWidth = Math.max(70, root.getWidth() * 0.06);
-                    return -cardWidth * 0.25;
-                }, root.widthProperty(), Bindings.size(handContainer.getChildren()))
-        );
+                    if (cardCount <= 1) return 0.0;
+                    if (cardCount <= 4) return -12.0;
+                    if (cardCount == 5) return -20.0;
+                    if (cardCount == 6) return -28.0;
+                    if (cardCount == 7) return -34.0;
+                    return -40.0;
+                }, Bindings.size(handContainer.getChildren())));
 
-        handContainer.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.015, root.getWidth() * 0.02, root.getHeight() * 0.015, root.getWidth() * 0.02), root.heightProperty(), root.widthProperty()));
+        handContainer.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.015, root.getWidth() * 0.020, root.getHeight() * 0.015, root.getWidth() * 0.020), root.heightProperty(), root.widthProperty()));
 
-        ScrollPane handScroller = new ScrollPane(handContainer);
-        handScroller.setFitToHeight(true);
-        handScroller.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        handScroller.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        handScroller.setPannable(true);
-        handScroller.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        handScroller.prefViewportHeightProperty().bind(Bindings.createDoubleBinding(
-                () -> Math.max(92, root.getHeight() * 0.16),
-                root.heightProperty()
-        ));
-        handScroller.prefViewportWidthProperty().bind(Bindings.createDoubleBinding(
-                () -> Math.max(220, Math.min(root.getWidth() * 0.46, root.getWidth() - 360)),
-                root.widthProperty()
-        ));
-
-        StackPane wrapper = createGlowBox(handScroller, "#00b5d4", 15);
+        StackPane wrapper = createGlowBox(handContainer, "#00b5d4", 15);
 
         wrapper.prefWidthProperty().bind(
                 Bindings.createDoubleBinding(() -> {
+                    double maxWidth = root.getWidth() * 0.38;
                     int count = handContainer.getChildren().size();
-                    double maxWidth = Math.max(220, Math.min(root.getWidth() * 0.46, root.getWidth() - 360));
-                    if (count == 0) return Math.min(220.0, maxWidth);
-
-                    double cardWidth = Math.max(70, root.getWidth() * 0.06);
+                    if (count == 0) return 200.0;
+                    double scale = Math.max(0.038, 0.055 - (count  * 0.001));
+                    double cardWidth = Math.max( 65, root.getWidth() * scale);
                     double spacing = handContainer.getSpacing();
-
-                    double contentWidth = cardWidth + (count - 1) * (cardWidth + spacing) + cardWidth * 0.3;
-                    return Math.min(maxWidth, contentWidth);
-
-                }, root.widthProperty(), handContainer.spacingProperty(), Bindings.size(handContainer.getChildren()))
-        );
-
+                    double calculatedWidth = cardWidth + (count - 1) * (cardWidth + spacing);
+                    return Math.min(calculatedWidth + cardWidth * 0.4, maxWidth);
+                }, root.widthProperty(), handContainer.spacingProperty(), Bindings.size(handContainer.getChildren())));
+        wrapper.prefHeightProperty().bind(root.heightProperty().multiply(0.19));
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        wrapper.translateXProperty().bind(root.widthProperty().multiply(0.018));
-        wrapper.translateYProperty().bind(root.heightProperty().multiply(-0.018));
 
         StackPane.setAlignment(wrapper, Pos.BOTTOM_LEFT);
-
+        StackPane.setMargin(wrapper, new Insets(0, 0, root.getHeight() * 0.02, root.getWidth() * 0.02));
         root.getChildren().add(wrapper);
     }
 
@@ -119,7 +100,12 @@ public class HandManager {
         content.setPadding(new Insets(8));
 
         StackPane wrapper = new StackPane(content);
-        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(70, root.getWidth() * 0.06), root.widthProperty()));
+        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(() -> {
+                    int cardCount = handContainer.getChildren().size();
+                    double scale = Math.max(0.038, 0.055 - (cardCount * 0.002));
+                    return Math.max( 65, root.getWidth() * scale);
+                }, root.widthProperty(),  Bindings.size(handContainer.getChildren()))
+        );
         wrapper.prefHeightProperty().bind(wrapper.prefWidthProperty().multiply(1.4));
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         wrapper.setStyle("-fx-background-color: black; -fx-border-color: #00b5d4; -fx-border-width: 1; -fx-background-radius: 6; -fx-border-radius: 6;");
