@@ -76,6 +76,14 @@ public class AudioManager {
         }
     }
 
+    public void stopMusic() {
+        if (musicPlayer != null) {
+            musicPlayer.stop();
+            musicPlayer.dispose();
+            musicPlayer = null;
+        }
+    }
+
     public static AudioManager getInstance() {
         if (instance == null) instance = new AudioManager();
         return instance;
