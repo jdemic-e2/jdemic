@@ -43,7 +43,7 @@ public class TutorialMapScene {
 
         root.getChildren().addAll(map, leftPanel);
 
-        TutorialUtil.addBottomButtons(root, root, stage, () -> SceneManager.switchScene("MAIN_MENU"), () -> SceneManager.switchScene("TUT_CITIES"));
+        TutorialUtil.addBottomButtons(root, root, stage, () -> SceneManager.switchScene("TUT_RULES"), () -> SceneManager.switchScene("TUT_CITIES"));
     }
     public StackPane getRoot() {
         return root;

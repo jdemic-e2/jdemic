@@ -1,8 +1,8 @@
 {
-  "playerName": "Player",
+  "playerName": "player2",
   "resolution": "1280x720",
   "isFullScreen": false,
-  "masterVolume": 0.5,
-  "musicVolume": 0.5,
+  "masterVolume": 0.0,
+  "musicVolume": 0.0,
   "animationSpeed": "MEDIUM"
 }

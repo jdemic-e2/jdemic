@@ -162,6 +162,7 @@ public class MapTestScene {
     private EventHandler<KeyEvent> keyPressedFilter;
     private EventHandler<KeyEvent> keyReleasedFilter;
     private EventHandler<KeyEvent> debugKeyHandler;
+    private boolean returningToMainMenu;
 
     public MapTestScene(Stage stage) {
         this.stage = stage;
@@ -711,6 +712,7 @@ public class MapTestScene {
                 if (infectionRateManager != null) infectionRateManager.updateTrack();
                 if (cureManager != null) cureManager.updateUI();
                 updateVirusVisuals();
+                playGameEndAnimationAndReturnToMenu();
             }));
         } catch (Exception ignored) {}
 
@@ -802,6 +804,7 @@ public class MapTestScene {
         updateCurrentPlayerLabel();
         updateHandUI();
         updateVirusVisuals();
+        playGameEndAnimationAndReturnToMenu();
     }
 
     private AnimationSnapshot createAnimationSnapshot() {
@@ -845,6 +848,7 @@ public class MapTestScene {
 
     private void playSnapshotAnimations(AnimationSnapshot before) {
         if (before == null || mapPane == null || animationManager == null) {
+            playGameEndAnimationAndReturnToMenu();
             return;
         }
 
@@ -910,10 +914,41 @@ public class MapTestScene {
         }
 
         if (!before.gameWon && gameManager.getState().isGameWon()) {
-            animationManager.playVictory(null);
+            playGameEndAnimationAndReturnToMenu();
         } else if (!before.gameOver && gameManager.getState().isGameOver()) {
-            animationManager.playDefeat(null);
+            playGameEndAnimationAndReturnToMenu();
+        } else if (gameManager.getState().isGameOver()) {
+            playGameEndAnimationAndReturnToMenu();
         }
+    }
+
+    private void playGameEndAnimationAndReturnToMenu() {
+        if (returningToMainMenu || gameManager == null || gameManager.getState() == null || !gameManager.getState().isGameOver()) {
+            return;
+        }
+
+        returningToMainMenu = true;
+        Runnable returnToMenu = this::returnToMainMenuAfterGameEnd;
+
+        if (animationManager == null) {
+            returnToMenu.run();
+            return;
+        }
+
+        if (gameManager.getState().isGameWon()) {
+            animationManager.playVictory(returnToMenu);
+        } else {
+            animationManager.playDefeat(returnToMenu);
+        }
+    }
+
+    private void returnToMainMenuAfterGameEnd() {
+        Platform.runLater(() -> {
+            if (gameClient != null) {
+                gameClient.disconnectFromLobby();
+            }
+            SceneManager.switchScene(SCENE_MAIN_MENU);
+        });
     }
 
     private void animatePawnMove(String playerName, String oldCityName, String newCityName) {

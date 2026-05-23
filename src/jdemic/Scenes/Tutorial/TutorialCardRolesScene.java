@@ -1,6 +1,7 @@
 package jdemic.Scenes.Tutorial;
 
 import javafx.geometry.*;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
@@ -47,27 +48,24 @@ public class TutorialCardRolesScene {
         String[] roles = {
                 "ArtificialIntelligenceAnalyst",
                 "EncryptionSpecialist",
-                "FireWallSpecialist",
+                "FirewallSpecialist",
                 "IncidentResponder",
                 "NetworkController",
                 "SystemEngineer",
                 "ThreatStrategist"
         };
 
-        StackPane rightArea = new StackPane();
         HBox cardContainer = new HBox(30);
+        cardContainer.setAlignment(Pos.CENTER_LEFT);
 
         for (String role : roles) { cardContainer.getChildren().add(createCard(role));}
 
-        Pane viewport = new Pane();
+        StackPane rightArea = new StackPane();
+        rightArea.setAlignment(Pos.CENTER_LEFT);
+        ScrollPane viewport = TutorialUtil.createHorizontalCardScrollPane(cardContainer);
         viewport.prefWidthProperty().bind(rightArea.widthProperty());
-        viewport.prefHeightProperty().bind(rightArea.heightProperty());
-        viewport.getChildren().add(cardContainer);
-        cardContainer.layoutYProperty().bind(viewport.heightProperty().subtract(cardContainer.heightProperty()).divide(2));
-
-        TutorialUtil.clipToBounds(viewport);
-
-        cardContainer.layoutXProperty().bind(viewport.widthProperty().multiply(0.02));
+        viewport.prefHeightProperty().bind(rightArea.heightProperty().multiply(0.8));
+        viewport.setPadding(new Insets(0, 24, 0, 24));
 
         TutorialUtil.enableHorizontalDragScroll(viewport, cardContainer);
         rightArea.getChildren().add(viewport);
