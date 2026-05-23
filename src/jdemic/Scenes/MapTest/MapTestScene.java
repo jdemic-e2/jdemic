@@ -576,10 +576,19 @@ public class MapTestScene {
         pauseBtn = new ButtonsUtil(
                 "PAUSE",
                 CYAN_COLOR, "black", CYAN_COLOR, CYAN_COLOR,
-                2, 10, 10,
-                0.12, 0.06, 0.015,
+                2, 0, 0,
+                0.05, 0.05, 0.005,
                 root
         );
+        pauseBtn.setStyle("-fx-padding: 0; " +
+                "-fx-background-radius: 0; " +
+                "-fx-font-size: 18px;");
+
+        pauseBtn.setPickOnBounds(true);
+
+        pauseBtn.prefHeightProperty().bind(pauseBtn.prefWidthProperty());
+        pauseBtn.minHeightProperty().bind(pauseBtn.prefWidthProperty());
+        pauseBtn.maxHeightProperty().bind(pauseBtn.prefWidthProperty());
         pauseBtn.setMouseTransparent(false);
 
         pauseBtn.setOnMouseClicked(e -> {
