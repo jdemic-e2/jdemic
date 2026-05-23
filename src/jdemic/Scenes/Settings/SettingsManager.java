@@ -1,19 +1,27 @@
 package jdemic.Scenes.Settings;
 
-import javafx.beans.property.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import javafx.stage.Stage;
 
-import java.io.*;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+import javafx.stage.Stage;
 
 public class SettingsManager {
     // Singleton Instance
     private static SettingsManager instance;
 
     //JSON
-    private final String FILE_PATH = "src/resources/settings/settings.json";
+    private final String FILE_PATH;
     private final Gson gson;
 
     // GENERAL
@@ -37,6 +45,13 @@ public class SettingsManager {
     // Constructors
     private SettingsManager() {
         gson = new GsonBuilder().setPrettyPrinting().create();
+        String appDir = System.getProperty("user.home") + File.separator + ".jdemic";
+        File folder = new File(appDir);
+        if (!folder.exists()) {
+            folder.mkdirs();
+        }
+        FILE_PATH = appDir + File.separator + "settings.json";
+
         loadSettings();
     }
 
@@ -88,11 +103,9 @@ public class SettingsManager {
             saveSettings();
             return;
         }
-        try (FileReader reader = new FileReader(file))
-        {
+        try (FileReader reader = new FileReader(file)) {
             SettingsData settingsData = gson.fromJson(reader, SettingsData.class);
-            if (settingsData != null)
-            {
+            if (settingsData != null) {
                 this.playerName.set(settingsData.playerName);
                 this.resolution.set(settingsData.resolution);
                 this.isFullscreen.set(settingsData.isFullScreen);
@@ -102,7 +115,7 @@ public class SettingsManager {
                 System.out.println("Settings loaded successfully");
             }
         } catch (IOException e) {
-            System.err.println("Settings file could not be read");
+            System.err.println("Settings file could not be read: " + e.getMessage());
         }
     }
 
@@ -116,11 +129,17 @@ public class SettingsManager {
         settingsData.musicVolume = this.musicVolume.get();
         settingsData.animationSpeed = this.animationSpeed.get();
 
-        try (FileWriter settingsWriter = new FileWriter(FILE_PATH))
-        {
+        File file = new File(FILE_PATH);
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+
+        try (FileWriter settingsWriter = new FileWriter(file)) {
             gson.toJson(settingsData, settingsWriter);
+            System.out.println("Settings file written to: " + file.getAbsolutePath());
         } catch (IOException e) {
-            System.out.println("Settings file could not be written");
+            System.err.println("Settings file could not be written: " + e.getMessage());
         }
     }
 
