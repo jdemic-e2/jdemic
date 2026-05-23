@@ -31,7 +31,6 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
@@ -222,130 +221,89 @@ public class LobbyScene {
         Label scanning = TextUtil.createText("SCANNING...", "hkmodular", 0.022, "#00b5d4", root);
         serverListBox.getChildren().add(scanning);
 
-        executor.submit(() -> {
-            Set<Integer> activePorts = queryActivePorts();
-            if (activePorts.isEmpty()) {
-                Platform.runLater(() -> {
-                    serverListBox.getChildren().clear();
-                    Label none = TextUtil.createText("NO ACTIVE SERVERS", "hkmodular", 0.022, "#888888", root);
-                    serverListBox.getChildren().add(none);
-                });
-                return;
-            }
-            // Check game-started status for each active port in parallel
-            ExecutorService statusExec = Executors.newFixedThreadPool(activePorts.size());
-            for (int port : activePorts) {
-                final int p = port;
-                statusExec.submit(() -> {
+        for (int port = SCAN_PORT_MIN; port <= SCAN_PORT_MAX; port++) {
+            final int p = port;
+            executor.submit(() -> {
+                boolean reachable = probeTcp(SCAN_HOST, p);
+                if (reachable) {
                     boolean gameStarted = queryGameStarted(SCAN_HOST, p);
                     if (!gameStarted) {
-                        Platform.runLater(() -> {
-                            serverListBox.getChildren().clear(); // remove "SCANNING..."
-                            serverListBox.getChildren().add(createServerRow(p, true));
-                            // re-sort by port
-                            serverListBox.getChildren().sort((a, b) -> {
-                                Integer pa = (a.getUserData() instanceof Integer) ? (Integer) a.getUserData() : 0;
-                                Integer pb = (b.getUserData() instanceof Integer) ? (Integer) b.getUserData() : 0;
-                                return pa.compareTo(pb);
-                            });
-                        });
+                        Platform.runLater(() -> addSortedRow(createServerRow(p)));
                     }
-                });
-            }
-            statusExec.shutdown();
-        });
+                }
+            });
+        }
+        executor.submit(() -> Platform.runLater(this::showNoServersIfEmpty));
         executor.shutdown();
     }
 
-    private Set<Integer> queryActivePorts() {
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(SCAN_HOST, DEFAULT_ORCHESTRATOR_PORT), 500);
-            socket.setSoTimeout(1000);
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out.println("LIST");
-            String response = in.readLine();
-            if (response == null || !response.startsWith("PORTS:")) {
-                return java.util.Collections.emptySet();
-            }
-            String portsPart = response.substring("PORTS:".length()).trim();
-            if (portsPart.isEmpty()) {
-                return java.util.Collections.emptySet();
-            }
-            Set<Integer> result = new java.util.HashSet<>();
-            for (String p : portsPart.split(",")) {
-                try { result.add(Integer.parseInt(p.trim())); } catch (NumberFormatException ignored) {}
-            }
-            return result;
+    private boolean probeTcp(String host, int port) {
+        try (Socket s = new Socket()) {
+            s.connect(new InetSocketAddress(host, port), 500);
+            return true;
         } catch (Exception ex) {
-            System.err.println("[LobbyScene] Orchestrator unreachable during scan: " + ex.getMessage());
-            return java.util.Collections.emptySet();
+            return false;
         }
     }
 
-    private void placeServerRow(int port, boolean reachable) {
-        // Drop the "SCANNING..." placeholder once the first real row arrives.
-        if (serverListBox.getChildren().size() == 1
-                && serverListBox.getChildren().get(0) instanceof Label first
-                && "SCANNING...".equals(first.getText())) {
-            serverListBox.getChildren().clear();
-        }
-
-        StackPane row = createServerRow(port, reachable);
-        // Keep rows ordered by port number even though probes finish out of order.
-        int insertAt = 0;
-        for (javafx.scene.Node node : serverListBox.getChildren()) {
-            Integer rowPort = (node.getUserData() instanceof Integer) ? (Integer) node.getUserData() : null;
-            if (rowPort == null || rowPort < port) {
-                insertAt++;
-            } else {
-                break;
-            }
-        }
-        serverListBox.getChildren().add(insertAt, row);
-    }
-
-    private StackPane createServerRow(int port, boolean reachable) {
+    private StackPane createServerRow(int port) {
         StackPane row = new StackPane();
         row.setUserData(port);
         row.maxWidthProperty().bind(root.widthProperty().multiply(0.55));
         row.setStyle(
                 "-fx-background-color: rgba(0,0,0,0.65);" +
-                "-fx-border-color: " + (reachable ? "#00d9ff" : "#444444") + ";" +
+                "-fx-border-color: #00d9ff;" +
                 "-fx-border-width: 2;" +
                 "-fx-border-radius: 8;" +
                 "-fx-background-radius: 8;"
         );
 
         Label portLabel = TextUtil.createText("SERVER " + port, "hkmodular", 0.022, "#00d9ff", root);
-        Label statusLabel = TextUtil.createText(reachable ? "JOINABLE" : "OFFLINE", "hkmodular", 0.02,
-                reachable ? "#cfc900" : "#888888", root);
+        Label statusLabel = TextUtil.createText("JOINABLE", "hkmodular", 0.02, "#cfc900", root);
 
-        HBox inner = new HBox(12, portLabel, spacer(), statusLabel);
+        ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff",
+                2, 10, 10, 0.10, 0.05, 0.018, root);
+        joinBtn.setOnMouseClicked(e -> {
+            String nickname = requireNickname();
+            if (nickname == null) return;
+            joinBtn.setDisable(true);
+            new Thread(() -> {
+                boolean ok = connectHostAndOpenWaitingRoom(SCAN_HOST, port, nickname, null, false);
+                if (!ok) Platform.runLater(() -> joinBtn.setDisable(false));
+            }, "jdemic-join-server-" + port).start();
+        });
+
+        HBox inner = new HBox(12, portLabel, spacer(), statusLabel, joinBtn);
         inner.setAlignment(Pos.CENTER_LEFT);
         inner.setPadding(new Insets(8, 12, 8, 12));
-
-        if (reachable) {
-            ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff",
-                    2, 10, 10, 0.10, 0.05, 0.018, root);
-            joinBtn.setOnMouseClicked(e -> {
-                String nickname = requireNickname();
-                if (nickname == null) {
-                    return;
-                }
-                joinBtn.setDisable(true);
-                new Thread(() -> {
-                    boolean ok = connectHostAndOpenWaitingRoom(SCAN_HOST, port, nickname, null, false);
-                    if (!ok) {
-                        Platform.runLater(() -> joinBtn.setDisable(false));
-                    }
-                }, "jdemic-join-server-" + port).start();
-            });
-            inner.getChildren().add(joinBtn);
-        }
-
         row.getChildren().add(inner);
         return row;
+    }
+
+    private void addSortedRow(StackPane row) {
+        // Remove "SCANNING..." placeholder on first real result
+        if (serverListBox.getChildren().size() == 1
+                && serverListBox.getChildren().get(0) instanceof Label lbl
+                && "SCANNING...".equals(lbl.getText())) {
+            serverListBox.getChildren().clear();
+        }
+        int port = (int) row.getUserData();
+        int insertAt = 0;
+        for (javafx.scene.Node node : serverListBox.getChildren()) {
+            if (node.getUserData() instanceof Integer p && p < port) insertAt++;
+            else break;
+        }
+        serverListBox.getChildren().add(insertAt, row);
+    }
+
+    private void showNoServersIfEmpty() {
+        if (serverListBox.getChildren().size() == 1
+                && serverListBox.getChildren().get(0) instanceof Label lbl
+                && "SCANNING...".equals(lbl.getText())) {
+            serverListBox.getChildren().clear();
+            serverListBox.getChildren().add(
+                    TextUtil.createText("NO ACTIVE SERVERS", "hkmodular", 0.022, "#888888", root));
+        }
     }
 
     private boolean queryGameStarted(String host, int gamePort) {
