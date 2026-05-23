@@ -39,6 +39,7 @@ public class CureManager {
         content.setAlignment(Pos.TOP_LEFT);
 
         Label title = TextUtil.createText("CURES FOUND", "hkmodular", 0.010, "#00d9ff", root);
+        title.setMinWidth(Region.USE_PREF_SIZE);
         content.getChildren().add(title);
 
         DiseaseColor[] colors = DiseaseColor.values();
@@ -54,7 +55,10 @@ public class CureManager {
 
             StackPane iconContainer = new StackPane();
             ImageView icon = new ImageView();
-            icon.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(30, root.getWidth() * 0.025), root.widthProperty()));
+            icon.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                    () -> Math.max(18, Math.min(30, root.getWidth() * 0.022)),
+                    root.widthProperty()
+            ));
             icon.setPreserveRatio(true);
 
             String imagePath = switch (colors[i]) {
@@ -92,6 +96,8 @@ public class CureManager {
             };
 
             Label name = TextUtil.createText(nameText,"hkmodular",0.008, "#ffffff", root);
+            name.setMinWidth(Region.USE_PREF_SIZE);
+            name.setMaxWidth(Double.MAX_VALUE);
 
             icon.setOnMouseEntered(e -> {
                 icon.setScaleX(1.1);
@@ -123,11 +129,11 @@ public class CureManager {
         StackPane wrapper = new StackPane(content);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         wrapper.setStyle("-fx-background-color: rgba(0,0,0,1);" + "-fx-border-color: transparent transparent transparent #00eaff;" + "-fx-border-width: 0 0 0 2;");
-        wrapper.prefWidthProperty().bind( Bindings.createDoubleBinding(() -> Math.max(120, Math.min(220, root.getWidth() * 0.14)), root.widthProperty()));
+        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(210, Math.min(300, root.getWidth() * 0.22)),
+                root.widthProperty()
+        ));
         GlowUtil.applyGlow(wrapper, "#00eaff", Math.max(8, root.getWidth() * 0.01));
-        StackPane.setAlignment(wrapper, Pos.BOTTOM_RIGHT);
-        wrapper.translateYProperty().bind(Bindings.createDoubleBinding(() -> -root.getHeight() * -0.21,root.heightProperty()));
-        wrapper.translateXProperty().bind(Bindings.createDoubleBinding(() -> Math.max(30, root.getWidth() * 0.04),root.widthProperty()));
 
         container = new VBox(wrapper);
         container.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);

@@ -27,9 +27,6 @@ public class DeckManager {
         StackPane wrapper = new StackPane(decks);
         wrapper.setPickOnBounds(false);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        wrapper.translateXProperty().bind(root.widthProperty().multiply(-0.018));
-        wrapper.translateYProperty().bind(root.heightProperty().multiply(-0.018));
-
         root.getChildren().add(wrapper);
 
         StackPane.setAlignment(wrapper, Pos.BOTTOM_RIGHT);
@@ -42,7 +39,10 @@ public class DeckManager {
         for (int i = 0; i < stackSize; i++) {
             ImageView card = new ImageView(topImage);
             card.setPreserveRatio(true);
-            card.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(60, root.getWidth() * 0.06), root.widthProperty()));
+            card.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                    () -> Math.max(48, Math.min(84, root.getWidth() * 0.055)),
+                    root.widthProperty()
+            ));
             card.setTranslateX((double) i);
             card.setTranslateY(-(double) i);
             card.setRotate(((i % 3) - 1) * 0.75);
@@ -99,7 +99,10 @@ public class DeckManager {
         } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
 
         card.setPreserveRatio(true);
-        card.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(70, root.getWidth() * 0.06),root.widthProperty()));
+        card.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(48, Math.min(84, root.getWidth() * 0.055)),
+                root.widthProperty()
+        ));
 
         StackPane wrapper = new StackPane(card);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
@@ -152,7 +155,10 @@ public class DeckManager {
     public StackPane createBackCard() {
         Image image = SafeResourceLoader.loadImage(Objects.requireNonNull(getClass().getResource("/cityCards/cityCardsVerso.png")));
         ImageView imageView = new ImageView(image);
-        imageView.fitWidthProperty().bind(root.widthProperty().multiply(0.05));
+        imageView.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(44, Math.min(76, root.getWidth() * 0.05)),
+                root.widthProperty()
+        ));
         imageView.setPreserveRatio(true);
         StackPane wrapper = new StackPane(imageView);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
@@ -179,7 +185,10 @@ public class DeckManager {
         } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
 
         card.setPreserveRatio(true);
-        card.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(70, root.getWidth() * 0.06), root.widthProperty()));
+        card.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(48, Math.min(84, root.getWidth() * 0.055)),
+                root.widthProperty()
+        ));
         StackPane wrapper = new StackPane(card);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         GlowUtil.applyGlow(wrapper, "#ff2d2d", 10);

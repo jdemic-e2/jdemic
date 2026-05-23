@@ -60,7 +60,10 @@ public class OutbreakManager {
             StackPane containerIcon = new StackPane();
             ImageView icon = new ImageView(SafeResourceLoader.loadImage(iconUrl));
 
-            icon.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(28, root.getWidth() * 0.025),root.widthProperty()));
+            icon.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                    () -> Math.max(16, Math.min(28, root.getWidth() * 0.022)),
+                    root.widthProperty()
+            ));
             icon.setPreserveRatio(true);
             icon.setOpacity(0.2);
             containerIcon.getChildren().add(icon);
@@ -83,13 +86,12 @@ public class OutbreakManager {
         StackPane wrapper = new StackPane(content);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         wrapper.setStyle("-fx-background-color: rgba(0,0,0,0.9);" + "-fx-border-color: transparent transparent transparent #00eaff;" + "-fx-border-width: 0 0 0 2;");
-        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(120, Math.min(220, root.getWidth() * 0.14)), root.widthProperty()));
+        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(140, Math.min(260, root.getWidth() * 0.24)),
+                root.widthProperty()
+        ));
 
         GlowUtil.applyGlow(wrapper, "#00eaff", Math.max(8, root.getWidth() * 0.01));
-
-        StackPane.setAlignment(wrapper, Pos.TOP_LEFT);
-        wrapper.translateXProperty().bind(root.widthProperty().multiply(0.32));
-        wrapper.translateYProperty().bind(root.heightProperty().multiply(-0.06));
 
         container = new VBox(wrapper);
         container.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);

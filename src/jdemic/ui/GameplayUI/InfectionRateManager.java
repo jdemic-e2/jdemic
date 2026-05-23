@@ -43,6 +43,7 @@ public class InfectionRateManager {
         Label title = TextUtil.createText("INFECTION RATE", "hkmodular", 0.010, "#00d9ff", root);
 
         title.setMaxWidth(Double.MAX_VALUE);
+        title.setMinWidth(Region.USE_PREF_SIZE);
         title.setAlignment(Pos.CENTER);
 
         content.getChildren().add(title);
@@ -57,8 +58,11 @@ public class InfectionRateManager {
             StackPane slot = new StackPane();
 
             Rectangle diamond = new Rectangle();
-            diamond.widthProperty().bind(root.widthProperty().multiply(0.018));
-            diamond.heightProperty().bind(root.widthProperty().multiply(0.018));
+            diamond.widthProperty().bind(Bindings.createDoubleBinding(
+                    () -> Math.max(14, Math.min(28, root.getWidth() * 0.018)),
+                    root.widthProperty()
+            ));
+            diamond.heightProperty().bind(diamond.widthProperty());
             diamond.setRotate(45);
             diamond.setFill(Color.rgb(20, 20, 20));
             diamond.setStroke(Color.web("#444444"));
@@ -66,6 +70,7 @@ public class InfectionRateManager {
 
             Label label = new Label(String.valueOf(rates[i]));
             label.setStyle("-fx-text-fill: #666666; -fx-font-family: 'hkmodular';");
+            label.setMinWidth(Region.USE_PREF_SIZE);
 
             label.fontProperty().bind(Bindings.createObjectBinding(() -> javafx.scene.text.Font.font("hkmodular", root.getHeight() * 0.018),root.heightProperty()));
             label.setRotate(0);
@@ -88,12 +93,11 @@ public class InfectionRateManager {
         StackPane wrapper = new StackPane(content);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         wrapper.setStyle("-fx-background-color: rgba(0,0,0,0.9);" + "-fx-border-color: transparent transparent transparent #00eaff;" + "-fx-border-width: 0 0 0 2;");
-        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(140, Math.min(440, root.getWidth() * 0.28)),root.widthProperty()));
+        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(230, Math.min(420, root.getWidth() * 0.34)),
+                root.widthProperty()
+        ));
         GlowUtil.applyGlow(wrapper, "#00eaff", Math.max(8, root.getWidth() * 0.01));
-
-        StackPane.setAlignment(wrapper, Pos.TOP_LEFT);
-        wrapper.translateXProperty().bind(root.widthProperty().multiply(0.40));
-        wrapper.translateYProperty().bind(root.heightProperty().multiply(-0.06));
         container = new VBox(wrapper);
         container.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
     }

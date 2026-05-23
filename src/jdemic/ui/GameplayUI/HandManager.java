@@ -48,20 +48,23 @@ public class HandManager {
 
         wrapper.prefWidthProperty().bind(
                 Bindings.createDoubleBinding(() -> {
-                    double maxWidth = root.getWidth() * 0.38;
+                    double maxWidth = Math.max(180, Math.min(420, root.getWidth() * 0.38));
                     int count = handContainer.getChildren().size();
                     if (count == 0) return 200.0;
                     double scale = Math.max(0.038, 0.055 - (count  * 0.001));
-                    double cardWidth = Math.max( 65, root.getWidth() * scale);
+                    double cardWidth = Math.max(48, Math.min(82, root.getWidth() * scale));
                     double spacing = handContainer.getSpacing();
                     double calculatedWidth = cardWidth + (count - 1) * (cardWidth + spacing);
                     return Math.min(calculatedWidth + cardWidth * 0.4, maxWidth);
                 }, root.widthProperty(), handContainer.spacingProperty(), Bindings.size(handContainer.getChildren())));
-        wrapper.prefHeightProperty().bind(root.heightProperty().multiply(0.19));
+        wrapper.prefHeightProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(96, Math.min(150, root.getHeight() * 0.19)),
+                root.heightProperty()
+        ));
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
         StackPane.setAlignment(wrapper, Pos.BOTTOM_LEFT);
-        StackPane.setMargin(wrapper, new Insets(0, 0, root.getHeight() * 0.02, root.getWidth() * 0.02));
+        StackPane.setMargin(wrapper, Insets.EMPTY);
         root.getChildren().add(wrapper);
     }
 
@@ -103,7 +106,7 @@ public class HandManager {
         wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(() -> {
                     int cardCount = handContainer.getChildren().size();
                     double scale = Math.max(0.038, 0.055 - (cardCount * 0.002));
-                    return Math.max( 65, root.getWidth() * scale);
+                    return Math.max(48, Math.min(82, root.getWidth() * scale));
                 }, root.widthProperty(),  Bindings.size(handContainer.getChildren()))
         );
         wrapper.prefHeightProperty().bind(wrapper.prefWidthProperty().multiply(1.4));

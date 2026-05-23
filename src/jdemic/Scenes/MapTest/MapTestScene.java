@@ -143,8 +143,6 @@ public class MapTestScene {
     //Variables for connected gameplay
     private GameClient gameClient;
     
-    //Variable for current player display
-    private Label currentPlayerLabel;
     private String playerName = "Tester";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -393,7 +391,6 @@ public class MapTestScene {
         AnimationSnapshot before = createAnimationSnapshot();
         applyGameStateSnapshot(gameManager, gameState);
         if (actionMenuManager != null) actionMenuManager.updateMenuState();
-        updateCurrentPlayerLabel();
         updateHandUI();
         if (infectionRateManager != null) infectionRateManager.updateTrack();
         if (outbreakManager != null) outbreakManager.updateTrack();
@@ -716,40 +713,26 @@ public class MapTestScene {
             }));
         } catch (Exception ignored) {}
 
-        HBox outbreakBox = new HBox(outbreakManager.getContainer());
-        outbreakBox.setAlignment(Pos.CENTER_LEFT);
-        outbreakBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        configurePassiveHudRegion(outbreakBox);
+        HBox statusBox = new HBox(outbreakManager.getContainer(), infectionRateManager.getContainer());
+        statusBox.setAlignment(Pos.TOP_RIGHT);
+        statusBox.spacingProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(8, root.getWidth() * 0.008),
+                root.widthProperty()
+        ));
+        statusBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        configurePassiveHudRegion(statusBox);
 
-        StackPane.setAlignment(outbreakBox, Pos.TOP_LEFT);
-        StackPane.setMargin(outbreakBox, new Insets(40, 0, 0, 40));
-
-        HBox infectionBox = new HBox(infectionRateManager.getContainer());
-        infectionBox.setAlignment(Pos.CENTER);
-        infectionBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        configurePassiveHudRegion(infectionBox);
-
-        StackPane.setAlignment(infectionBox, Pos.TOP_CENTER);
-        StackPane.setMargin(infectionBox, new Insets(40, 0, 0, 0));
+        StackPane.setAlignment(statusBox, Pos.TOP_RIGHT);
+        StackPane.setMargin(statusBox, Insets.EMPTY);
 
         VBox curesBox = cureManager.getContainer();
         curesBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         configurePassiveHudRegion(curesBox);
 
-        StackPane.setAlignment(curesBox, Pos.TOP_RIGHT);
-        StackPane.setMargin(curesBox, new Insets(100, 40, 0, 0));
+        StackPane.setAlignment(curesBox, Pos.CENTER_RIGHT);
+        StackPane.setMargin(curesBox, Insets.EMPTY);
 
-        // Create current player display label
-        currentPlayerLabel = new Label();
-        currentPlayerLabel.setFont(Font.font("hkmodular", FontWeight.BOLD, 20));
-        currentPlayerLabel.setTextFill(Color.web("#d1d412"));
-        currentPlayerLabel.setStyle("-fx-effect: dropshadow(gaussian, #d1d412, 10, 0.5, 0, 0);");
-        updateCurrentPlayerLabel();
-        
-        StackPane.setAlignment(currentPlayerLabel, Pos.BOTTOM_CENTER);
-        StackPane.setMargin(currentPlayerLabel, new Insets(0, 0, 40, 0));
-
-        root.getChildren().addAll(outbreakBox, infectionBox, curesBox, currentPlayerLabel);
+        root.getChildren().addAll(statusBox, curesBox);
     }
 
     private void setupNotifications()
@@ -801,7 +784,6 @@ public class MapTestScene {
     }
 
     private void refreshTurnUI() {
-        updateCurrentPlayerLabel();
         updateHandUI();
         updateVirusVisuals();
         playGameEndAnimationAndReturnToMenu();
@@ -1007,20 +989,7 @@ public class MapTestScene {
             gameManager.discardCurrentPlayerCard(displayedPlayer, cardIndex);
             notificationManager.showNotification("Card discarded");
             if (actionMenuManager != null) actionMenuManager.updateMenuState();
-            updateCurrentPlayerLabel();
             updateHandUI();
-        }
-    }
-
-    /**
-     * Updates the current player label with the name of the player whose turn it is
-     */
-    private void updateCurrentPlayerLabel() {
-        if (currentPlayerLabel != null && gameManager != null) {
-            PlayerState current = gameManager.getState().getCurrentPlayer();
-            if (current != null) {
-                currentPlayerLabel.setText("CURRENT TURN: " + current.getPlayerName().toUpperCase());
-            }
         }
     }
 
