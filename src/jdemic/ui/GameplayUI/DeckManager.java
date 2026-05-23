@@ -1,5 +1,7 @@
 package jdemic.ui.GameplayUI;
 
+import java.util.Objects;
+
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Pos;
 import javafx.scene.image.Image;
@@ -143,5 +145,43 @@ public class DeckManager {
                 root.widthProperty()
         ));
         return epidemicDeck;
+    }
+
+    //for shuffling animation, creates a single card back to be animated from the deck to the player's hand
+    public StackPane createBackCard() {
+        Image image = new Image(Objects.requireNonNull(getClass().getResource("/cityCards/cityCardsVerso.png")).toExternalForm());
+        ImageView imageView = new ImageView(image);
+        imageView.fitWidthProperty().bind(root.widthProperty().multiply(0.05));
+        imageView.setPreserveRatio(true);
+        StackPane wrapper = new StackPane(imageView);
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        GlowUtil.applyGlow(wrapper, "#00b5d4", 8);
+        return wrapper;
+    }
+
+    public StackPane createEpidemicCard(CityNode city) {
+        ImageView card;
+        try {
+            String colorPrefix = switch (city.getNativeColor()) {
+                case BLUE -> "Blue";
+                case YELLOW -> "Yellow";
+                case BLACK -> "Green"; // ?? black/green? It's functional, but confusing.
+                case RED -> "Red";
+            };
+
+            String cityName = city.getName().replace(" ", "").replace(".", "");
+            String path ="/epidemicCards/" + colorPrefix + cityName + ".png";
+            var resource =getClass().getResource(path);
+            if (resource == null) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
+            card = new ImageView(new Image(resource.toExternalForm()));
+
+        } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
+
+        card.setPreserveRatio(true);
+        card.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(70, root.getWidth() * 0.06), root.widthProperty()));
+        StackPane wrapper = new StackPane(card);
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        GlowUtil.applyGlow(wrapper, "#ff2d2d", 10);
+        return wrapper;
     }
 }

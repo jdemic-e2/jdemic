@@ -1,5 +1,9 @@
 package jdemic.ui.GameplayUI;
 
+import javafx.animation.Interpolator;
+import javafx.animation.ParallelTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.TranslateTransition;
 import javafx.beans.binding.DoubleExpression;
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.scene.effect.DropShadow;
@@ -7,6 +11,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
+import javafx.util.Duration;
 
 public class PawnUI {
     private final StackPane root;
@@ -37,8 +42,8 @@ public class PawnUI {
     }
 
     public void unbindPosition() {
-        root.translateXProperty().unbind();
-        root.translateYProperty().unbind();
+        root.layoutXProperty().unbind();
+        root.layoutYProperty().unbind();
     }
 
     public void bindToCenter(DoubleExpression cityX, DoubleExpression cityY) {
@@ -50,4 +55,26 @@ public class PawnUI {
         root.layoutXProperty().bind(cityX.add(Math.cos(angle) * radiusOffset).subtract(pawnImage.fitHeightProperty().divide(2)));
         root.layoutYProperty().bind(cityY.add(Math.sin(angle) * radiusOffset).subtract(pawnImage.fitHeightProperty().multiply(0.65)));
     }
+    
+    public void animateMoveTo(double targetX, double targetY, Runnable onFinished) {
+        TranslateTransition move = new TranslateTransition(Duration.millis(850),pawnImage);
+        move.setToX(targetX);
+        move.setToY(targetY);
+        move.setInterpolator(Interpolator.EASE_BOTH);
+
+        ScaleTransition pulse =new ScaleTransition(Duration.millis(420), pawnImage);
+        pulse.setToX(1.18);
+        pulse.setToY(1.18);
+        pulse.setAutoReverse(true);
+        pulse.setCycleCount(2);
+        ParallelTransition full = new ParallelTransition(move,pulse);
+        full.setOnFinished(e -> {
+            pawnImage.setTranslateX(0);
+            pawnImage.setTranslateY(0);
+            if (onFinished != null) { onFinished.run(); }
+        });
+
+        full.play();
+    }
+    public ImageView getImage() { return pawnImage; }
 }

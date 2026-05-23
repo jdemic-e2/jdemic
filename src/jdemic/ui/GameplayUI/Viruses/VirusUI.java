@@ -16,8 +16,8 @@ public class VirusUI {
     public VirusUI(DiseaseColor diseaseColor, ReadOnlyDoubleProperty mapHeightProperty) {
         this.container = new StackPane();
         this.shape = new Rectangle();
-
-        DoubleExpression size = mapHeightProperty.multiply(0.008);
+//slight changes to size of the cubes
+        DoubleExpression size = mapHeightProperty.multiply(0.014);
         this.shape.widthProperty().bind(size);
         this.shape.heightProperty().bind(size);
 
@@ -38,7 +38,7 @@ public class VirusUI {
     }
 
     public void bindWithOffset(DoubleExpression cityX, DoubleExpression cityY, int index, int total, ReadOnlyDoubleProperty mapHeight) {
-        DoubleExpression size = mapHeight.multiply(0.01);
+        DoubleExpression size = mapHeight.multiply(0.014);
         DoubleExpression spacingX = size.multiply(0.9); // Horizontal offset
         DoubleExpression spacingY = size.multiply(0.8); // Vertical offset
         DoubleExpression halfSize = size.divide(2);
