@@ -13,7 +13,7 @@ public record DedicatedServerConfig(
     public static final int DEFAULT_SERVER_PORT = 9000;
     public static final boolean DEFAULT_STATUS_ENABLED = true;
     public static final String DEFAULT_STATUS_HOST = "localhost";
-    public static final int DEFAULT_STATUS_PORT = 8080;
+    public static final int DEFAULT_STATUS_PORT = 8090;
     public static final boolean DEFAULT_OPEN_BROWSER = false;
 
     static final String SERVER_PORT_ENV = "JDEMIC_SERVER_PORT";

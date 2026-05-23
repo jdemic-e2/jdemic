@@ -79,14 +79,6 @@ public class DiseaseManager {
             return;
         }
 
-        if (amount >= getInfectionCubesLeft()) {
-            for (DiseaseColor c : DiseaseColor.values()) {
-                cubesRemaining.put(c, 0);
-            }
-            gameManager.checkLoseCondition();
-            return;
-        }
-
         DiseaseColor color = city.getNativeColor();
         // If the disease has been eradicated, it no longer appears on the board
         if (isEradicated(color)) {
