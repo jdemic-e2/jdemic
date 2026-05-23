@@ -12,6 +12,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.OverrunStyle;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -267,8 +268,23 @@ public class TutorialUtil {
             System.err.println("[" + errorContext + "] Missing resource: " + resourcePath);
             Label fallback = new Label(fallbackText);
             fallback.setStyle("-fx-text-fill: white; -fx-font-size: 24;");
-            overlay.getChildren().add(fallback);
+            StackPane fallbackWrapper = new StackPane(fallback);
+            fallbackWrapper.setStyle(CARD_WRAPPER_STYLE);
+            fallbackWrapper.setPadding(new Insets(32));
+            fallbackWrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
+            Button close = new Button("X");
+            close.setStyle(CLOSE_BUTTON_STYLE);
+            close.setOnAction(e -> closeOverlay(root, overlay, fallbackWrapper));
+
+            fallbackWrapper.getChildren().add(close);
+            StackPane.setAlignment(close, Pos.TOP_RIGHT);
+            close.setTranslateX(8);
+            close.setTranslateY(-8);
+
+            overlay.getChildren().add(fallbackWrapper);
             root.getChildren().add(overlay);
+            playOverlayIn(fallbackWrapper);
             return;
         }
 
@@ -305,6 +321,11 @@ public class TutorialUtil {
     }
 
     public static void enableHorizontalDragScroll(Region viewport, Pane content) {
+        if (viewport instanceof ScrollPane scrollPane) {
+            scrollPane.setPannable(true);
+            return;
+        }
+
         DoubleProperty scrollX = new SimpleDoubleProperty(0);
         content.translateXProperty().bind(scrollX);
 
@@ -328,6 +349,18 @@ public class TutorialUtil {
         clip.widthProperty().bind(region.widthProperty());
         clip.heightProperty().bind(region.heightProperty());
         region.setClip(clip);
+    }
+
+    public static ScrollPane createHorizontalCardScrollPane(Pane content) {
+        ScrollPane scrollPane = new ScrollPane(content);
+        scrollPane.setFitToHeight(true);
+        scrollPane.setFitToWidth(false);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setPannable(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        content.setStyle("-fx-background-color: transparent;");
+        return scrollPane;
     }
 
     private static void playOverlayIn(Node node) {

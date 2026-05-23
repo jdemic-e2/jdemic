@@ -85,7 +85,7 @@ public class MainMenuScene {
         String text = "S Y S T E M   O N L I N E   •   A W A I T I N G   C O M M A N D   •   P R E S S   P L A Y   T O   B E G I N   •";
         Pane scrollingText = Animations.createScrollingText(root, text,60);
 
-       StackPane.setAlignment(scrollingText, Pos.BOTTOM_LEFT);
+       StackPane.setAlignment(scrollingText, Pos.TOP_LEFT);
        scrollingText.translateYProperty().bind(root.heightProperty().multiply(0.85));
 
         root.getChildren().add(scrollingText);
@@ -106,7 +106,6 @@ public class MainMenuScene {
       //  Animations.createPulse(map, 1.05, 2);
 
         VBox rightPanel = new VBox();
-        rightPanel.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.08, root.getWidth() * 0.02, 0, -root.getWidth() * 0.01), root.widthProperty(), root.heightProperty()));
         rightPanel.setSpacing(0);
         rightPanel.spacingProperty().bind(root.heightProperty().multiply(0.01));
         rightPanel.maxWidthProperty().bind(root.widthProperty().multiply(0.25));
@@ -191,13 +190,16 @@ public class MainMenuScene {
         virusContainer.setAlignment(Pos.TOP_CENTER);
         virusPanelBox.getChildren().add(virusContainer);
 
-        rightPanel.translateXProperty().bind(root.widthProperty().multiply(0.43));
         rightPanel.translateYProperty().bind(root.heightProperty().multiply(0.02));
         rightPanel.getChildren().addAll(statusPanelBox, virusPanelBox);
 
         root.getChildren().add(titleBox);
         root.getChildren().add(map);
         root.getChildren().add(title);
+        StackPane.setAlignment(rightPanel, Pos.TOP_RIGHT);
+        rightPanel.paddingProperty().bind(Bindings.createObjectBinding(() ->
+                new Insets(root.getHeight() * 0.08, root.getWidth() * 0.025, 0, 0),
+                root.widthProperty(), root.heightProperty()));
         root.getChildren().add(rightPanel);
 
         ButtonsUtil playBtn = new ButtonsUtil("PLAY", CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);

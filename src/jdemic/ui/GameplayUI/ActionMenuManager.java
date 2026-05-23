@@ -88,7 +88,7 @@ public class ActionMenuManager {
 
         actionSubMenu.paddingProperty().bind(createObjectBinding(() -> {
             double bottomOffset = root.getHeight() * 0.23;
-            return new Insets(0, 0, bottomOffset, root.getWidth() * 0.02);
+            return new Insets(0, 0, bottomOffset, 10);
         }, root.widthProperty(), root.heightProperty()));
 
         root.getChildren().add(actionSubMenu);
