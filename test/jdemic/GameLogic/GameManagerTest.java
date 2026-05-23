@@ -1,8 +1,8 @@
 package jdemic.GameLogic;
 
-import jdemic.GameLogic.Actions.DirectFlightAction;
-import jdemic.GameLogic.Actions.DriveFerryAction;
-import jdemic.GameLogic.Actions.ShuttleFlightAction;
+import jdemic.GameLogic.Actions.Movement.DirectFlightAction;
+import jdemic.GameLogic.Actions.Movement.DriveFerryAction;
+import jdemic.GameLogic.Actions.Movement.ShuttleFlightAction;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,6 @@ class GameManagerTest {
         GameState state = manager.getState();
 
         assertEquals(2, state.getPlayers().size());
-        assertEquals(2, state.getPlayerStates().size());
         assertEquals(4, state.getActionsRemaining());
         assertEquals(0, state.getCurrentPlayerIndex());
         assertEquals(2, manager.getInfectionRate());
@@ -35,28 +34,28 @@ class GameManagerTest {
     @Test
     void validDriveFerryShouldMovePlayerAndConsumeOneAction() {
         GameManager manager = newManager("Ruben");
-        Player player = manager.getCurrentPlayer();
+        PlayerState player = manager.getCurrentPlayer();
         CityNode atlanta = manager.getState().getMap().getCity("Atlanta");
         CityNode chicago = manager.getState().getMap().getCity("Chicago");
-        player.getState().setCurrentCity(atlanta);
+        player.setCurrentCity(atlanta);
 
-        manager.performAction(player, new DriveFerryAction(chicago));
+        manager.performAction(new Player(player, null), new DriveFerryAction(chicago));
 
-        assertSame(chicago, player.getState().getPlayerCurrentCity());
+        assertSame(chicago, player.getPlayerCurrentCity());
         assertEquals(3, manager.getState().getActionsRemaining());
     }
 
     @Test
     void invalidDriveFerryShouldNotMoveOrConsumeAction() {
         GameManager manager = newManager("Ruben");
-        Player player = manager.getCurrentPlayer();
+        PlayerState player = manager.getCurrentPlayer();
         CityNode atlanta = manager.getState().getMap().getCity("Atlanta");
         CityNode london = manager.getState().getMap().getCity("London");
-        player.getState().setCurrentCity(atlanta);
+        player.setCurrentCity(atlanta);
 
-        manager.performAction(player, new DriveFerryAction(london));
+        manager.performAction(new Player(player, null), new DriveFerryAction(london));
 
-        assertSame(atlanta, player.getState().getPlayerCurrentCity());
+        assertSame(atlanta, player.getPlayerCurrentCity());
         assertEquals(4, manager.getState().getActionsRemaining());
     }
 
@@ -71,38 +70,36 @@ class GameManagerTest {
 
         assertEquals(1, state.getCurrentPlayerIndex());
         assertEquals(4, state.getActionsRemaining());
-        assertEquals(2, state.getPlayers().get(0).getState().getHand().size());
+        assertEquals(6, state.getPlayers().get(0).getHand().size());
         assertEquals(startingCards - 2, state.getCardDeck().getRemainingCardsCount());
     }
 
     @Test
     void directAndShuttleFlightsShouldValidateRequiredCardsAndResearchStations() {
         GameManager manager = newManager("Ruben");
-        Player player = manager.getCurrentPlayer();
+        PlayerState player = manager.getCurrentPlayer();
         CityNode atlanta = manager.getState().getMap().getCity("Atlanta");
         CityNode chicago = manager.getState().getMap().getCity("Chicago");
-        player.getState().setCurrentCity(atlanta);
+        player.setCurrentCity(atlanta);
 
         Card chicagoCard = new Card("Chicago", CardType.CITY, chicago);
-        player.getState().addCard(chicagoCard);
+        player.addCard(chicagoCard);
 
-        manager.performAction(player, new DirectFlightAction(chicago, chicagoCard));
+        manager.performAction(new Player(player, null), new DirectFlightAction(chicago, chicagoCard));
 
-        assertSame(chicago, player.getState().getPlayerCurrentCity());
+        assertSame(chicago, player.getPlayerCurrentCity());
         assertEquals(3, manager.getState().getActionsRemaining());
 
         chicago.addResearchStation();
-        manager.performAction(player, new ShuttleFlightAction(atlanta));
+        manager.performAction(new Player(player, null), new ShuttleFlightAction(atlanta));
 
-        assertSame(atlanta, player.getState().getPlayerCurrentCity());
+        assertSame(atlanta, player.getPlayerCurrentCity());
         assertEquals(2, manager.getState().getActionsRemaining());
     }
 
     private GameManager newManager(String... playerNames) {
-        List<Player> players = java.util.Arrays.stream(playerNames)
-                .map(name -> new Player(new PlayerState(
-                        name,
-                        new CityNode("Atlanta", DiseaseColor.BLUE, 0.25f, 0.39f))))
+        List<PlayerState> players = java.util.Arrays.stream(playerNames)
+                .map(PlayerState::new)
                 .toList();
         return new GameManager(players);
     }
