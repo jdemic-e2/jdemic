@@ -49,7 +49,7 @@ public class TutorialCitiesScene {
             System.err.println("[TutorialCitiesScene] Missing resource: /backgroundMap.png");
             return;
         }
-        ImageView map = new ImageView(new Image(mapUrl.toExternalForm()));
+        ImageView map = new ImageView(SafeResourceLoader.loadImage(mapUrl));
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.75));
         StackPane.setAlignment(map, Pos.CENTER);

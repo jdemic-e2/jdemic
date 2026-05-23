@@ -53,7 +53,7 @@ public class TutorialUtil {
             System.err.println("[TutorialUtil] Missing resource: /background.png");
             return;
         }
-        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -236,7 +236,7 @@ public class TutorialUtil {
             return new ImageView();
         }
 
-        ImageView card = new ImageView(new Image(cardUrl.toExternalForm()));
+        ImageView card = new ImageView(SafeResourceLoader.loadImage(cardUrl));
         card.setPreserveRatio(true);
         card.fitWidthProperty().bind(root.widthProperty().multiply(widthRatio));
         GlowUtil.applyGlow(card, "#00b5d4", 10);
@@ -272,7 +272,7 @@ public class TutorialUtil {
             return;
         }
 
-        ImageView card = new ImageView(new Image(cardUrl.toExternalForm()));
+        ImageView card = new ImageView(SafeResourceLoader.loadImage(cardUrl));
         card.setPreserveRatio(true);
         card.fitWidthProperty().bind(root.widthProperty().multiply(0.3));
 

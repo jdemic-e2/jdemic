@@ -11,6 +11,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import jdemic.GameLogic.GameManager;
 import jdemic.ui.GlowUtil;
+import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 import java.net.URL;
 
@@ -57,7 +58,7 @@ public class OutbreakManager {
 
         for (int i = 0; i < nodes.length; i++) {
             StackPane containerIcon = new StackPane();
-            ImageView icon = new ImageView(new Image(iconUrl.toExternalForm()));
+            ImageView icon = new ImageView(SafeResourceLoader.loadImage(iconUrl));
 
             icon.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(28, root.getWidth() * 0.025),root.widthProperty()));
             icon.setPreserveRatio(true);

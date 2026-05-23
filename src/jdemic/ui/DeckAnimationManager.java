@@ -136,11 +136,11 @@ public class DeckAnimationManager {
                                 onFinished.run();
                         }
                 });
-                fullSequence.play();
+                AnimationSpeedUtil.play(fullSequence);
         }
 
         public void playEpidemicAnimation(Runnable onFinished) {
-                Image epidemicImage = new Image(Objects.requireNonNull(getClass().getResource("/epidemicCard/SystemBreach.png")).toExternalForm());
+                Image epidemicImage = SafeResourceLoader.loadImage(Objects.requireNonNull(getClass().getResource("/epidemicCard/SystemBreach.png")));
                 ImageView epidemicView = new ImageView(epidemicImage);
 
                 epidemicView.fitWidthProperty().bind(root.widthProperty().multiply(0.14));
@@ -159,7 +159,7 @@ public class DeckAnimationManager {
 
                 glowPulse.setAutoReverse(true);
                 glowPulse.setCycleCount(Animation.INDEFINITE);
-                glowPulse.play();
+                AnimationSpeedUtil.play(glowPulse);
 
                 epidemicCard.setEffect(redGlow);
                 epidemicCard.setScaleX(0.2);
@@ -231,7 +231,7 @@ public class DeckAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
 
         public void playInfectionCardDraw(StackPane infectionCard, Runnable onFinished) {
@@ -282,6 +282,6 @@ public class DeckAnimationManager {
                         if (onFinished != null) { onFinished.run(); }
                 });
 
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
 }

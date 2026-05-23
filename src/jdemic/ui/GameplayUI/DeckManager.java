@@ -9,6 +9,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import jdemic.GameLogic.CityNode;
 import jdemic.ui.GlowUtil;
+import jdemic.ui.SafeResourceLoader;
 
 public class DeckManager {
 
@@ -56,13 +57,13 @@ public class DeckManager {
             System.err.println("[DeckManager] Missing resource: /cityCards/cityCardsVerso.png");
             return new HBox();
         }
-        Image verso = new Image(cityVersoUrl.toExternalForm());
+        Image verso = SafeResourceLoader.loadImage(cityVersoUrl);
         StackPane drawPile = createCardStack(verso, 6);
         Image topCard;
         try {
             String path = "/cityCards/BlueAtlanta.png"; //for test
             var res = getClass().getResource(path);
-            topCard = (res != null) ? new Image(res.toExternalForm()) : verso;
+            topCard = (res != null) ? SafeResourceLoader.loadImage(res) : verso;
         } catch (Exception e) { topCard = verso; }
 
         StackPane discardPile = createCardStack(topCard, 4);
@@ -93,7 +94,7 @@ public class DeckManager {
             var resource = getClass().getResource(path);
 
             if (resource == null) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
-            card = new ImageView(new Image(resource.toExternalForm()));
+            card = new ImageView(SafeResourceLoader.loadImage(resource));
 
         } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
 
@@ -126,13 +127,13 @@ public class DeckManager {
             System.err.println("[DeckManager] Missing resource: /epidemicCards/epidemicCardsVerso.png");
             return new HBox();
         }
-        Image verso = new Image(epidemicVersoUrl.toExternalForm());
+        Image verso = SafeResourceLoader.loadImage(epidemicVersoUrl);
         StackPane drawPile = createCardStack(verso, 5);
         Image topCard;
         try {
             String path = "/epidemicCards/BlueAtlanta.png"; //for test
             var res = getClass().getResource(path);
-            topCard = (res != null) ? new Image(res.toExternalForm()) : verso;
+            topCard = (res != null) ? SafeResourceLoader.loadImage(res) : verso;
         } catch (Exception e) { topCard = verso; }
 
         StackPane discardPile = createCardStack(topCard, 3);
@@ -149,7 +150,7 @@ public class DeckManager {
 
     //for shuffling animation, creates a single card back to be animated from the deck to the player's hand
     public StackPane createBackCard() {
-        Image image = new Image(Objects.requireNonNull(getClass().getResource("/cityCards/cityCardsVerso.png")).toExternalForm());
+        Image image = SafeResourceLoader.loadImage(Objects.requireNonNull(getClass().getResource("/cityCards/cityCardsVerso.png")));
         ImageView imageView = new ImageView(image);
         imageView.fitWidthProperty().bind(root.widthProperty().multiply(0.05));
         imageView.setPreserveRatio(true);
@@ -173,7 +174,7 @@ public class DeckManager {
             String path ="/epidemicCards/" + colorPrefix + cityName + ".png";
             var resource =getClass().getResource(path);
             if (resource == null) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
-            card = new ImageView(new Image(resource.toExternalForm()));
+            card = new ImageView(SafeResourceLoader.loadImage(resource));
 
         } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
 

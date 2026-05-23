@@ -12,6 +12,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.util.Duration;
+import jdemic.ui.AnimationSpeedUtil;
+import jdemic.ui.SafeResourceLoader;
 
 public class PawnUI {
     private final StackPane root;
@@ -22,7 +24,7 @@ public class PawnUI {
         this.playerName = playerName;
         this.root = new StackPane();
 
-        Image img = new Image(getClass().getResource(imagePath).toExternalForm());
+        Image img = SafeResourceLoader.loadImage(imagePath);
         pawnImage = new ImageView(img);
 
         pawnImage.fitHeightProperty().bind(mapHeightProperty.multiply(0.08));
@@ -74,7 +76,33 @@ public class PawnUI {
             if (onFinished != null) { onFinished.run(); }
         });
 
-        full.play();
+        AnimationSpeedUtil.play(full);
     }
+
+    public void animateMoveFrom(double startX, double startY, Runnable onFinished) {
+        pawnImage.setTranslateX(startX);
+        pawnImage.setTranslateY(startY);
+
+        TranslateTransition move = new TranslateTransition(Duration.millis(850), pawnImage);
+        move.setToX(0);
+        move.setToY(0);
+        move.setInterpolator(Interpolator.EASE_BOTH);
+
+        ScaleTransition pulse = new ScaleTransition(Duration.millis(420), pawnImage);
+        pulse.setToX(1.18);
+        pulse.setToY(1.18);
+        pulse.setAutoReverse(true);
+        pulse.setCycleCount(2);
+
+        ParallelTransition full = new ParallelTransition(move, pulse);
+        full.setOnFinished(e -> {
+            pawnImage.setTranslateX(0);
+            pawnImage.setTranslateY(0);
+            if (onFinished != null) { onFinished.run(); }
+        });
+
+        AnimationSpeedUtil.play(full);
+    }
+
     public ImageView getImage() { return pawnImage; }
 }

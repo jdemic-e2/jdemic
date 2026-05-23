@@ -4,6 +4,8 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
+import jdemic.GameLogic.GameClient;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.Scenes.Settings.AudioManager;
 import jdemic.Scenes.Settings.SettingsManager;
@@ -22,9 +24,21 @@ public class Main extends Application {
 
         stage.setTitle("Cyber Crisis");
         SceneManager.switchScene("MAIN_MENU");
+        stage.setOnCloseRequest(event -> shutdownNetworkResources());
 
         stage.show();
         AudioManager.getInstance().playMusic("MENU");
+    }
+
+    @Override
+    public void stop() {
+        shutdownNetworkResources();
+    }
+
+    private void shutdownNetworkResources() {
+        SceneManager.shutdownCurrentScene();
+        GameClient.disconnectAllFromLobby();
+        JdemicNetworkServer.shutdown();
     }
 
     public static void main(String[] args) {

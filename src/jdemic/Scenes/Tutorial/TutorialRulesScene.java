@@ -29,7 +29,7 @@ public class TutorialRulesScene {
             System.err.println("[TutorialRulesScene] Missing resource: " + path);
             return new ImageView();
         }
-        ImageView img = new ImageView(new Image(iconUrl.toExternalForm()));
+        ImageView img = new ImageView(SafeResourceLoader.loadImage(iconUrl));
         img.fitWidthProperty().bind(root.widthProperty().multiply(0.015));
         img.fitHeightProperty().bind(root.widthProperty().multiply(0.015));
         img.setPreserveRatio(true);

@@ -2,7 +2,7 @@ package jdemic.Scenes.Lobby;
 
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -13,8 +13,10 @@ import jdemic.DedicatedServer.network.core.DedicatedServerConfig;
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
 import jdemic.GameLogic.GameClient;
 import jdemic.Scenes.SceneManager.SceneManager;
+import jdemic.Scenes.Settings.SettingsManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
+import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 
 import java.io.BufferedReader;
@@ -23,6 +25,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.function.UnaryOperator;
 
 public class LobbyScene {
     private final StackPane root;
@@ -43,7 +46,7 @@ public class LobbyScene {
             System.err.println("[LobbyScene] Missing resource: /background.png");
             return;
         }
-        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -58,7 +61,8 @@ public class LobbyScene {
         title.translateYProperty().bind(root.heightProperty().multiply(0.05));
         GlowUtil.applyGlow(title, "#cfc900", 7);
 
-        TextField nicknameField = new TextField("Newbie");
+        TextField nicknameField = new TextField(savedPlayerName());
+        nicknameField.setTextFormatter(new TextFormatter<>(nicknameFilter()));
         nicknameField.setMaxWidth(300);
         nicknameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
 
@@ -77,6 +81,7 @@ public class LobbyScene {
                 errorLabel.setText("ENTER NICKNAME");
                 errorLabel.setVisible(true);
             } else {
+                savePlayerName(nickname);
                 errorLabel.setVisible(false);
                 hostBtn.setDisable(true);
                 startLocalServerAndEnterLobby(nickname, hostBtn, errorLabel);
@@ -93,7 +98,8 @@ public class LobbyScene {
             }
 
             errorLabel.setVisible(false);
-            stage.getScene().setRoot(new JoinCodeScene(stage, nickname).getRoot());
+            savePlayerName(nickname);
+            SceneManager.setRoot(new JoinCodeScene(stage, nickname).getRoot());
         });
 
         VBox centerBox = new VBox(18, nameLabel, nicknameField, errorLabel, hostBtn, joinBtn);
@@ -111,6 +117,35 @@ public class LobbyScene {
 
     public StackPane getRoot() {
         return root;
+    }
+
+    private void savePlayerName(String nickname) {
+        SettingsManager settingsManager = SettingsManager.getInstance();
+        settingsManager.playerNameProperty().set(nickname);
+        settingsManager.saveSettings();
+    }
+
+    private String savedPlayerName() {
+        String savedName = SettingsManager.getInstance().playerNameProperty().get();
+        return normalizeNickname(savedName);
+    }
+
+    private UnaryOperator<TextFormatter.Change> nicknameFilter() {
+        return change -> {
+            String text = change.getControlNewText();
+            return text.matches("[a-zA-Z0-9]*") && text.length() <= 16 ? change : null;
+        };
+    }
+
+    private String normalizeNickname(String nickname) {
+        if (nickname == null) {
+            return "Newbie";
+        }
+        String normalized = nickname.replaceAll("[^a-zA-Z0-9]", "");
+        if (normalized.length() > 16) {
+            normalized = normalized.substring(0, 16);
+        }
+        return normalized.isBlank() ? "Newbie" : normalized;
     }
 
     private void startLocalServerAndEnterLobby(String nickname, ButtonsUtil hostBtn, Label errorLabel) {
@@ -191,7 +226,7 @@ public class LobbyScene {
 
         String roomCode = getLocalHostAddress() + ":" + port;
         Platform.runLater(() ->
-                stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, roomCode, hostClient, ownsServer).getRoot())
+                SceneManager.setRoot(new WaitingRoomScene(stage, nickname, roomCode, hostClient, ownsServer).getRoot())
         );
         return true;
     }

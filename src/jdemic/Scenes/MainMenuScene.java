@@ -20,6 +20,7 @@ import jdemic.ui.DotUtil;
 import jdemic.ui.GlowLineUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
+import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 public class MainMenuScene {
     private static final String FONT_HKMODULAR = "hkmodular";
@@ -52,7 +53,7 @@ public class MainMenuScene {
             System.err.println("[MainMenuScene] Missing resource: " + BACKGROUND_RESOURCE);
             return;
         }
-        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -74,7 +75,7 @@ public class MainMenuScene {
             System.err.println("[MainMenuScene] Missing resource: " + GLOW_TITLE_FRAME_RESOURCE);
             return;
         }
-        ImageView titleBox = new ImageView(new Image(titleUrl.toExternalForm()));
+        ImageView titleBox = new ImageView(SafeResourceLoader.loadImage(titleUrl));
         titleBox.setPreserveRatio(true);
         titleBox.fitWidthProperty().bind(root.widthProperty().multiply(0.45));
         titleBox.translateYProperty().bind(root.heightProperty().multiply(0.06));
@@ -94,7 +95,7 @@ public class MainMenuScene {
             System.err.println("[MainMenuScene] Missing resource: " + BACKGROUND_MAP_RESOURCE);
             return;
         }
-        Image mapImg = new Image(mapUrl.toExternalForm());
+        Image mapImg = SafeResourceLoader.loadImage(mapUrl);
         ImageView map = new ImageView(mapImg);
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.8));

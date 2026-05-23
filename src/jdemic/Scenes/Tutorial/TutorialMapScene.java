@@ -6,6 +6,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
+import jdemic.ui.SafeResourceLoader;
 
 public class TutorialMapScene {
 
@@ -29,7 +30,7 @@ public class TutorialMapScene {
             System.err.println("[TutorialMapScene] Missing resource: /backgroundMap.png");
             return;
         }
-        ImageView map = new ImageView(new Image(mapUrl.toExternalForm()));
+        ImageView map = new ImageView(SafeResourceLoader.loadImage(mapUrl));
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.75));
         map.translateXProperty().bind(root.widthProperty().multiply(0.1));

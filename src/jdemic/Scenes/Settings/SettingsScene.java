@@ -11,6 +11,7 @@ import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.PanelUtil;
+import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 
 import java.util.function.UnaryOperator;
@@ -57,9 +58,19 @@ public class SettingsScene {
     public SettingsScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
+        setupStylesheet();
         setupBackground();
         setupConfirmationOverlay();
         setupUI();
+    }
+
+    private void setupStylesheet() {
+        java.net.URL stylesheet = getClass().getResource("/styles/settings.css");
+        if (stylesheet != null) {
+            root.getStylesheets().add(stylesheet.toExternalForm());
+        } else {
+            System.err.println("[SettingsScene] Missing resource: /styles/settings.css");
+        }
     }
 
     private void setupUI() {
@@ -280,9 +291,8 @@ public class SettingsScene {
     private void updateFsToggleStyle() {
         boolean isOn = fsToggle.isSelected();
         fsToggle.setText(isOn ? "ON" : "OFF");
-        String bgColor = isOn ? BLACK : CYAN;
-        String textColor = isOn ? CYAN : BLACK;
-        fsToggle.setStyle("-fx-background-color: " + bgColor + "; -fx-text-fill: " + textColor + "; -fx-border-color: " + CYAN + "; -fx-border-width: 2; -fx-font-family: '" + FONT_HKMODULAR + "'; -fx-padding: 5 15 5 15;");
+        fsToggle.getStyleClass().removeAll("cyber-toggle", "cyber-toggle-on", "cyber-toggle-off");
+        fsToggle.getStyleClass().addAll("cyber-toggle", isOn ? "cyber-toggle-on" : "cyber-toggle-off");
     }
 
     private VBox createAudioContent() {
@@ -293,13 +303,22 @@ public class SettingsScene {
         Label header = TextUtil.createText("AUDIO SETTINGS", FONT_HKMODULAR, 0.03, WHITE, root);
 
         masterVol = new Slider(0, 100, sm.masterVolumeProperty().get() * 100);
+        styleSlider(masterVol);
         masterVol.valueProperty().addListener((obs, oldVal, newVal) -> markDirty());
 
         musicVol = new Slider(0, 100, sm.musicVolumeProperty().get() * 100);
+        styleSlider(musicVol);
         musicVol.valueProperty().addListener((obs, oldVal, newVal) -> markDirty());
 
         box.getChildren().addAll(header, createSettingRow("MASTER VOLUME", masterVol), createSettingRow("MUSIC VOLUME", musicVol));
         return box;
+    }
+
+    private void styleSlider(Slider slider) {
+        slider.getStyleClass().add("cyber-slider");
+        slider.setShowTickMarks(false);
+        slider.setShowTickLabels(false);
+        slider.setBlockIncrement(5);
     }
 
     private VBox createGeneralContent() {
@@ -411,7 +430,7 @@ public class SettingsScene {
             System.err.println("[SettingsScene] Missing resource: " + BACKGROUND_RESOURCE);
             return;
         }
-        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);

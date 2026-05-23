@@ -6,7 +6,6 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -30,6 +29,7 @@ import jdemic.Scenes.MapTest.MapTestScene;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
+import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 
 public class WaitingRoomScene {
@@ -85,6 +85,7 @@ public class WaitingRoomScene {
     public WaitingRoomScene(Stage stage, String nickname, String roomCode, GameClient gameClient, boolean ownsServer) {
         this.stage = stage;
         this.root = new StackPane();
+        SceneManager.registerLifecycle(root, this::cleanupScene);
         this.nickname = nickname == null || nickname.isBlank() ? DEFAULT_PLAYER_NAME : nickname.toUpperCase();
         this.roomCode = roomCode == null ? DEFAULT_ROOM_CODE : roomCode;
         this.gameClient = gameClient;
@@ -109,7 +110,7 @@ public class WaitingRoomScene {
             System.err.println("[WaitingRoomScene] Missing resource: " + BACKGROUND_RESOURCE);
             return;
         }
-        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -374,7 +375,7 @@ public class WaitingRoomScene {
         }
         transitionedToGame = true;
         cleanupScene();
-        stage.getScene().setRoot(new MapTestScene(stage, nickname, gameClient, gameState).getRoot());
+        SceneManager.setRoot(new MapTestScene(stage, nickname, gameClient, gameState).getRoot());
     }
 
     @SuppressWarnings("unused")

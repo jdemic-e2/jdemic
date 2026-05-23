@@ -10,6 +10,7 @@ import javafx.scene.layout.Pane;
 import javafx.util.Duration;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.DiseaseColor;
+import jdemic.ui.AnimationSpeedUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +19,7 @@ public class CityVirusGroupUI {
     private final CityNode city;
     private final Pane parentPane;
     private final List<VirusUI> activeViruses = new ArrayList<>();
+    private final List<Node> renderedVirusNodes = new ArrayList<>();
     private final ReadOnlyDoubleProperty mapHeight;
 
     public CityVirusGroupUI(CityNode city, Pane parentPane, ReadOnlyDoubleProperty mapHeight) {
@@ -33,6 +35,8 @@ public class CityVirusGroupUI {
     public void updateVisuals() {
         activeViruses.forEach(v -> parentPane.getChildren().remove(v.getNode()));
         activeViruses.clear();
+        parentPane.getChildren().removeAll(renderedVirusNodes);
+        renderedVirusNodes.clear();
 
         int totalCubes = 0;
         for (DiseaseColor color : DiseaseColor.values()) {
@@ -52,8 +56,9 @@ public class CityVirusGroupUI {
 
                 virus.bindWithOffset(cityX, cityY, currentIndex, totalCubes, mapHeight);
 
-                parentPane.getChildren().add(virus.getNode());
-                //activeViruses.add(virus); // We don't want to add these to activeViruses because they are not animated, and we don't want them removed on the next updateVisuals call
+                Node virusNode = virus.getNode();
+                parentPane.getChildren().add(virusNode);
+                renderedVirusNodes.add(virusNode);
                 currentIndex++;
             }
         }
@@ -86,6 +91,6 @@ public class CityVirusGroupUI {
 
         ParallelTransition full = new ParallelTransition(pop, fade);
         full.setOnFinished(e -> { updateVisuals(); });
-        full.play();
+        AnimationSpeedUtil.play(full);
     }
 }

@@ -87,7 +87,7 @@ public class TurnAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
 
         public void playTurnEnd(Runnable onFinished) {
@@ -144,7 +144,7 @@ public class TurnAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
 
         public void playActionConsumed(Runnable onFinished) {
@@ -169,7 +169,7 @@ public class TurnAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
 
         public void playInfectionPhaseIntro(Runnable onFinished) {
@@ -221,7 +221,7 @@ public class TurnAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
 
         public void playCityInfection(Node cityNode, Runnable onFinished) {
@@ -248,7 +248,34 @@ public class TurnAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
+        }
+
+        public void playDiseaseTreated(Node cityNode, Runnable onFinished) {
+                DropShadow cleanGlow = new DropShadow();
+                cleanGlow.setColor(Color.web("#00ffea"));
+                cleanGlow.setRadius(0);
+                cityNode.setEffect(cleanGlow);
+
+                Timeline glow = new Timeline(
+                                new KeyFrame(Duration.ZERO, new KeyValue(cleanGlow.radiusProperty(), 0)),
+                                new KeyFrame(Duration.millis(250), new KeyValue(cleanGlow.radiusProperty(), 38)),
+                                new KeyFrame(Duration.millis(620), new KeyValue(cleanGlow.radiusProperty(), 0)));
+
+                ScaleTransition shrink = new ScaleTransition(Duration.millis(620), cityNode);
+                shrink.setToX(0.88);
+                shrink.setToY(0.88);
+                shrink.setAutoReverse(true);
+                shrink.setCycleCount(2);
+
+                ParallelTransition full = new ParallelTransition(glow, shrink);
+                full.setOnFinished(e -> {
+                        cityNode.setEffect(null);
+                        if (onFinished != null) {
+                                onFinished.run();
+                        }
+                });
+                AnimationSpeedUtil.play(full);
         }
 
         public void playOutbreak(Node cityNode, Runnable onFinished) {
@@ -313,7 +340,7 @@ public class TurnAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
 
         public void playCureDiscovered(DiseaseColor color, Runnable onFinished) {
@@ -379,7 +406,7 @@ public class TurnAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
         public void playVictory(Runnable onFinished) {
                 Region overlay = new Region();
@@ -443,7 +470,7 @@ public class TurnAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
         public void playDefeat(Runnable onFinished) {
                 Region overlay = new Region();
@@ -495,7 +522,7 @@ public class TurnAnimationManager {
                                 onFinished.run();
                         }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
 
         public void playResearchStationBuilt(Node cityNode, Runnable onFinished) {
@@ -544,6 +571,6 @@ public class TurnAnimationManager {
                         root.getChildren().removeAll(ring, title);
                         if (onFinished != null) { onFinished.run(); }
                 });
-                full.play();
+                AnimationSpeedUtil.play(full);
         }
 }

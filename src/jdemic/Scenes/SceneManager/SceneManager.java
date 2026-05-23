@@ -9,6 +9,7 @@ import jdemic.Scenes.Settings.SettingsScene;
 import jdemic.Scenes.Tutorial.*;
 
 public class SceneManager {
+    public static final String LIFECYCLE_PROPERTY = SceneManager.class.getName() + ".lifecycle";
     private static Stage stage;
 
     public static void init(Stage primaryStage) {
@@ -25,12 +26,42 @@ public class SceneManager {
             throw new IllegalArgumentException("Unknown scene: " + sceneName);
         }
 
+        setRoot(root);
+    }
+
+    public static void setRoot(Parent root) {
+        if (stage == null) {
+            throw new IllegalStateException("SceneManager must be initialized before switching scenes.");
+        }
         if (stage.getScene() == null) {
             stage.setScene(new Scene(root));
             return;
         }
 
+        cleanupRoot(stage.getScene().getRoot());
         stage.getScene().setRoot(root);
+    }
+
+    public static void registerLifecycle(Parent root, SceneLifecycle lifecycle) {
+        if (root != null && lifecycle != null) {
+            root.getProperties().put(LIFECYCLE_PROPERTY, lifecycle);
+        }
+    }
+
+    public static void shutdownCurrentScene() {
+        if (stage != null && stage.getScene() != null) {
+            cleanupRoot(stage.getScene().getRoot());
+        }
+    }
+
+    private static void cleanupRoot(Parent root) {
+        if (root == null) {
+            return;
+        }
+        Object lifecycle = root.getProperties().remove(LIFECYCLE_PROPERTY);
+        if (lifecycle instanceof SceneLifecycle sceneLifecycle) {
+            sceneLifecycle.onSceneRemoved();
+        }
     }
 
     private static Parent createSceneRoot(String sceneName) {

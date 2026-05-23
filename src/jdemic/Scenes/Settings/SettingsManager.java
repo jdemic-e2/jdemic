@@ -93,7 +93,7 @@ public class SettingsManager {
             SettingsData settingsData = gson.fromJson(reader, SettingsData.class);
             if (settingsData != null)
             {
-                this.playerName.set(settingsData.playerName);
+                this.playerName.set(normalizePlayerName(settingsData.playerName));
                 this.resolution.set(settingsData.resolution);
                 this.isFullscreen.set(settingsData.isFullScreen);
                 this.masterVolume.set(settingsData.masterVolume);
@@ -109,7 +109,8 @@ public class SettingsManager {
     public void saveSettings() {
         SettingsData settingsData = new SettingsData();
 
-        settingsData.playerName = this.playerName.get();
+        settingsData.playerName = normalizePlayerName(this.playerName.get());
+        this.playerName.set(settingsData.playerName);
         settingsData.resolution = this.resolution.get();
         settingsData.isFullScreen = this.isFullscreen.get();
         settingsData.masterVolume = this.masterVolume.get();
@@ -138,5 +139,17 @@ public class SettingsManager {
         stage.setHeight(getSavedHeight());
         stage.setFullScreen(isFullscreen.get());
         stage.setFullScreenExitHint("");
+    }
+
+    private String normalizePlayerName(String name) {
+        if (name == null) {
+            return "Newbie";
+        }
+
+        String normalized = name.replaceAll("[^a-zA-Z0-9]", "");
+        if (normalized.length() > 16) {
+            normalized = normalized.substring(0, 16);
+        }
+        return normalized.isBlank() ? "Newbie" : normalized;
     }
 }

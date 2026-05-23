@@ -9,6 +9,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.util.Duration;
+import jdemic.ui.AnimationSpeedUtil;
+import jdemic.ui.SafeResourceLoader;
 
 public class ResearchStationUI {
 
@@ -18,7 +20,7 @@ public class ResearchStationUI {
 
     public ResearchStationUI(ReadOnlyDoubleProperty mapHeight) {
         root = new StackPane();
-        Image image =new Image(getClass().getResource("/researchStation.png").toExternalForm());
+        Image image = SafeResourceLoader.loadImage("/researchStation.png");
         stationImage = new ImageView(image);
         stationImage.setPreserveRatio(true);
         stationImage.fitHeightProperty().bind(mapHeight.multiply(0.045));
@@ -53,6 +55,6 @@ public class ResearchStationUI {
         RotateTransition rotate = new RotateTransition(Duration.millis(500), root);
         rotate.setToAngle(0);
         ParallelTransition intro =new ParallelTransition(fade, scale, rotate);
-        intro.play();
+        AnimationSpeedUtil.play(intro);
     }
 }

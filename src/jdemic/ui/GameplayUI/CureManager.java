@@ -15,6 +15,7 @@ import javafx.scene.paint.Color;
 import jdemic.GameLogic.DiseaseColor;
 import jdemic.GameLogic.GameManager;
 import jdemic.ui.GlowUtil;
+import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 public class CureManager {
     private final StackPane root;
@@ -65,13 +66,13 @@ public class CureManager {
 
             var resource = getClass().getResource(imagePath);
             if (resource != null) {
-                icon.setImage(new Image(resource.toExternalForm()));
+                icon.setImage(SafeResourceLoader.loadImage(resource));
             }
 
             java.net.URL curedUrl = getClass().getResource("/icons/curedIcon.png");
             ImageView curedIcon;
             if (curedUrl != null) {
-                curedIcon = new ImageView(new Image(curedUrl.toExternalForm()));
+                curedIcon = new ImageView(SafeResourceLoader.loadImage(curedUrl));
             } else {
                 System.err.println("[CureManager] Missing resource: /icons/curedIcon.png");
                 curedIcon = new ImageView();
