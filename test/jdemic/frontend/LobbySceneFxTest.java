@@ -61,7 +61,7 @@ class LobbySceneFxTest {
         WaitForAsyncUtils.waitForFxEvents();
         TextField nicknameField = robot.lookup(".text-field").queryAs(TextField.class);
         assertNotNull(nicknameField);
-        assertEquals("Newbie", nicknameField.getText());
+        assertEquals("Player", nicknameField.getText());
     }
 
     @Test

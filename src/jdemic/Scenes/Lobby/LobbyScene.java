@@ -139,13 +139,13 @@ public class LobbyScene {
 
     private String normalizeNickname(String nickname) {
         if (nickname == null) {
-            return "Newbie";
+            return "Player";
         }
         String normalized = nickname.replaceAll("[^a-zA-Z0-9]", "");
         if (normalized.length() > 16) {
             normalized = normalized.substring(0, 16);
         }
-        return normalized.isBlank() ? "Newbie" : normalized;
+        return normalized.isBlank() ? "Player" : normalized;
     }
 
     private void startLocalServerAndEnterLobby(String nickname, ButtonsUtil hostBtn, Label errorLabel) {

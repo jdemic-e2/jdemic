@@ -144,9 +144,9 @@ public class SettingsScene {
 
         resetBtn.setOnMouseClicked(e -> {
             if (hasUnsavedChanges) {
-                showOverlay(DISCARD_CHANGES_MESSAGE, () -> {
-                    resetUIToManager(); // Pulls original data back into UI
-                });
+                showOverlay(DISCARD_CHANGES_MESSAGE, this::resetUIToManager);
+            } else {
+                showOverlay("RESET TO DEFAULTS?", this::resetToDefaults);
             }
         });
 
@@ -205,16 +205,14 @@ public class SettingsScene {
 
         boolean wantFullScreen = fsToggle.isSelected();
 
-        // Check resolution (has to be same or lower than the monitor's normal resolution)
-        if (chosenWidth <= screenWidth && chosenHeight <= screenHeight) {
-            sm.resolutionProperty().set(selectedRes);
+        sm.resolutionProperty().set(selectedRes);
 
-            if (!wantFullScreen) {
-                stage.setFullScreen(false);
-                stage.setWidth(chosenWidth);
-                stage.setHeight(chosenHeight);
-                stage.centerOnScreen();
-            }
+        // Only the immediate window resize is limited by the current monitor bounds.
+        if (!wantFullScreen && chosenWidth <= screenWidth && chosenHeight <= screenHeight) {
+            stage.setFullScreen(false);
+            stage.setWidth(chosenWidth);
+            stage.setHeight(chosenHeight);
+            stage.centerOnScreen();
         }
 
         // Fullscreen setting apply
@@ -243,6 +241,19 @@ public class SettingsScene {
         speedCombo.setValue(sm.animationSpeedProperty().get());
 
         hasUnsavedChanges = false;
+    }
+
+    private void resetToDefaults() {
+        SettingsData defaults = new SettingsData();
+        nameField.setText(defaults.playerName);
+        resCombo.setValue(defaults.resolution);
+        fsToggle.setSelected(defaults.isFullScreen);
+        updateFsToggleStyle();
+        masterVol.setValue(defaults.masterVolume * 100);
+        musicVol.setValue(defaults.musicVolume * 100);
+        speedCombo.setValue(defaults.animationSpeed);
+
+        saveToManager();
     }
 
     private void returnToMainMenu() {
