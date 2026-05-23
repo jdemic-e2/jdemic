@@ -7,7 +7,10 @@ import jdemic.DedicatedServer.network.ui.ServerStatusUi;
 import jdemic.GameLogic.GameManager;
 import jdemic.DedicatedServer.network.transport.Packet;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -27,6 +30,8 @@ public class JdemicNetworkServer {
     private static final AtomicReference<JdemicNetworkServer> ACTIVE_SERVER = new AtomicReference<>();
     private static final Logger LOGGER = Logger.getLogger(JdemicNetworkServer.class.getName());
 
+    private static final int STATUS_PORT_OFFSET = 500;
+
     private final DedicatedServerConfig config;
     private final GameManager gameManager;
     private final List<ClientHandler> connectedClients = new CopyOnWriteArrayList<>();
@@ -35,6 +40,7 @@ public class JdemicNetworkServer {
     private final ExecutorService clientExecutor = Executors.newCachedThreadPool();
     private final AtomicReference<Packet> latestPacket = new AtomicReference<>();
     private ServerSocket serverSocket;
+    private ServerSocket statusSocket;
     private ServerStatusUi statusUi;
 
     public JdemicNetworkServer() {
@@ -119,6 +125,8 @@ public class JdemicNetworkServer {
         try {
             serverSocket = new ServerSocket(config.serverPort());
             LOGGER.info("The server is listening on the port: " + config.serverPort());
+            statusSocket = new ServerSocket(config.serverPort() + STATUS_PORT_OFFSET);
+            startStatusListener();
             startStatusUi();
             startIdleTimeoutChecker();
             return true;
@@ -130,6 +138,34 @@ public class JdemicNetworkServer {
             statusUi.stop();
             return false;
         }
+    }
+
+    private void startStatusListener() {
+        Thread t = new Thread(() -> {
+            while (running.get()) {
+                try {
+                    Socket client = statusSocket.accept();
+                    client.setSoTimeout(500);
+                    try (BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                         PrintWriter out = new PrintWriter(client.getOutputStream(), true)) {
+                        String line = in.readLine();
+                        if ("STATUS".equals(line)) {
+                            boolean started = gameManager.getState().isGameStarted();
+                            out.println("gameStarted:" + started);
+                        }
+                    } catch (Exception ignored) {
+                    } finally {
+                        client.close();
+                    }
+                } catch (SocketException e) {
+                    if (running.get()) LOGGER.severe("[STATUS] Accept error: " + e.getMessage());
+                } catch (IOException e) {
+                    if (running.get()) LOGGER.severe("[STATUS] IO error: " + e.getMessage());
+                }
+            }
+        }, "jdemic-status-listener");
+        t.setDaemon(true);
+        t.start();
     }
 
     private void startStatusUi() {
@@ -199,6 +235,7 @@ public class JdemicNetworkServer {
 
         LOGGER.info("[SERVER] Stopping server...");
         closeServerSocket();
+        closeStatusSocket();
         closeClientSockets();
         clientExecutor.shutdownNow();
         statusUi.stop();
@@ -238,6 +275,16 @@ public class JdemicNetworkServer {
             }
         } catch (IOException e) {
             LOGGER.severe("[SERVER] Error while closing server socket: " + e.getMessage());
+        }
+    }
+
+    private void closeStatusSocket() {
+        try {
+            if (statusSocket != null && !statusSocket.isClosed()) {
+                statusSocket.close();
+            }
+        } catch (IOException e) {
+            LOGGER.severe("[SERVER] Error while closing status socket: " + e.getMessage());
         }
     }
 

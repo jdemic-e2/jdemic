@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class MasterOrchestrator {
     private static final int DEFAULT_MASTER_PORT = 8090;// 1st change-> 8090 instead of 8080 in master and config
@@ -19,6 +20,7 @@ public class MasterOrchestrator {
     private static final String SERVER_MIN_PORT_ENV = "JDEMIC_SERVER_PORT_MIN";
     private static final String SERVER_MAX_PORT_ENV = "JDEMIC_SERVER_PORT_MAX";
     private static final String HOST_COMMAND = "HOST";
+    private static final String LIST_COMMAND = "LIST";
     private static final int DEFAULT_BASE_PORT = 9001;
     private static final int DEFAULT_MAX_PORT = 9010;//2nd change-> reduced the number of servers from 1000 to 10
 
@@ -65,6 +67,11 @@ public class MasterOrchestrator {
                 return;
             }
 
+            if (LIST_COMMAND.equals(line.trim())) {
+                handleListRequest(out);
+                return;
+            }
+
             out.println("FAIL:UNKNOWN_COMMAND");
         } catch (IOException e) {
             System.err.println("[MASTER] Client communication error: " + e.getMessage());
@@ -75,6 +82,15 @@ public class MasterOrchestrator {
                 // Nothing else to do while closing a short-lived control connection.
             }
         }
+    }
+
+    private static void handleListRequest(PrintWriter out) {
+        cleanupFinishedServers();
+        String ports = serverProcesses.keySet().stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+        out.println("PORTS:" + ports);
     }
 
     private static void handleHostRequest(PrintWriter out) {
