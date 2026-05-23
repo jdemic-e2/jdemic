@@ -147,9 +147,8 @@ public class GameManager {
     {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
-        // If the current player is discarding, reject attempts from other players.
-        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()
-                && (player == null || !state.isPlayerTurn(player.getState()))) return;
+        // A player who is over the hand limit must discard before any normal action can be taken.
+        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
 
         // Only allow the current player to perform actions
         if(!state.isPlayerTurn(player.getState())) return;

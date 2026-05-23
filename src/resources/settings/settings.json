@@ -1,8 +1,8 @@
 {
-  "playerName": "gyatt",
-  "resolution": "800x600",
+  "playerName": "Player",
+  "resolution": "1280x720",
   "isFullScreen": false,
-  "masterVolume": 0.0,
-  "musicVolume": 0.44357465843341276,
-  "animationSpeed": "FAST"
+  "masterVolume": 0.5,
+  "musicVolume": 0.5,
+  "animationSpeed": "MEDIUM"
 }

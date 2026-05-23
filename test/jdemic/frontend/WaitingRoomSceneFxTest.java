@@ -98,7 +98,7 @@ class WaitingRoomSceneFxTest {
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil sendBtn = LobbySceneFxTest.buttonByText(robot, "SEND");
-        robot.clickOn(sendBtn);
+        robot.interact(() -> sendBtn.fireEvent(LobbySceneFxTest.mouseClicked()));
         WaitForAsyncUtils.waitForFxEvents();
 
         assertEquals("", chatArea.getText());
@@ -115,7 +115,7 @@ class WaitingRoomSceneFxTest {
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil sendBtn = LobbySceneFxTest.buttonByText(robot, "SEND");
-        robot.clickOn(sendBtn);
+        robot.interact(() -> sendBtn.fireEvent(LobbySceneFxTest.mouseClicked()));
         WaitForAsyncUtils.waitForFxEvents();
 
         assertTrue(chatArea.getText().isEmpty(), "blank input must not append to the chat");

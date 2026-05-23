@@ -17,7 +17,7 @@ public class SettingsManager {
     private final Gson gson;
 
     // GENERAL
-    private final StringProperty playerName = new SimpleStringProperty("Newbie");
+    private final StringProperty playerName = new SimpleStringProperty("Player");
     private final StringProperty language = new SimpleStringProperty("ENGLISH");
 
     // AUDIO
@@ -32,7 +32,7 @@ public class SettingsManager {
     private final BooleanProperty isFullscreen = new SimpleBooleanProperty(false);
 
     // GAMEPLAY
-    private final StringProperty animationSpeed = new SimpleStringProperty("FAST");
+    private final StringProperty animationSpeed = new SimpleStringProperty("MEDIUM");
 
     // Constructors
     private SettingsManager() {
@@ -143,13 +143,13 @@ public class SettingsManager {
 
     private String normalizePlayerName(String name) {
         if (name == null) {
-            return "Newbie";
+            return "Player";
         }
 
         String normalized = name.replaceAll("[^a-zA-Z0-9]", "");
         if (normalized.length() > 16) {
             normalized = normalized.substring(0, 16);
         }
-        return normalized.isBlank() ? "Newbie" : normalized;
+        return normalized.isBlank() ? "Player" : normalized;
     }
 }

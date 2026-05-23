@@ -4,8 +4,12 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.TextField;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import jdemic.Scenes.Lobby.LobbyScene;
+import jdemic.Scenes.SceneManager.SceneManager;
+import jdemic.Scenes.Settings.SettingsManager;
 import jdemic.ui.ButtonsUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +46,8 @@ class LobbySceneFxTest {
     @Start
     void start(Stage stage) {
         this.stage = stage;
+        SceneManager.init(stage);
+        SettingsManager.getInstance().playerNameProperty().set("Player");
         lobbyScene = new LobbyScene(stage);
         stage.setScene(new Scene(lobbyScene.getRoot(), 1024, 768));
         stage.show();
@@ -61,7 +67,7 @@ class LobbySceneFxTest {
         WaitForAsyncUtils.waitForFxEvents();
         TextField nicknameField = robot.lookup(".text-field").queryAs(TextField.class);
         assertNotNull(nicknameField);
-        assertEquals("Newbie", nicknameField.getText());
+        assertEquals("Player", nicknameField.getText());
     }
 
     @Test
@@ -84,11 +90,11 @@ class LobbySceneFxTest {
     void hostGameWithBlankNicknameRevealsError(FxRobot robot) {
         WaitForAsyncUtils.waitForFxEvents();
         TextField nicknameField = robot.lookup(".text-field").queryAs(TextField.class);
-        robot.interact(() -> nicknameField.setText("   "));
+        robot.interact(() -> nicknameField.setText(""));
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil hostBtn = buttonByText(robot, "CREATE SERVER");
-        robot.clickOn(hostBtn);
+        robot.interact(() -> hostBtn.fireEvent(mouseClicked()));
         WaitForAsyncUtils.waitForFxEvents();
 
         Labeled error = robot.lookup(hasText("ENTER NICKNAME")).queryLabeled();
@@ -102,11 +108,11 @@ class LobbySceneFxTest {
         assertSame(lobbyRoot, stage.getScene().getRoot());
 
         TextField nicknameField = robot.lookup(".text-field").queryAs(TextField.class);
-        robot.interact(() -> nicknameField.setText("Emirhan"));
+        robot.interact(() -> nicknameField.setText("Player"));
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil joinBtn = buttonByText(robot, "JOIN BY IP");
-        robot.clickOn(joinBtn);
+        robot.interact(() -> joinBtn.fireEvent(mouseClicked()));
         WaitForAsyncUtils.waitForFxEvents();
 
         assertNotSame(lobbyRoot, stage.getScene().getRoot(), "JOIN BY IP should swap the scene root");
@@ -123,5 +129,15 @@ class LobbySceneFxTest {
         while (n != null && !(n instanceof ButtonsUtil)) n = n.getParent();
         assertNotNull(n, "no ButtonsUtil ancestor for label \"" + text + "\"");
         return (ButtonsUtil) n;
+    }
+
+    static MouseEvent mouseClicked() {
+        return new MouseEvent(
+                MouseEvent.MOUSE_CLICKED,
+                0, 0, 0, 0,
+                MouseButton.PRIMARY, 1,
+                false, false, false, false,
+                true, false, false, true, false, false, null
+        );
     }
 }
