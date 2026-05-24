@@ -37,6 +37,8 @@ import jdemic.ui.PauseMenuOverlay;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TurnAnimationManager;
 import jdemic.GameLogic.*;
+import jdemic.GameLogic.RoleManager;
+import jdemic.GameLogic.PlayerRoles;
 import javafx.scene.layout.VBox;
 import jdemic.ui.GameplayUI.*;
 import jdemic.ui.MapZoomPanHandler;
@@ -302,7 +304,7 @@ public class MapTestScene {
         int i = 0;
 
         for (PlayerState player : gameManager.getState().getPlayers()) {
-            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), pawnImages[i % pawnImages.length]);
+            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), pawnImages[i % pawnImages.length], player.getPlayerRole());
             playerPawns.put(player.getPlayerName(), pawn);
             mapPane.getChildren().add(pawn.getNode());
             i++;
@@ -336,6 +338,10 @@ public class MapTestScene {
 
                 if (pawnUI == null) continue;
 
+                // Ensure the pawn displays the latest role from the game state
+                PlayerState ps = getPlayerStateByName(playerName);
+                if (ps != null) pawnUI.setRole(ps.getPlayerRole());
+
                 pawnUI.unbindPosition();
 
                 if (count == 1) {
@@ -357,6 +363,8 @@ public class MapTestScene {
         PlayerState testPlayer = new PlayerState(playerName);
         testPlayer.setCurrentCity(startingCity);
         players.add(testPlayer);
+        // Ensure local test players get assigned roles so the UI can display them
+        RoleManager.assignRandomRoles(players);
         GameManager manager = new GameManager(players);
         // Ensure initial infections and setup occur for local single-player scenes
         manager.startGame();
@@ -374,6 +382,14 @@ public class MapTestScene {
         return manager;
     }
 
+    private PlayerState getPlayerStateByName(String name) {
+        if (name == null || gameManager == null || gameManager.getState() == null) return null;
+        for (PlayerState p : gameManager.getState().getPlayers()) {
+            if (name.equals(p.getPlayerName())) return p;
+        }
+        return null;
+    }
+
     private List<PlayerState> createPlayersFromSnapshot(JsonNode gameState) {
         List<PlayerState> players = new ArrayList<>();
         JsonNode playersArray = getPlayersArray(gameState);
@@ -387,6 +403,14 @@ public class MapTestScene {
             CityNode currentCity = getCityFromPlayerNode(playerNode, mapGraph);
             if (currentCity != null) {
                 playerState.setCurrentCity(currentCity);
+            }
+            // If snapshot contains a role, apply it to the PlayerState
+            if (playerNode.has("playerRole") && !playerNode.get("playerRole").isNull()) {
+                try {
+                    PlayerRoles role = PlayerRoles.valueOf(playerNode.get("playerRole").asText());
+                    playerState.setPlayerRole(role);
+                } catch (IllegalArgumentException ignored) {
+                }
             }
             players.add(playerState);
         }
@@ -469,6 +493,14 @@ public class MapTestScene {
                     manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get("isDiscarding").asBoolean());
                 } else if (playerNode.has("discardingCards")) {
                     manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get("discardingCards").asBoolean());
+                }
+                // Update player role if snapshot includes it
+                if (playerNode.has("playerRole") && !playerNode.get("playerRole").isNull()) {
+                    try {
+                        PlayerRoles role = PlayerRoles.valueOf(playerNode.get("playerRole").asText());
+                        manager.getState().getPlayers().get(index).setPlayerRole(role);
+                    } catch (IllegalArgumentException ignored) {
+                    }
                 }
                 index++;
             }
@@ -1546,6 +1578,14 @@ public class MapTestScene {
             label.setFill(Color.WHITE);
             label.setFont(Font.font(FONT_HKMODULAR, FontWeight.BOLD, 10));
             label.setMouseTransparent(true);
+
+            DropShadow textShadow = new DropShadow();
+            textShadow.setRadius(6);
+            textShadow.setSpread(0.8);
+            textShadow.setColor(Color.rgb(0,0,0,0.9));
+            textShadow.setOffsetX(0);
+            textShadow.setOffsetY(0);
+            label.setEffect(textShadow);
 
             label.layoutXProperty().bind(Bindings.createDoubleBinding(() -> node.getCenterX() - label.getLayoutBounds().getWidth() / 2, node.centerXProperty(),label.layoutBoundsProperty()));
             label.layoutYProperty().bind(node.centerYProperty().add(20));
