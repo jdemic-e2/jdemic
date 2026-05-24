@@ -94,6 +94,7 @@ public class PacketProcessor {
             case LOBBY_READY: handleLobbyReady(packet); break;
             case DISCONNECT: handleDisconnect(packet); break;
             case ERROR: handleError(packet); break;
+            case VERIFY_GAME: handleVerifyGame(packet); break;
             default: LOGGER.severe("[PacketProcessor] Unsupported packet type: " + packet.getType());
         }
     }
@@ -441,6 +442,22 @@ public class PacketProcessor {
 
     private void handleError(Packet packet) {
         LOGGER.severe("[PacketProcessor] Received ERROR packet: " + packet);
+    }
+
+    private void handleVerifyGame(Packet packet) {
+        LOGGER.info("[PacketProcessor] Received VERIFY_GAME packet.");
+        JsonNode payload = packet.getPayload();
+        if (payload == null || !payload.has("id") || payload.get("id").asInt() != 0) return;
+
+        ObjectNode response = OBJECT_MAPPER.createObjectNode();
+        response.put("id", 1);
+        response.put("gameStarted", gameManager.getState().isGameStarted());
+        response.put("gameName", "Pandemic");
+        response.put("maxPlayers", GameManager.MAX_PLAYERS);
+        response.put("currentPlayers", gameManager.getState().getPlayers().size());
+
+        clientHandler.sendPacketToClient(new Packet(PacketType.VERIFY_GAME, response));
+        clientHandler.closeConnection();
     }
 
     private void handleDiscardCard(JsonNode payload, PlayerState playerState) {
