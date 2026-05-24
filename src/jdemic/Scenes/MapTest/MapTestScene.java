@@ -32,14 +32,19 @@ import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.Scenes.Settings.AudioManager;
 import jdemic.ui.ButtonsUtil;
+import jdemic.ui.DeckAnimationManager;
 import jdemic.ui.PauseMenuOverlay;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TurnAnimationManager;
 import jdemic.GameLogic.*;
+import jdemic.GameLogic.RoleManager;
+import jdemic.GameLogic.PlayerRoles;
 import javafx.scene.layout.VBox;
 import jdemic.ui.GameplayUI.*;
+import jdemic.ui.MapZoomPanHandler;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 public class MapTestScene {
     private static final String FONT_HKMODULAR = "hkmodular";
@@ -137,6 +142,7 @@ public class MapTestScene {
 
     //Variable player hand
     private HandManager handManager;
+    private DeckAnimationManager deckAnimationManager;
 
     // Add to MapTestScene class fields
     private PlayerListUI playerListUI;
@@ -157,6 +163,7 @@ public class MapTestScene {
     private HBox pauseHeader;
     private ButtonsUtil pauseBtn;
     private TurnAnimationManager animationManager;
+    private Consumer<CityNode> outbreakAnimationListener;
     private ChangeListener<Scene> sceneListener;
     private EventHandler<KeyEvent> keyPressedFilter;
     private EventHandler<KeyEvent> keyReleasedFilter;
@@ -206,7 +213,9 @@ public class MapTestScene {
         setupChat();
         deckManager = new DeckManager(root);
         handManager = new HandManager(root, deckManager);
+        deckAnimationManager = new DeckAnimationManager(root, deckManager, handManager);
         updateHandUI();
+        playStartupShuffleAnimation();
 
         Platform.runLater(() -> {
             updatePawnPositions();
@@ -240,7 +249,6 @@ public class MapTestScene {
             if (event.getCode() == javafx.scene.input.KeyCode.I) {
                 if (gameManager.getState().getInfectionRate() < gameManager.getInfectionRateTrack().length - 1) {
                     gameManager.increaseInfectionRate();
-                    infectionRateManager.updateTrack();
                     notificationManager.showNotification("DEBUG: Infection Rate Increased!");
                 } else {
                     notificationManager.showNotification("DEBUG: Infection Rate is maxed");
@@ -249,6 +257,8 @@ public class MapTestScene {
             if (event.getCode() == javafx.scene.input.KeyCode.O) {
                 gameManager.getState().getDiseaseManager().increaseOutbreakScore();
                 outbreakManager.updateTrack();
+                PlayerState currentPlayer = gameManager.getCurrentPlayer();
+                outbreakManager.queueOutbreak(currentPlayer == null ? null : currentPlayer.getPlayerCurrentCity());
                 notificationManager.showNotification("DEBUG: Outbreak Occurred!");
             }
         };
@@ -294,7 +304,7 @@ public class MapTestScene {
         int i = 0;
 
         for (PlayerState player : gameManager.getState().getPlayers()) {
-            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), pawnImages[i % pawnImages.length]);
+            PawnUI pawn = new PawnUI(player.getPlayerName(), mapPane.heightProperty(), pawnImages[i % pawnImages.length], player.getPlayerRole());
             playerPawns.put(player.getPlayerName(), pawn);
             mapPane.getChildren().add(pawn.getNode());
             i++;
@@ -328,6 +338,10 @@ public class MapTestScene {
 
                 if (pawnUI == null) continue;
 
+                // Ensure the pawn displays the latest role from the game state
+                PlayerState ps = getPlayerStateByName(playerName);
+                if (ps != null) pawnUI.setRole(ps.getPlayerRole());
+
                 pawnUI.unbindPosition();
 
                 if (count == 1) {
@@ -349,6 +363,8 @@ public class MapTestScene {
         PlayerState testPlayer = new PlayerState(playerName);
         testPlayer.setCurrentCity(startingCity);
         players.add(testPlayer);
+        // Ensure local test players get assigned roles so the UI can display them
+        RoleManager.assignRandomRoles(players);
         GameManager manager = new GameManager(players);
         // Ensure initial infections and setup occur for local single-player scenes
         manager.startGame();
@@ -366,6 +382,14 @@ public class MapTestScene {
         return manager;
     }
 
+    private PlayerState getPlayerStateByName(String name) {
+        if (name == null || gameManager == null || gameManager.getState() == null) return null;
+        for (PlayerState p : gameManager.getState().getPlayers()) {
+            if (name.equals(p.getPlayerName())) return p;
+        }
+        return null;
+    }
+
     private List<PlayerState> createPlayersFromSnapshot(JsonNode gameState) {
         List<PlayerState> players = new ArrayList<>();
         JsonNode playersArray = getPlayersArray(gameState);
@@ -379,6 +403,14 @@ public class MapTestScene {
             CityNode currentCity = getCityFromPlayerNode(playerNode, mapGraph);
             if (currentCity != null) {
                 playerState.setCurrentCity(currentCity);
+            }
+            // If snapshot contains a role, apply it to the PlayerState
+            if (playerNode.has("playerRole") && !playerNode.get("playerRole").isNull()) {
+                try {
+                    PlayerRoles role = PlayerRoles.valueOf(playerNode.get("playerRole").asText());
+                    playerState.setPlayerRole(role);
+                } catch (IllegalArgumentException ignored) {
+                }
             }
             players.add(playerState);
         }
@@ -462,6 +494,14 @@ public class MapTestScene {
                 } else if (playerNode.has("discardingCards")) {
                     manager.getState().getPlayers().get(index).setIsDiscarding(playerNode.get("discardingCards").asBoolean());
                 }
+                // Update player role if snapshot includes it
+                if (playerNode.has("playerRole") && !playerNode.get("playerRole").isNull()) {
+                    try {
+                        PlayerRoles role = PlayerRoles.valueOf(playerNode.get("playerRole").asText());
+                        manager.getState().getPlayers().get(index).setPlayerRole(role);
+                    } catch (IllegalArgumentException ignored) {
+                    }
+                }
                 index++;
             }
         }
@@ -531,6 +571,11 @@ public class MapTestScene {
                     && !manager.getState().getDiseaseManager().isCured(color)) {
                 manager.getState().getDiseaseManager().discoverCure(color);
             }
+        }
+
+        JsonNode outbreakScore = diseaseManagerNode.get("outbreakScore");
+        if (outbreakScore != null && outbreakScore.isNumber()) {
+            manager.getState().getDiseaseManager().setOutbreakScore(outbreakScore.asInt());
         }
     }
 
@@ -704,6 +749,13 @@ public class MapTestScene {
         this.infectionRateManager = new InfectionRateManager(root, gameManager);
         this.cureManager = new CureManager(root, gameManager);
 
+        outbreakAnimationListener = city -> Platform.runLater(() -> {
+            if (outbreakManager != null) {
+                outbreakManager.queueOutbreak(city);
+            }
+        });
+        gameManager.addOutbreakListener(outbreakAnimationListener);
+
         // Register a listener so UI widgets update automatically when model changes
         try {
             gameManager.addStateChangeListener(() -> Platform.runLater(() -> {
@@ -791,6 +843,14 @@ public class MapTestScene {
         playGameEndAnimationAndReturnToMenu();
     }
 
+    private void playStartupShuffleAnimation() {
+        if (deckAnimationManager == null) {
+            return;
+        }
+
+        Platform.runLater(() -> deckAnimationManager.playStartupShuffleAnimation(this::updateHandUI));
+    }
+
     private AnimationSnapshot createAnimationSnapshot() {
         if (mapGraph == null || gameManager == null || gameManager.getState() == null) {
             return null;
@@ -800,6 +860,9 @@ public class MapTestScene {
         snapshot.gameWon = gameManager.getState().isGameWon();
         snapshot.gameOver = gameManager.getState().isGameOver();
         snapshot.actionsRemaining = gameManager.getState().getActionsRemaining();
+        if (gameManager.getState().getDiseaseManager() != null) {
+            snapshot.outbreakScore = gameManager.getState().getDiseaseManager().getOutbreakScore();
+        }
         PlayerState currentPlayer = gameManager.getState().getCurrentPlayer();
         if (currentPlayer != null) {
             snapshot.currentPlayerName = currentPlayer.getPlayerName();
@@ -835,25 +898,130 @@ public class MapTestScene {
             playGameEndAnimationAndReturnToMenu();
             return;
         }
-
-        for (PlayerState player : gameManager.getState().getPlayers()) {
-            CityNode newCity = player.getPlayerCurrentCity();
-            String oldCityName = before.playerCities.get(player.getPlayerName());
-            if (newCity != null && oldCityName != null && !newCity.getName().equals(oldCityName)) {
-                animatePawnMove(player.getPlayerName(), oldCityName, newCity.getName());
+        
+        Runnable playerPhase = () -> {
+            for (PlayerState player : gameManager.getState().getPlayers()) {
+                CityNode newCity = player.getPlayerCurrentCity();
+                String oldCityName = before.playerCities.get(player.getPlayerName());
+                if (newCity != null && oldCityName != null && !newCity.getName().equals(oldCityName)) {
+                    animatePawnMove(player.getPlayerName(), oldCityName, newCity.getName());
+                }
             }
-        }
 
-        PlayerState currentPlayer = gameManager.getState().getCurrentPlayer();
-        String currentPlayerName = currentPlayer == null ? null : currentPlayer.getPlayerName();
-        if (currentPlayerName != null
-                && currentPlayerName.equals(before.currentPlayerName)
-                && gameManager.getState().getActionsRemaining() < before.actionsRemaining) {
-            animationManager.playActionConsumed(null);
-        } else if (currentPlayerName != null
-                && before.currentPlayerName != null
-                && !currentPlayerName.equals(before.currentPlayerName)) {
-            animationManager.playTurnStart(currentPlayerName, null);
+            PlayerState currentPlayer = gameManager.getState().getCurrentPlayer();
+            String currentPlayerName = currentPlayer == null ? null : currentPlayer.getPlayerName();
+            if (currentPlayerName != null
+                    && currentPlayerName.equals(before.currentPlayerName)
+                    && gameManager.getState().getActionsRemaining() < before.actionsRemaining) {
+                animationManager.playActionConsumed(null);
+            } else if (currentPlayerName != null
+                    && before.currentPlayerName != null
+                    && !currentPlayerName.equals(before.currentPlayerName)) {
+                animationManager.playTurnStart(currentPlayerName, null);
+            }
+
+            for (CityNode city : mapGraph.getCityList()) {
+                CitySnapshot oldCity = before.cities.get(city.getName());
+                if (oldCity == null) continue;
+
+                Circle cityVisual = nodeVisuals.get(city);
+                if (!oldCity.hasResearchStation && city.hasResearchStation()) {
+                    ResearchStationUI stationUI = researchStationUIs.get(city);
+                    if (stationUI != null) stationUI.playBuildAnimation();
+                    if (cityVisual != null) animationManager.playResearchStationBuilt(cityVisual, null);
+                }
+
+                for (DiseaseColor color : DiseaseColor.values()) {
+                    int oldCount = oldCity.cubes.getOrDefault(color, 0);
+                    int newCount = city.getCubeCount(color);
+                    if (newCount < oldCount && cityVisual != null) {
+                        animationManager.playDiseaseTreated(cityVisual, null);
+                    }
+                }
+            }
+
+            if (gameManager.getState().getDiseaseManager() != null) {
+                for (DiseaseColor color : DiseaseColor.values()) {
+                    boolean wasCured = before.cures.getOrDefault(color, false);
+                    boolean isCured = gameManager.getState().getDiseaseManager().isCured(color);
+                    if (!wasCured && isCured) {
+                        animationManager.playCureDiscovered(color, null);
+                    }
+                }
+            }
+        };
+
+        Runnable infectionPhase = () -> {
+            boolean hasInfectionActivity = false;
+
+            int currentOutbreakScore = gameManager.getState().getDiseaseManager() == null
+                    ? before.outbreakScore
+                    : gameManager.getState().getDiseaseManager().getOutbreakScore();
+
+            boolean hasOutbreak = currentOutbreakScore > before.outbreakScore;
+            String outbreakCity = hasOutbreak ? findLikelyOutbreakCity(before) : null;
+            int newOutbreaks = currentOutbreakScore - before.outbreakScore;
+
+            for (CityNode city : mapGraph.getCityList()) {
+                CitySnapshot oldCity = before.cities.get(city.getName());
+                if (oldCity == null) continue;
+
+                Circle cityVisual = nodeVisuals.get(city);
+                for (DiseaseColor color : DiseaseColor.values()) {
+                    int oldCount = oldCity.cubes.getOrDefault(color, 0);
+                    int newCount = city.getCubeCount(color);
+
+                    if (newCount > oldCount) {
+                        animateVirusIncrease(city, color, newCount - oldCount);
+                        if (cityVisual != null) {
+                            animationManager.playCityInfection(cityVisual, null);
+                        }
+                        hasInfectionActivity = true;
+                    }
+                }
+            }
+
+            if (hasOutbreak && outbreakManager != null) {
+                hasInfectionActivity = true; // Ensure endgame delay logic is triggered
+                javafx.animation.PauseTransition outbreakDelay = new javafx.animation.PauseTransition(javafx.util.Duration.millis(300));
+                outbreakDelay.setOnFinished(e -> {
+                    for (int i = 0; i < newOutbreaks; i++) {
+                        outbreakManager.queueOutbreak(outbreakCity);
+                    }
+                });
+                outbreakDelay.play();
+            }
+
+            if (hasInfectionActivity) {
+                double delayMillis = hasOutbreak ? 4000.0 : 800.0;
+                javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(delayMillis));
+                pause.setOnFinished(e -> resolveEndGame(before));
+                pause.play();
+            } else {
+                resolveEndGame(before);
+            }
+        };
+
+        playerPhase.run();
+
+        javafx.animation.PauseTransition phaseTransition = new javafx.animation.PauseTransition(javafx.util.Duration.millis(800));
+        phaseTransition.setOnFinished(e -> infectionPhase.run());
+        phaseTransition.play();
+    }
+
+    private void resolveEndGame(AnimationSnapshot before) {
+        if (!before.gameWon && gameManager.getState().isGameWon()) {
+            playGameEndAnimationAndReturnToMenu();
+        } else if (!before.gameOver && gameManager.getState().isGameOver()) {
+            playGameEndAnimationAndReturnToMenu();
+        } else if (gameManager.getState().isGameOver()) {
+            playGameEndAnimationAndReturnToMenu();
+        }
+    }
+
+    private String findLikelyOutbreakCity(AnimationSnapshot before) {
+        if (before == null || mapGraph == null) {
+            return "UNKNOWN CITY";
         }
 
         for (CityNode city : mapGraph.getCityList()) {
@@ -862,48 +1030,24 @@ public class MapTestScene {
                 continue;
             }
 
-            Circle cityVisual = nodeVisuals.get(city);
-            if (!oldCity.hasResearchStation && city.hasResearchStation()) {
-                ResearchStationUI stationUI = researchStationUIs.get(city);
-                if (stationUI != null) {
-                    stationUI.playBuildAnimation();
-                }
-                if (cityVisual != null) {
-                    animationManager.playResearchStationBuilt(cityVisual, null);
-                }
-            }
-
             for (DiseaseColor color : DiseaseColor.values()) {
                 int oldCount = oldCity.cubes.getOrDefault(color, 0);
                 int newCount = city.getCubeCount(color);
-                if (newCount > oldCount) {
-                    animateVirusIncrease(city, color, newCount - oldCount);
-                    if (cityVisual != null) {
-                        animationManager.playCityInfection(cityVisual, null);
+                if (oldCount < 3 || newCount != oldCount) {
+                    continue;
+                }
+
+                for (CityNode neighbor : city.getConnectedCities()) {
+                    CitySnapshot oldNeighbor = before.cities.get(neighbor.getName());
+                    if (oldNeighbor != null
+                            && neighbor.getCubeCount(color) > oldNeighbor.cubes.getOrDefault(color, 0)) {
+                        return city.getName();
                     }
-                } else if (newCount < oldCount && cityVisual != null) {
-                    animationManager.playDiseaseTreated(cityVisual, null);
                 }
             }
         }
 
-        if (gameManager.getState().getDiseaseManager() != null) {
-            for (DiseaseColor color : DiseaseColor.values()) {
-                boolean wasCured = before.cures.getOrDefault(color, false);
-                boolean isCured = gameManager.getState().getDiseaseManager().isCured(color);
-                if (!wasCured && isCured) {
-                    animationManager.playCureDiscovered(color, null);
-                }
-            }
-        }
-
-        if (!before.gameWon && gameManager.getState().isGameWon()) {
-            playGameEndAnimationAndReturnToMenu();
-        } else if (!before.gameOver && gameManager.getState().isGameOver()) {
-            playGameEndAnimationAndReturnToMenu();
-        } else if (gameManager.getState().isGameOver()) {
-            playGameEndAnimationAndReturnToMenu();
-        }
+        return "UNKNOWN CITY";
     }
 
     private void playGameEndAnimationAndReturnToMenu() {
@@ -1402,8 +1546,19 @@ public class MapTestScene {
             });
 
             node.setOnMouseExited(e -> {
-                node.setFill(nativeColor);
-                node.setEffect(null);
+                // preserve its highlight color instead of reverting to original one
+                if (highlightedValidNodes.contains(city)) {
+                    node.setFill(Color.web("#00ff00"));
+                    javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
+                    glow.setColor(Color.web("#00ff00"));
+                    glow.setRadius(20);
+                    glow.setSpread(0.6);
+                    node.setEffect(glow);
+                } else {
+                    node.setFill(nativeColor);
+                    node.setEffect(null);
+                }
+
                 node.setScaleX(1);
                 node.setScaleY(1);
 
@@ -1412,7 +1567,19 @@ public class MapTestScene {
                     if (neighborCircle != null) {
                         neighborCircle.setStroke(Color.WHITE);
                         neighborCircle.setStrokeWidth(1);
-                        neighborCircle.setEffect(null);
+                        if (highlightedValidNodes.contains(neighbor)) {
+                            // keep highlighted neighbor appearance
+                            neighborCircle.setFill(Color.web("#00ff00"));
+                            javafx.scene.effect.DropShadow neighborGlow = new javafx.scene.effect.DropShadow();
+                            neighborGlow.setColor(Color.web("#00ff00"));
+                            neighborGlow.setRadius(20);
+                            neighborGlow.setSpread(0.6);
+                            neighborCircle.setEffect(neighborGlow);
+                        } else {
+                            neighborCircle.setEffect(null);
+                            Color neighborNative = getFxColor(neighbor.getNativeColor());
+                            neighborCircle.setFill(neighborNative);
+                        }
                     }
 
                     Line connection = edgeVisuals.get(city.getName() + "-" + neighbor.getName());
@@ -1435,6 +1602,14 @@ public class MapTestScene {
             label.setFont(Font.font(FONT_HKMODULAR, FontWeight.BOLD, 10));
             label.setMouseTransparent(true);
 
+            DropShadow textShadow = new DropShadow();
+            textShadow.setRadius(6);
+            textShadow.setSpread(0.8);
+            textShadow.setColor(Color.rgb(0,0,0,0.9));
+            textShadow.setOffsetX(0);
+            textShadow.setOffsetY(0);
+            label.setEffect(textShadow);
+
             label.layoutXProperty().bind(Bindings.createDoubleBinding(() -> node.getCenterX() - label.getLayoutBounds().getWidth() / 2, node.centerXProperty(),label.layoutBoundsProperty()));
             label.layoutYProperty().bind(node.centerYProperty().add(20));
 
@@ -1449,6 +1624,7 @@ public class MapTestScene {
             jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI group = new jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI(city, mapPane, mapPane.heightProperty());
             cityVirusUIs.put(city, group);
         }
+        MapZoomPanHandler.attach(mapPane);
         mapContainer.getChildren().add(mapPane);
         root.getChildren().add(mapContainer);
     }
@@ -1502,6 +1678,7 @@ public class MapTestScene {
         private final Map<DiseaseColor, Boolean> cures = new EnumMap<>(DiseaseColor.class);
         private String currentPlayerName;
         private int actionsRemaining;
+        private int outbreakScore;
         private boolean gameWon;
         private boolean gameOver;
     }
@@ -1546,6 +1723,10 @@ public class MapTestScene {
         if (gameClient != null && playerUpdateListener != null) {
             gameClient.removePlayerUpdateListener(playerUpdateListener);
             playerUpdateListener = null;
+        }
+        if (gameManager != null && outbreakAnimationListener != null) {
+            gameManager.removeOutbreakListener(outbreakAnimationListener);
+            outbreakAnimationListener = null;
         }
     }
 }

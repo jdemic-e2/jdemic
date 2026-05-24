@@ -27,6 +27,8 @@ public class JdemicNetworkServer {
     private static final AtomicReference<JdemicNetworkServer> ACTIVE_SERVER = new AtomicReference<>();
     private static final Logger LOGGER = Logger.getLogger(JdemicNetworkServer.class.getName());
 
+  
+
     private final DedicatedServerConfig config;
     private final GameManager gameManager;
     private final List<ClientHandler> connectedClients = new CopyOnWriteArrayList<>();

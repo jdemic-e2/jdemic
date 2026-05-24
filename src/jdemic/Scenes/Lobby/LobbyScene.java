@@ -336,6 +336,34 @@ public class LobbyScene {
         }
     }
 
+    // Returns int[]{gameStarted (0/1), playerCount, maxPlayers}
+    // Falls back to {0, 1, 4} if STATUS socket unreachable (old server without STATUS support)
+    private int[] queryServerStatus(String host, int gamePort) {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(host, gamePort + 1000), 500);
+            socket.setSoTimeout(500);
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            out.println("STATUS");
+            String response = in.readLine();
+            if (response == null) return new int[]{0, 1, 4};
+            // Expected: "gameStarted:false,players:2,maxPlayers:4"
+            int gameStarted = response.contains("gameStarted:true") ? 1 : 0;
+            int players = 1;
+            int maxPlayers = 4;
+            for (String part : response.split(",")) {
+                if (part.startsWith("players:")) {
+                    try { players = Integer.parseInt(part.substring(8)); } catch (NumberFormatException ignored) {}
+                } else if (part.startsWith("maxPlayers:")) {
+                    try { maxPlayers = Integer.parseInt(part.substring(11)); } catch (NumberFormatException ignored) {}
+                }
+            }
+            return new int[]{gameStarted, players, maxPlayers};
+        } catch (Exception ex) {
+            return new int[]{0, 1, 4}; // assume joinable if STATUS port unreachable
+        }
+    }
+
     private void shutdownScanExecutor() {
         ExecutorService existing = scanExecutor.getAndSet(null);
         if (existing != null) {

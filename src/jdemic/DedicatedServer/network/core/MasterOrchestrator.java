@@ -110,7 +110,9 @@ public class MasterOrchestrator {
         processBuilder.inheritIO();
         Map<String, String> environment = processBuilder.environment();
         environment.put("JDEMIC_SERVER_PORT", String.valueOf(freePort));
-        environment.put("JDEMIC_STATUS_ENABLED", "false");
+        environment.put("JDEMIC_STATUS_ENABLED", "true");
+        environment.put("JDEMIC_STATUS_PORT", String.valueOf(freePort + 1000));
+        environment.put("JDEMIC_STATUS_HOST", "0.0.0.0"); //instead of the default localhost
         environment.put("JDEMIC_OPEN_BROWSER", "false");
 
         try {
