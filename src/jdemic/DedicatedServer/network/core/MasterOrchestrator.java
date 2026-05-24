@@ -111,7 +111,8 @@ public class MasterOrchestrator {
         Map<String, String> environment = processBuilder.environment();
         environment.put("JDEMIC_SERVER_PORT", String.valueOf(freePort));
         environment.put("JDEMIC_STATUS_ENABLED", "true");
-        environment.put("JDEMIC_STATUS_PORT", String.valueOf(freePort + 1000));//now the status page should(actually will) work
+        environment.put("JDEMIC_STATUS_PORT", String.valueOf(freePort + 1000));
+        environment.put("JDEMIC_STATUS_HOST", "0.0.0.0"); //instead of the default localhost
         environment.put("JDEMIC_OPEN_BROWSER", "false");
 
         try {

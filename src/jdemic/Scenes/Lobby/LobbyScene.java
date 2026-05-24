@@ -313,7 +313,7 @@ public class LobbyScene {
     // Falls back to {0, 1, 4} if STATUS socket unreachable (old server without STATUS support)
     private int[] queryServerStatus(String host, int gamePort) {
         try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(host, gamePort + 500), 500);
+            socket.connect(new InetSocketAddress(host, gamePort + 1000), 500);
             socket.setSoTimeout(500);
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));

@@ -30,7 +30,7 @@ public class JdemicNetworkServer {
     private static final AtomicReference<JdemicNetworkServer> ACTIVE_SERVER = new AtomicReference<>();
     private static final Logger LOGGER = Logger.getLogger(JdemicNetworkServer.class.getName());
 
-    private static final int STATUS_PORT_OFFSET = 500;
+  
 
     private final DedicatedServerConfig config;
     private final GameManager gameManager;
@@ -125,9 +125,14 @@ public class JdemicNetworkServer {
         try {
             serverSocket = new ServerSocket(config.serverPort());
             LOGGER.info("The server is listening on the port: " + config.serverPort());
-            statusSocket = new ServerSocket(config.serverPort() + STATUS_PORT_OFFSET);
-            startStatusListener();
-            startStatusUi();
+            if (config.statusEnabled()) {
+                statusSocket = new ServerSocket(config.statusPort());
+                startStatusListener();
+                //startStatusUi(); 
+                //THIS WILL BE FIXED ONLY WHEN WE FIGURE OUT WHAT TO DO WITH statuslistener
+            } else {
+                statusSocket = null;
+            }
             startIdleTimeoutChecker();
             return true;
         } catch (Exception e) {
