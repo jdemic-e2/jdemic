@@ -52,6 +52,10 @@ public class DiseaseManager {
         return this.outbreakScore;
     }
 
+    public void setOutbreakScore(int outbreakScore) {
+        this.outbreakScore = Math.max(0, outbreakScore);
+    }
+
     public void increaseOutbreakScore() {
         this.outbreakScore++;
         if (this.outbreakScore > 7) {//8 is lose
@@ -164,6 +168,7 @@ public class DiseaseManager {
 
         // Notify manager/UI that an outbreak occurred so widgets can refresh
         if (gameManager != null) {
+            try { gameManager.notifyOutbreak(originCity); } catch (Exception ignored) {}
             try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
         }
 

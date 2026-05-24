@@ -1,5 +1,6 @@
 package jdemic.GameLogic;
 import java.util.List;
+import java.util.function.Consumer;
 
 import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
@@ -19,6 +20,7 @@ public class GameManager {
 
     // Simple state-change listener hooks for UI to react to model updates
     private final java.util.List<Runnable> stateChangeListeners = new java.util.ArrayList<>();
+    private final java.util.List<Consumer<CityNode>> outbreakListeners = new java.util.ArrayList<>();
 
     public void addStateChangeListener(Runnable listener) {
         if (listener == null) return;
@@ -32,6 +34,21 @@ public class GameManager {
     public void notifyStateChange() {
         for (Runnable r : new java.util.ArrayList<>(stateChangeListeners)) {
             try { r.run(); } catch (Exception ignored) {}
+        }
+    }
+
+    public void addOutbreakListener(Consumer<CityNode> listener) {
+        if (listener == null) return;
+        outbreakListeners.add(listener);
+    }
+
+    public void removeOutbreakListener(Consumer<CityNode> listener) {
+        outbreakListeners.remove(listener);
+    }
+
+    public void notifyOutbreak(CityNode city) {
+        for (Consumer<CityNode> listener : new java.util.ArrayList<>(outbreakListeners)) {
+            try { listener.accept(city); } catch (Exception ignored) {}
         }
     }
 

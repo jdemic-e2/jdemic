@@ -41,8 +41,12 @@ public class DeckAnimationManager {
 
         public void playInitialHandAnimation(PlayerState player, Runnable onFinished) {
 
-                if (player == null || player.getHand() == null)
+                if (player == null || player.getHand() == null) {
+                        if (onFinished != null) {
+                                onFinished.run();
+                        }
                         return;
+                }
 
                 List<StackPane> animationCards = new ArrayList<>();
                 for (Card card : player.getHand()) {
@@ -52,6 +56,12 @@ public class DeckAnimationManager {
                                 animationCards.add(cardNode);
                         }
                 }
+                playShuffleAnimation(animationCards, onFinished);
+        }
+
+        public void playStartupShuffleAnimation(Runnable onFinished) {
+                List<StackPane> animationCards = new ArrayList<>();
+                animationCards.add(deckManager.createBackCard());
                 playShuffleAnimation(animationCards, onFinished);
         }
 
@@ -65,8 +75,8 @@ public class DeckAnimationManager {
 
                 List<StackPane> tempCards = new ArrayList<>();
 
-                double centerX = root.getWidth() * 0.50;
-                double centerY = root.getHeight() * 0.50;
+                double centerX = 0;
+                double centerY = 0;
                 int visualCardCount = 18;
 
                 for (int i = 0; i < visualCardCount; i++) {
@@ -115,8 +125,8 @@ public class DeckAnimationManager {
                 for (int i = 0; i < tempCards.size(); i++) {
 
                         StackPane card = tempCards.get(i);
-                        double targetX = root.getWidth() * 0.12 + (i * root.getWidth() * 0.028);
-                        double targetY = root.getHeight() * 0.84;
+                        double targetX = -root.getWidth() * 0.38 + (i * root.getWidth() * 0.028);
+                        double targetY = root.getHeight() * 0.34;
                         TranslateTransition moveToHand = new TranslateTransition(Duration.millis(220), card);
                         moveToHand.setToX(targetX);
                         moveToHand.setToY(targetY);
