@@ -25,6 +25,13 @@ import jdemic.ui.GlowUtil;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import jdemic.DedicatedServer.network.security.SecureConnectionManager;
+import jdemic.DedicatedServer.network.transport.Packet;
+import jdemic.DedicatedServer.network.transport.PacketType;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -212,6 +219,8 @@ public class LobbyScene {
         return nickname;
     }
 
+    private record ServerInfo(boolean gameStarted, String gameName, int maxPlayers, int currentPlayers) {}
+
     private void scanServers() {
         shutdownScanExecutor();
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -224,15 +233,9 @@ public class LobbyScene {
         for (int port = SCAN_PORT_MIN; port <= SCAN_PORT_MAX; port++) {
             final int p = port;
             executor.submit(() -> {
-                boolean reachable = probeTcp(SCAN_HOST, p);
-                if (reachable) {
-                    int[] status = queryServerStatus(SCAN_HOST, p);
-                    boolean gameStarted = status[0] == 1;
-                    int players = status[1];
-                    int maxPlayers = status[2];
-                    if (!gameStarted && players > 0) {
-                        Platform.runLater(() -> addSortedRow(createServerRow(p, players, maxPlayers)));
-                    }
+                ServerInfo info = verifyGame(SCAN_HOST, p);
+                if (info != null && !info.gameStarted() && info.currentPlayers() > 0) {
+                    Platform.runLater(() -> addSortedRow(createServerRow(p, info.gameName(), info.currentPlayers(), info.maxPlayers())));
                 }
             });
         }
@@ -240,16 +243,42 @@ public class LobbyScene {
         executor.shutdown();
     }
 
-    private boolean probeTcp(String host, int port) {
-        try (Socket s = new Socket()) {
-            s.connect(new InetSocketAddress(host, port), 500);
-            return true;
+    private ServerInfo verifyGame(String host, int port) {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(host, port), 1000);
+
+            SecureConnectionManager.SecureSocket secureSocket = SecureConnectionManager.wrapClientSocket(socket);
+            if (secureSocket == null) return null;
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+
+            ObjectNode payload = new ObjectMapper().createObjectNode();
+            payload.put("id", 1);
+            out.println(secureSocket.encrypt(new Packet(PacketType.VERIFY_GAME, payload).toJson()));
+
+            socket.setSoTimeout(2000);
+            String line = in.readLine();
+            if (line == null) return null;
+
+            Packet response = Packet.fromJson(secureSocket.decrypt(line));
+            if (response == null || response.getType() != PacketType.VERIFY_GAME) return null;
+
+            JsonNode rp = response.getPayload();
+            if (rp == null || !rp.has("id") || !rp.get("id").isInt() || rp.get("id").asInt() != 2) return null;
+
+            return new ServerInfo(
+                rp.has("gameStarted") && rp.get("gameStarted").asBoolean(),
+                rp.has("gameName") ? rp.get("gameName").asText() : "SERVER " + port,
+                rp.has("maxPlayers") ? rp.get("maxPlayers").asInt() : 4,
+                rp.has("currentPlayers") ? rp.get("currentPlayers").asInt() : 1
+            );
         } catch (Exception ex) {
-            return false;
+            return null;
         }
     }
 
-    private StackPane createServerRow(int port, int players, int maxPlayers) {
+    private StackPane createServerRow(int port, String gameName, int players, int maxPlayers) {
         StackPane row = new StackPane();
         row.setUserData(port);
         row.maxWidthProperty().bind(root.widthProperty().multiply(0.55));
@@ -261,7 +290,7 @@ public class LobbyScene {
                 "-fx-background-radius: 8;"
         );
 
-        Label portLabel = TextUtil.createText("SERVER " + port, "hkmodular", 0.022, "#00d9ff", root);
+        Label portLabel = TextUtil.createText(gameName, "hkmodular", 0.022, "#00d9ff", root);
         Label statusLabel = TextUtil.createText(players + "/" + maxPlayers, "hkmodular", 0.02, "#cfc900", root);
 
         ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff",
