@@ -219,14 +219,17 @@ public class PauseMenuOverlay {
 
         Slider masterVol = volumeSlider(settingsManager.masterVolumeProperty().get() * VOLUME_PERCENT_SCALE);
         Slider musicVol = volumeSlider(settingsManager.musicVolumeProperty().get() * VOLUME_PERCENT_SCALE);
+        Slider sfxVol = volumeSlider(settingsManager.sfxVolumeProperty().get() * VOLUME_PERCENT_SCALE);
         bindVolumeSlider(masterVol, settingsManager.masterVolumeProperty());
         bindVolumeSlider(musicVol, settingsManager.musicVolumeProperty());
+        bindVolumeSlider(sfxVol, settingsManager.sfxVolumeProperty());
 
         layout.getChildren().addAll(
                 title,
                 note,
                 settingsRow("MASTER VOLUME", masterVol),
                 settingsRow("MUSIC VOLUME", musicVol),
+                settingsRow("SFX VOLUME", sfxVol),
                 backButton()
         );
         panelBox.getChildren().add(layout);

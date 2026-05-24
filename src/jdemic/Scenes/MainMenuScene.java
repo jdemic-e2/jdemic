@@ -203,14 +203,9 @@ public class MainMenuScene {
         root.getChildren().add(rightPanel);
 
         ButtonsUtil playBtn = new ButtonsUtil("PLAY", CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
-        ButtonsUtil maptestBtn = new ButtonsUtil("MAP TEST", CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil tutorialBtn = new ButtonsUtil(SCENE_TUTORIAL, CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil settingsBtn = new ButtonsUtil(SCENE_SETTINGS, CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil exitBtn = new ButtonsUtil("EXIT", CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
-
-        maptestBtn.setOnMouseClicked(e -> {
-            SceneManager.switchScene(SCENE_MAP_TEST);
-        });
 
         tutorialBtn.setOnMouseClicked(e -> {
             SceneManager.switchScene(SCENE_TUTORIAL);
@@ -275,7 +270,7 @@ public class MainMenuScene {
         menuBox.setFillWidth(false);
         menuBox.setAlignment(Pos.BOTTOM_CENTER);
         menuBox.spacingProperty().bind(root.heightProperty().multiply(0.025));
-        menuBox.getChildren().addAll(playBtn, maptestBtn, tutorialBtn, settingsBtn, exitBtn);
+        menuBox.getChildren().addAll(playBtn, tutorialBtn, settingsBtn, exitBtn);
         menuBox.translateXProperty().bind(root.widthProperty().multiply(-0.35));
         menuBox.translateYProperty().bind(root.heightProperty().multiply(-0.25));
 

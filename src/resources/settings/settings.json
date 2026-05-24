@@ -1,8 +1,9 @@
 {
-  "playerName": "player67",
-  "resolution": "800x600",
+  "playerName": "Player",
+  "resolution": "1280x720",
   "isFullScreen": false,
-  "masterVolume": 0.0,
-  "musicVolume": 0.0,
+  "masterVolume": 1.0,
+  "musicVolume": 0.08778625954198475,
+  "sfxVolume": 1.0,
   "animationSpeed": "MEDIUM"
 }

@@ -30,6 +30,7 @@ import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
+import jdemic.Scenes.Settings.AudioManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.PauseMenuOverlay;
 import jdemic.ui.SafeResourceLoader;
@@ -193,6 +194,7 @@ public class MapTestScene {
     }
 
     private void initializeScene() {
+        AudioManager.getInstance().playGameMusic();
         this.root.setStyle("-fx-background-color: #050a14;");
         setupBackground();
         setupContent();

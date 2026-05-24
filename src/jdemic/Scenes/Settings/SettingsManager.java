@@ -98,6 +98,7 @@ public class SettingsManager {
                 this.isFullscreen.set(settingsData.isFullScreen);
                 this.masterVolume.set(settingsData.masterVolume);
                 this.musicVolume.set(settingsData.musicVolume);
+                this.sfxVolume.set(settingsData.sfxVolume);
                 this.animationSpeed.set(settingsData.animationSpeed);
                 System.out.println("Settings loaded successfully");
             }
@@ -115,6 +116,7 @@ public class SettingsManager {
         settingsData.isFullScreen = this.isFullscreen.get();
         settingsData.masterVolume = this.masterVolume.get();
         settingsData.musicVolume = this.musicVolume.get();
+        settingsData.sfxVolume = this.sfxVolume.get();
         settingsData.animationSpeed = this.animationSpeed.get();
 
         try (FileWriter settingsWriter = new FileWriter(FILE_PATH))
