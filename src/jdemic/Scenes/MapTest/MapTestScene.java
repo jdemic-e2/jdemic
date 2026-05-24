@@ -28,6 +28,7 @@ import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
+import jdemic.ui.PauseMenuOverlay;
 import jdemic.GameLogic.*;
 import javafx.scene.layout.VBox;
 import jdemic.ui.GameplayUI.*;
@@ -143,6 +144,10 @@ public class MapTestScene {
 
     private GameClient.PlayerUpdateListener playerUpdateListener;
 
+    private PauseMenuOverlay pauseMenuOverlay;
+    private HBox pauseHeader;
+    private ButtonsUtil pauseBtn;
+
     public MapTestScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
@@ -175,7 +180,7 @@ public class MapTestScene {
         this.root.setStyle("-fx-background-color: #050a14;");
         setupBackground();
         setupContent();
-        setupUI();
+        setupPauseMenu();
         setupNotifications();
         setupActionMenu();
         setupGlobalHUD();
@@ -192,11 +197,19 @@ public class MapTestScene {
         this.playerListUI = new PlayerListUI(gameManager.getState().getPlayers(), playerColors);
         root.getChildren().add(playerListUI.getContainer()); // Add to top level StackPane
 
+        setupUI();
+        bringPauseControlToFront();
+
         root.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 // Use Filter instead of Handler to catch TAB specifically
                 newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
-                    if (event.getCode() == javafx.scene.input.KeyCode.TAB) {
+                    if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                        if (pauseMenuOverlay != null) {
+                            pauseMenuOverlay.toggle();
+                            event.consume();
+                        }
+                    } else if (event.getCode() == javafx.scene.input.KeyCode.TAB) {
                         playerListUI.setVisible(true);
                         event.consume(); // Prevents focus from jumping to buttons
                     }
@@ -535,33 +548,54 @@ public class MapTestScene {
     }
 
     private void setupUI() {
-        HBox header = new HBox();
-        header.setPadding(new Insets(20));
-        header.setAlignment(Pos.TOP_LEFT);
-        header.setPickOnBounds(false);
+        pauseHeader = new HBox();
+        pauseHeader.setPadding(new Insets(20));
+        pauseHeader.setAlignment(Pos.TOP_LEFT);
+        pauseHeader.setPickOnBounds(false);
+        pauseHeader.setMouseTransparent(false);
 
-        ButtonsUtil backBtn = new ButtonsUtil(
-                "BACK",
+        pauseBtn = new ButtonsUtil(
+                "PAUSE",
                 CYAN_COLOR, "black", CYAN_COLOR, CYAN_COLOR,
                 2, 10, 10,
                 0.12, 0.06, 0.015,
                 root
         );
+        pauseBtn.setMouseTransparent(false);
 
-        backBtn.setOnMouseClicked(e -> {
-            if (gameManager != null && gameManager.getState() != null) {
-                gameManager.getState().setActionsRemaining(4);
+        pauseBtn.setOnMouseClicked(e -> {
+            if (pauseMenuOverlay != null) {
+                pauseMenuOverlay.show();
             }
-            if (actionMenuManager != null) actionMenuManager.updateMenuState();
-            if (infectionRateManager != null) infectionRateManager.updateTrack();
-            if (outbreakManager != null) outbreakManager.updateTrack();
-            if (cureManager != null) cureManager.updateUI();
-
-            returnToMainMenu();
         });
 
-        header.getChildren().add(backBtn);
-        root.getChildren().add(header);
+        pauseHeader.getChildren().add(pauseBtn);
+        root.getChildren().add(pauseHeader);
+    }
+
+    private void bringPauseControlToFront() {
+        if (pauseHeader != null) {
+            pauseHeader.toFront();
+        }
+        if (pauseBtn != null) {
+            pauseBtn.toFront();
+        }
+    }
+
+    private static void configurePassiveHudRegion(Region region) {
+        region.setPickOnBounds(false);
+    }
+
+    private void setupPauseMenu() {
+        pauseMenuOverlay = new PauseMenuOverlay(root, this::disconnectFromGame, this::bringPauseControlToFront);
+    }
+
+    private void disconnectFromGame() {
+        if (gameClient != null) {
+            gameClient.disconnectFromLobby();
+        }
+        cleanupScene();
+        SceneManager.switchScene(SCENE_MAIN_MENU);
     }
 
     private void setupGlobalHUD() {
@@ -573,6 +607,7 @@ public class MapTestScene {
         HBox outbreakBox = new HBox(outbreakManager.getContainer());
         outbreakBox.setAlignment(Pos.CENTER_LEFT);
         outbreakBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        configurePassiveHudRegion(outbreakBox);
 
         StackPane.setAlignment(outbreakBox, Pos.TOP_LEFT);
         StackPane.setMargin(outbreakBox, new Insets(40, 0, 0, 40));
@@ -580,12 +615,14 @@ public class MapTestScene {
         HBox infectionBox = new HBox(infectionRateManager.getContainer());
         infectionBox.setAlignment(Pos.CENTER);
         infectionBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        configurePassiveHudRegion(infectionBox);
 
         StackPane.setAlignment(infectionBox, Pos.TOP_CENTER);
         StackPane.setMargin(infectionBox, new Insets(40, 0, 0, 0));
 
         VBox curesBox = cureManager.getContainer();
         curesBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        configurePassiveHudRegion(curesBox);
 
         StackPane.setAlignment(curesBox, Pos.TOP_RIGHT);
         StackPane.setMargin(curesBox, new Insets(100, 40, 0, 0));
@@ -615,6 +652,7 @@ public class MapTestScene {
         ));
         notificationContainer.setAlignment(Pos.TOP_RIGHT);
         notificationContainer.setMouseTransparent(true);
+        configurePassiveHudRegion(notificationContainer);
 
         notificationManager = new NotificationManager(notificationContainer);
         root.getChildren().add(notificationContainer);
@@ -1015,8 +1053,10 @@ public class MapTestScene {
         mapContainer.prefWidthProperty().bind(root.widthProperty());
         mapContainer.prefHeightProperty().bind(root.heightProperty());
         mapContainer.setPickOnBounds(false);
+        mapContainer.setMouseTransparent(true);
 
         Pane mapPane = new Pane();
+        mapPane.setMouseTransparent(false);
         mapPane.prefWidthProperty().bind(Bindings.createDoubleBinding(
                 () -> Math.min(root.getWidth() * 0.70, root.getHeight() * 1.38),
                 root.widthProperty(), root.heightProperty()
@@ -1161,11 +1201,6 @@ public class MapTestScene {
 
     public StackPane getRoot() {
         return root;
-    }
-
-    private void returnToMainMenu() {
-        cleanupScene();
-        SceneManager.switchScene(SCENE_MAIN_MENU);
     }
 
     private void setupBackground() {
