@@ -449,12 +449,19 @@ public class PacketProcessor {
         JsonNode payload = packet.getPayload();
         if (payload == null || !payload.has("id") || payload.get("id").asInt() != 0) return;
 
+        boolean gameStarted;
+        int currentPlayers;
+        synchronized (gameManager.getStateLock()) {
+            gameStarted = gameManager.getState().isGameStarted();
+            currentPlayers = gameManager.getState().getPlayers().size();
+        }
+
         ObjectNode response = OBJECT_MAPPER.createObjectNode();
         response.put("id", 1);
-        response.put("gameStarted", gameManager.getState().isGameStarted());
+        response.put("gameStarted", gameStarted);
         response.put("gameName", "Pandemic");
         response.put("maxPlayers", GameManager.MAX_PLAYERS);
-        response.put("currentPlayers", gameManager.getState().getPlayers().size());
+        response.put("currentPlayers", currentPlayers);
 
         clientHandler.sendPacketToClient(new Packet(PacketType.VERIFY_GAME, response));
         clientHandler.closeConnection();
