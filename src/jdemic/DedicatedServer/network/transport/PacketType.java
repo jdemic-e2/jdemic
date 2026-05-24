@@ -11,5 +11,6 @@ public enum PacketType {
     LOBBY_CHAT,
     LOBBY_READY,
     DISCONNECT,
-    ERROR
+    ERROR,
+    VERIFY_GAME
 }

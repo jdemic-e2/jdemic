@@ -94,6 +94,7 @@ public class PacketProcessor {
             case LOBBY_READY: handleLobbyReady(packet); break;
             case DISCONNECT: handleDisconnect(packet); break;
             case ERROR: handleError(packet); break;
+            case VERIFY_GAME: handleVerifyGame(packet); break;
             default: LOGGER.severe("[PacketProcessor] Unsupported packet type: " + packet.getType());
         }
     }
@@ -441,6 +442,37 @@ public class PacketProcessor {
 
     private void handleError(Packet packet) {
         LOGGER.severe("[PacketProcessor] Received ERROR packet: " + packet);
+    }
+        private void handleVerifyGame(Packet packet) {
+        LOGGER.info("[PacketProcessor] Received VERIFY_GAME packet.");
+        
+        JsonNode payload = packet.getPayload();
+        
+        
+        if (payload != null && payload.has("status") && payload.get("status").asInt() == 0) {
+            ObjectNode responsePayload = OBJECT_MAPPER.createObjectNode();
+
+            responsePayload.put("status", 1);
+            responsePayload.put("gamename", "Jdemic Server"); 
+            responsePayload.put("max_players", MAX_PLAYERS);
+            
+            int currentPlayers = 0;
+            boolean gameStarted = false;
+            
+           
+            synchronized (gameManager.getStateLock()) {
+                currentPlayers = gameManager.getState().getPlayers().size();
+                gameStarted = gameManager.getState().isGameStarted();
+            }
+            
+            responsePayload.put("current_players", currentPlayers);
+            responsePayload.put("game_started", gameStarted);
+            
+           
+            if (clientHandler != null) {
+                clientHandler.sendPacketToClient(new Packet(PacketType.VERIFY_GAME, responsePayload));
+            }
+        }
     }
 
     private void handleDiscardCard(JsonNode payload, PlayerState playerState) {
