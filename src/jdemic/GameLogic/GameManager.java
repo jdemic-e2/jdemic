@@ -8,6 +8,7 @@ import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 public class GameManager {
     GameState state;
     private final Object stateLock = new Object();
+    public static final int MAX_PLAYERS = 4;
     private static final int ACTIONS_PER_TURN = 4;
     private static final int HAND_LIMIT = 7;
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};

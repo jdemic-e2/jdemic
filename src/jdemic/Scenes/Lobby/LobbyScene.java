@@ -226,9 +226,12 @@ public class LobbyScene {
             executor.submit(() -> {
                 boolean reachable = probeTcp(SCAN_HOST, p);
                 if (reachable) {
-                    boolean gameStarted = queryGameStarted(SCAN_HOST, p);
-                    if (!gameStarted) {
-                        Platform.runLater(() -> addSortedRow(createServerRow(p)));
+                    int[] status = queryServerStatus(SCAN_HOST, p);
+                    boolean gameStarted = status[0] == 1;
+                    int players = status[1];
+                    int maxPlayers = status[2];
+                    if (!gameStarted && players > 0) {
+                        Platform.runLater(() -> addSortedRow(createServerRow(p, players, maxPlayers)));
                     }
                 }
             });
@@ -246,7 +249,7 @@ public class LobbyScene {
         }
     }
 
-    private StackPane createServerRow(int port) {
+    private StackPane createServerRow(int port, int players, int maxPlayers) {
         StackPane row = new StackPane();
         row.setUserData(port);
         row.maxWidthProperty().bind(root.widthProperty().multiply(0.55));
@@ -259,7 +262,7 @@ public class LobbyScene {
         );
 
         Label portLabel = TextUtil.createText("SERVER " + port, "hkmodular", 0.022, "#00d9ff", root);
-        Label statusLabel = TextUtil.createText("JOINABLE", "hkmodular", 0.02, "#cfc900", root);
+        Label statusLabel = TextUtil.createText(players + "/" + maxPlayers, "hkmodular", 0.02, "#cfc900", root);
 
         ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff",
                 2, 10, 10, 0.10, 0.05, 0.018, root);
@@ -306,7 +309,9 @@ public class LobbyScene {
         }
     }
 
-    private boolean queryGameStarted(String host, int gamePort) {
+    // Returns int[]{gameStarted (0/1), playerCount, maxPlayers}
+    // Falls back to {0, 1, 4} if STATUS socket unreachable (old server without STATUS support)
+    private int[] queryServerStatus(String host, int gamePort) {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, gamePort + 500), 500);
             socket.setSoTimeout(500);
@@ -314,9 +319,21 @@ public class LobbyScene {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out.println("STATUS");
             String response = in.readLine();
-            return response != null && response.equals("gameStarted:true");
+            if (response == null) return new int[]{0, 1, 4};
+            // Expected: "gameStarted:false,players:2,maxPlayers:4"
+            int gameStarted = response.contains("gameStarted:true") ? 1 : 0;
+            int players = 1;
+            int maxPlayers = 4;
+            for (String part : response.split(",")) {
+                if (part.startsWith("players:")) {
+                    try { players = Integer.parseInt(part.substring(8)); } catch (NumberFormatException ignored) {}
+                } else if (part.startsWith("maxPlayers:")) {
+                    try { maxPlayers = Integer.parseInt(part.substring(11)); } catch (NumberFormatException ignored) {}
+                }
+            }
+            return new int[]{gameStarted, players, maxPlayers};
         } catch (Exception ex) {
-            return false;
+            return new int[]{0, 1, 4}; // assume joinable if STATUS port unreachable
         }
     }
 

@@ -151,7 +151,9 @@ public class JdemicNetworkServer {
                         String line = in.readLine();
                         if ("STATUS".equals(line)) {
                             boolean started = gameManager.getState().isGameStarted();
-                            out.println("gameStarted:" + started);
+                            int players = gameManager.getState().getPlayers().size();
+                            int maxPlayers = jdemic.GameLogic.GameManager.MAX_PLAYERS;
+                            out.println("gameStarted:" + started + ",players:" + players + ",maxPlayers:" + maxPlayers);
                         }
                     } catch (Exception ignored) {
                     } finally {
