@@ -6,5 +6,6 @@ public class SettingsData {
     public boolean isFullScreen = false;
     public double masterVolume = 0.5;
     public double musicVolume = 0.5;
+    public double sfxVolume = 0.5;
     public String animationSpeed = "MEDIUM";
 }

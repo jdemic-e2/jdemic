@@ -7,7 +7,6 @@ import javafx.stage.Stage;
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
 import jdemic.GameLogic.GameClient;
 import jdemic.Scenes.SceneManager.SceneManager;
-import jdemic.Scenes.Settings.AudioManager;
 import jdemic.Scenes.Settings.SettingsManager;
 
 public class Main extends Application {
@@ -27,7 +26,6 @@ public class Main extends Application {
         stage.setOnCloseRequest(event -> shutdownNetworkResources());
 
         stage.show();
-        AudioManager.getInstance().playMusic("MENU");
     }
 
     @Override

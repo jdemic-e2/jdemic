@@ -5,6 +5,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import jdemic.Scenes.Lobby.JoinCodeScene;
 import jdemic.Scenes.MainMenuScene;
+import jdemic.Scenes.Settings.AudioManager;
 import jdemic.Scenes.Settings.SettingsScene;
 import jdemic.Scenes.Tutorial.*;
 
@@ -27,6 +28,9 @@ public class SceneManager {
         }
 
         setRoot(root);
+        if ("MAIN_MENU".equals(sceneName)) {
+            AudioManager.getInstance().playMusic("MENU");
+        }
     }
 
     public static void setRoot(Parent root) {

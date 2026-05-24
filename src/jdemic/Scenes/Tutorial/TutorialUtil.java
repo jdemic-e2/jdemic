@@ -21,6 +21,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import jdemic.Scenes.SceneManager.SceneManager;
+import jdemic.Scenes.Settings.AudioManager;
 import jdemic.ui.*;
 
 import java.net.URL;
@@ -273,8 +274,7 @@ public class TutorialUtil {
             fallbackWrapper.setPadding(new Insets(32));
             fallbackWrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-            Button close = new Button("X");
-            close.setStyle(CLOSE_BUTTON_STYLE);
+            Button close = createCloseButton();
             close.setOnAction(e -> closeOverlay(root, overlay, fallbackWrapper));
 
             fallbackWrapper.getChildren().add(close);
@@ -306,8 +306,7 @@ public class TutorialUtil {
         cardWrapper.setStyle(CARD_WRAPPER_STYLE);
         GlowUtil.applyGlow(cardWrapper, "#00b5d4", 20);
 
-        Button close = new Button("X");
-        close.setStyle(CLOSE_BUTTON_STYLE);
+        Button close = createCloseButton();
         close.setOnAction(e -> closeOverlay(root, overlay, cardWrapper));
 
         cardWrapper.getChildren().add(close);
@@ -318,6 +317,13 @@ public class TutorialUtil {
         overlay.getChildren().add(cardWrapper);
         root.getChildren().add(overlay);
         playOverlayIn(cardWrapper);
+    }
+
+    private static Button createCloseButton() {
+        Button close = new Button("X");
+        close.setStyle(CLOSE_BUTTON_STYLE);
+        close.setOnMouseClicked(e -> AudioManager.getInstance().playButtonSFX());
+        return close;
     }
 
     public static void enableHorizontalDragScroll(Region viewport, Pane content) {

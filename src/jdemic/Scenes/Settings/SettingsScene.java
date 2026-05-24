@@ -50,7 +50,7 @@ public class SettingsScene {
 
     // UI Control References (for saving/loading data)
     private TextField nameField;
-    private Slider masterVol, musicVol;
+    private Slider masterVol, musicVol, sfxVol;
     private ComboBox<String> resCombo;
     private ToggleButton fsToggle;
     private ComboBox<String> speedCombo;
@@ -184,6 +184,7 @@ public class SettingsScene {
         // AUDIO
         sm.masterVolumeProperty().set(masterVol.getValue() / 100.0);
         sm.musicVolumeProperty().set(musicVol.getValue() / 100.0);
+        sm.sfxVolumeProperty().set(sfxVol.getValue() / 100.0);
         // Update volume
         AudioManager.getInstance().updateVolume();
 
@@ -238,6 +239,7 @@ public class SettingsScene {
         updateFsToggleStyle(); // Refresh the visual color of the button
         masterVol.setValue(sm.masterVolumeProperty().get() * 100);
         musicVol.setValue(sm.musicVolumeProperty().get() * 100);
+        sfxVol.setValue(sm.sfxVolumeProperty().get() * 100);
         speedCombo.setValue(sm.animationSpeedProperty().get());
 
         hasUnsavedChanges = false;
@@ -251,6 +253,7 @@ public class SettingsScene {
         updateFsToggleStyle();
         masterVol.setValue(defaults.masterVolume * 100);
         musicVol.setValue(defaults.musicVolume * 100);
+        sfxVol.setValue(defaults.sfxVolume * 100);
         speedCombo.setValue(defaults.animationSpeed);
 
         saveToManager();
@@ -290,6 +293,7 @@ public class SettingsScene {
         fsToggle = new ToggleButton();
         fsToggle.setSelected(sm.isFullscreenProperty().get()); // Load from manager
         updateFsToggleStyle();
+        fsToggle.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_CLICKED, e -> AudioManager.getInstance().playButtonSFX());
         fsToggle.setOnAction(e -> {
             updateFsToggleStyle();
             markDirty();
@@ -321,7 +325,16 @@ public class SettingsScene {
         styleSlider(musicVol);
         musicVol.valueProperty().addListener((obs, oldVal, newVal) -> markDirty());
 
-        box.getChildren().addAll(header, createSettingRow("MASTER VOLUME", masterVol), createSettingRow("MUSIC VOLUME", musicVol));
+        sfxVol = new Slider(0, 100, sm.sfxVolumeProperty().get() * 100);
+        styleSlider(sfxVol);
+        sfxVol.valueProperty().addListener((obs, oldVal, newVal) -> markDirty());
+
+        box.getChildren().addAll(
+                header,
+                createSettingRow("MASTER VOLUME", masterVol),
+                createSettingRow("MUSIC VOLUME", musicVol),
+                createSettingRow("SFX VOLUME", sfxVol)
+        );
         return box;
     }
 
