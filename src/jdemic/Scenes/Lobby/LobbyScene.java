@@ -254,7 +254,7 @@ public class LobbyScene {
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 
             ObjectNode payload = new ObjectMapper().createObjectNode();
-            payload.put("id", 0);
+            payload.put("id", 1);
             out.println(secureSocket.encrypt(new Packet(PacketType.VERIFY_GAME, payload).toJson()));
 
             socket.setSoTimeout(2000);
@@ -264,12 +264,14 @@ public class LobbyScene {
             Packet response = Packet.fromJson(secureSocket.decrypt(line));
             if (response == null || response.getType() != PacketType.VERIFY_GAME) return null;
 
-            JsonNode p = response.getPayload();
+            JsonNode rp = response.getPayload();
+            if (rp == null || !rp.has("id") || !rp.get("id").isInt() || rp.get("id").asInt() != 2) return null;
+
             return new ServerInfo(
-                p.has("gameStarted") && p.get("gameStarted").asBoolean(),
-                p.has("gameName") ? p.get("gameName").asText() : "SERVER " + port,
-                p.has("maxPlayers") ? p.get("maxPlayers").asInt() : 4,
-                p.has("currentPlayers") ? p.get("currentPlayers").asInt() : 1
+                rp.has("gameStarted") && rp.get("gameStarted").asBoolean(),
+                rp.has("gameName") ? rp.get("gameName").asText() : "SERVER " + port,
+                rp.has("maxPlayers") ? rp.get("maxPlayers").asInt() : 4,
+                rp.has("currentPlayers") ? rp.get("currentPlayers").asInt() : 1
             );
         } catch (Exception ex) {
             return null;

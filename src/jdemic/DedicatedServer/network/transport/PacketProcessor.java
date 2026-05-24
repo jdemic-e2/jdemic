@@ -447,7 +447,7 @@ public class PacketProcessor {
     private void handleVerifyGame(Packet packet) {
         LOGGER.info("[PacketProcessor] Received VERIFY_GAME packet.");
         JsonNode payload = packet.getPayload();
-        if (payload == null || !payload.has("id") || payload.get("id").asInt() != 0) return;
+        if (payload == null || !payload.has("id") || !payload.get("id").isInt() || payload.get("id").asInt() != 1) return;
 
         boolean gameStarted;
         int currentPlayers;
@@ -457,7 +457,7 @@ public class PacketProcessor {
         }
 
         ObjectNode response = OBJECT_MAPPER.createObjectNode();
-        response.put("id", 1);
+        response.put("id", 2);
         response.put("gameStarted", gameStarted);
         response.put("gameName", "Pandemic");
         response.put("maxPlayers", GameManager.MAX_PLAYERS);
