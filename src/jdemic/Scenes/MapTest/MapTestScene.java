@@ -1546,8 +1546,19 @@ public class MapTestScene {
             });
 
             node.setOnMouseExited(e -> {
-                node.setFill(nativeColor);
-                node.setEffect(null);
+                // preserve its highlight color instead of reverting to original one
+                if (highlightedValidNodes.contains(city)) {
+                    node.setFill(Color.web("#00ff00"));
+                    javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
+                    glow.setColor(Color.web("#00ff00"));
+                    glow.setRadius(20);
+                    glow.setSpread(0.6);
+                    node.setEffect(glow);
+                } else {
+                    node.setFill(nativeColor);
+                    node.setEffect(null);
+                }
+
                 node.setScaleX(1);
                 node.setScaleY(1);
 
@@ -1556,7 +1567,19 @@ public class MapTestScene {
                     if (neighborCircle != null) {
                         neighborCircle.setStroke(Color.WHITE);
                         neighborCircle.setStrokeWidth(1);
-                        neighborCircle.setEffect(null);
+                        if (highlightedValidNodes.contains(neighbor)) {
+                            // keep highlighted neighbor appearance
+                            neighborCircle.setFill(Color.web("#00ff00"));
+                            javafx.scene.effect.DropShadow neighborGlow = new javafx.scene.effect.DropShadow();
+                            neighborGlow.setColor(Color.web("#00ff00"));
+                            neighborGlow.setRadius(20);
+                            neighborGlow.setSpread(0.6);
+                            neighborCircle.setEffect(neighborGlow);
+                        } else {
+                            neighborCircle.setEffect(null);
+                            Color neighborNative = getFxColor(neighbor.getNativeColor());
+                            neighborCircle.setFill(neighborNative);
+                        }
                     }
 
                     Line connection = edgeVisuals.get(city.getName() + "-" + neighbor.getName());
