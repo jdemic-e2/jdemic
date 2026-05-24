@@ -443,38 +443,37 @@ public class PacketProcessor {
     private void handleError(Packet packet) {
         LOGGER.severe("[PacketProcessor] Received ERROR packet: " + packet);
     }
-        private void handleVerifyGame(Packet packet) {
+
+            private void handleVerifyGame(Packet packet) {
         LOGGER.info("[PacketProcessor] Received VERIFY_GAME packet.");
-        
         JsonNode payload = packet.getPayload();
-        
-        
         if (payload != null && payload.has("status") && payload.get("status").asInt() == 0) {
             ObjectNode responsePayload = OBJECT_MAPPER.createObjectNode();
 
             responsePayload.put("status", 1);
-            responsePayload.put("gamename", "Jdemic Server"); 
             responsePayload.put("max_players", MAX_PLAYERS);
             
             int currentPlayers = 0;
             boolean gameStarted = false;
+            String serverName = "Jdemic Server"; 
             
-           
             synchronized (gameManager.getStateLock()) {
                 currentPlayers = gameManager.getState().getPlayers().size();
                 gameStarted = gameManager.getState().isGameStarted();
+                if (currentPlayers > 0) {
+                    serverName = gameManager.getState().getPlayers().get(0).getPlayerName() + "'s server";
+                }
             }
-            
+            responsePayload.put("gamename", serverName);
             responsePayload.put("current_players", currentPlayers);
             responsePayload.put("game_started", gameStarted);
             
-           
             if (clientHandler != null) {
                 clientHandler.sendPacketToClient(new Packet(PacketType.VERIFY_GAME, responsePayload));
             }
         }
     }
-
+    
     private void handleDiscardCard(JsonNode payload, PlayerState playerState) {
         if (!payload.has(CARD_INDEX_STRING) || !payload.get(CARD_INDEX_STRING).isInt()) {
             LOGGER.severe("[PacketProcessor] DISCARD_CARD missing cardIndex.");
