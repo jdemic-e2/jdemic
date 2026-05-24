@@ -1,9 +1,3 @@
-/**
- * This test verifies that the PacketType enum defines the expected packet
- * types used by the network protocol and that their names match the values
- * expected during packet parsing and processing.
- */
-
 package jdemic.DedicatedServer.network.transport;
 
 import org.junit.jupiter.api.Test;
@@ -14,11 +8,10 @@ class PacketTypeTest {
 
     @Test
     void shouldContainExpectedPacketTypes() {
-        // This test verifies that the protocol enum contains the expected packet types.
         PacketType[] values = PacketType.values();
 
         assertNotNull(values);
-        assertEquals(8, values.length);
+        assertEquals(9, values.length);
         assertTrue(contains(PacketType.PING, values));
         assertTrue(contains(PacketType.PONG, values));
         assertTrue(contains(PacketType.GAME_DATA, values));
@@ -27,11 +20,11 @@ class PacketTypeTest {
         assertTrue(contains(PacketType.LOBBY_READY, values));
         assertTrue(contains(PacketType.DISCONNECT, values));
         assertTrue(contains(PacketType.ERROR, values));
+        assertTrue(contains(PacketType.VERIFY_GAME, values));
     }
 
     @Test
     void shouldExposeCorrectEnumNames() {
-        // This test verifies that enum constants keep the exact names used by the network protocol.
         assertEquals("PING", PacketType.PING.name());
         assertEquals("PONG", PacketType.PONG.name());
         assertEquals("GAME_DATA", PacketType.GAME_DATA.name());
@@ -40,6 +33,7 @@ class PacketTypeTest {
         assertEquals("LOBBY_READY", PacketType.LOBBY_READY.name());
         assertEquals("DISCONNECT", PacketType.DISCONNECT.name());
         assertEquals("ERROR", PacketType.ERROR.name());
+        assertEquals("VERIFY_GAME", PacketType.VERIFY_GAME.name());
     }
 
     private boolean contains(PacketType target, PacketType[] values) {

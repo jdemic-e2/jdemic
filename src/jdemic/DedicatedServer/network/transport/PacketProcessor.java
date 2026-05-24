@@ -447,7 +447,17 @@ public class PacketProcessor {
     private void handleVerifyGame(Packet packet) {
         LOGGER.info("[PacketProcessor] Received VERIFY_GAME packet.");
         JsonNode payload = packet.getPayload();
-        if (payload == null || !payload.has("id") || !payload.get("id").isInt() || payload.get("id").asInt() != 1) return;
+
+        if (payload == null || !payload.has("id") || !payload.get("id").isInt()) {
+            LOGGER.severe("[PacketProcessor] VERIFY_GAME rejected: missing or invalid id.");
+            return;
+        }
+
+        if (payload.get("id").asInt() != 1) {
+            LOGGER.severe("[PacketProcessor] VERIFY_GAME ignored: unsupported request id = "
+                    + payload.get("id").asInt());
+            return;
+        }
 
         boolean gameStarted;
         int currentPlayers;
@@ -460,11 +470,13 @@ public class PacketProcessor {
         response.put("id", 2);
         response.put("gameStarted", gameStarted);
         response.put("gameName", "Pandemic");
-        response.put("maxPlayers", GameManager.MAX_PLAYERS);
+        response.put("maxPlayers", MAX_PLAYERS);
         response.put("currentPlayers", currentPlayers);
 
-        clientHandler.sendPacketToClient(new Packet(PacketType.VERIFY_GAME, response));
-        clientHandler.closeConnection();
+        if (clientHandler != null) {
+            clientHandler.sendPacketToClient(new Packet(PacketType.VERIFY_GAME, response));
+            clientHandler.closeConnection();
+        }
     }
 
     private void handleDiscardCard(JsonNode payload, PlayerState playerState) {
