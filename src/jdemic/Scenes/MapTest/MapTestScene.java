@@ -39,6 +39,7 @@ import jdemic.ui.TurnAnimationManager;
 import jdemic.GameLogic.*;
 import javafx.scene.layout.VBox;
 import jdemic.ui.GameplayUI.*;
+import jdemic.ui.MapZoomPanHandler;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -1560,6 +1561,7 @@ public class MapTestScene {
             jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI group = new jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI(city, mapPane, mapPane.heightProperty());
             cityVirusUIs.put(city, group);
         }
+        MapZoomPanHandler.attach(mapPane);
         mapContainer.getChildren().add(mapPane);
         root.getChildren().add(mapContainer);
     }
