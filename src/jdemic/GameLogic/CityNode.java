@@ -95,7 +95,7 @@ public class CityNode {
         if(!connectedCities.isEmpty()){
             System.out.println("--- " + this.name + " ---");
             connectedCities
-                .forEach(e -> System.out.println(e.getName()));
+                .forEach(e -> System.out.println(e.getName() + " | Research: " + e.hasResearchStation()));
         }
         else{
             System.out.println(this.getName() + " has no neighbours.");
