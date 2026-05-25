@@ -58,7 +58,7 @@ public class PlayScene {
         this.root = new StackPane();
         this.hostCode = generateHostCode();
 
-        setupBackground();
+        jdemic.Scenes.SceneUtil.setBackground(root);
         showEntryScreen();
     }
 
@@ -68,17 +68,10 @@ public class PlayScene {
 
     private void resetScreen() {
         root.getChildren().clear();
-        setupBackground();
+        jdemic.Scenes.SceneUtil.setBackground(root);
     }
 
-    private void setupBackground() {
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(BACKGROUND_RESOURCE));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
-        background.toBack();
-    }
+
 
     private Canvas createFrameLayer(double widthRatio, double heightRatio, double yOffsetRatio) {
         Canvas canvas = new Canvas();

@@ -93,7 +93,7 @@ public class WaitingRoomScene {
         this.gameClient = gameClient;
         this.ownsServer = ownsServer;
 
-        setupBackground();
+        jdemic.Scenes.SceneUtil.setBackground(root);
         setupUI();
 
         if (this.gameClient != null) {
@@ -106,18 +106,7 @@ public class WaitingRoomScene {
         return root;
     }
 
-    private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
-        if (bgUrl == null) {
-            System.err.println("[WaitingRoomScene] Missing resource: " + BACKGROUND_RESOURCE);
-            return;
-        }
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
-    }
+    
 
     private void setupUI() {
         Label title = TextUtil.createText(SCENE_LOBBY, FONT_HKMODULAR, 0.06, "#cfc900", root);
