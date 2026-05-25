@@ -364,6 +364,8 @@ public class LobbyScene {
                     true,
                     DedicatedServerConfig.DEFAULT_STATUS_HOST,
                     DedicatedServerConfig.DEFAULT_STATUS_PORT,
+                    false,
+                    0L,
                     false
             );
 

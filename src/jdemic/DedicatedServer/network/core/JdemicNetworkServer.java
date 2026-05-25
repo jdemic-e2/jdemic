@@ -143,6 +143,12 @@ public class JdemicNetworkServer {
     }
     //3rd change-> implemented a method that checks if the server has been idle for more than 60 seconds
     private void startIdleTimeoutChecker() {
+        long idleShutdownMillis = config.idleShutdownMillis();
+        if (idleShutdownMillis <= 0) {
+            LOGGER.info("[SERVER] Idle shutdown is disabled.");
+            return;
+        }
+
         Thread timeoutThread = new Thread(() -> {
             long emptySince = System.currentTimeMillis();
 
@@ -156,19 +162,25 @@ public class JdemicNetworkServer {
 
                 if (!connectedClients.isEmpty()) {
                     emptySince = System.currentTimeMillis();
-                } else {
-                    long idleDuration = System.currentTimeMillis() - emptySince;
-                    
-                    if (idleDuration >= 10000) {
-                        LOGGER.info("[SERVER] 10 second inactivity detected (0 players).This server will close.");
-                        stop(); 
-                        System.exit(0); 
-                        break;
+                    continue;
+                }
+
+                long idleDuration = System.currentTimeMillis() - emptySince;
+                if (idleDuration >= idleShutdownMillis) {
+                    LOGGER.info("[SERVER] Idle timeout reached (" + idleShutdownMillis
+                            + " ms, 0 connected players). Stopping this server instance.");
+                    stop();
+
+                    if (config.exitProcessOnIdleShutdown()) {
+                        LOGGER.info("[SERVER] exitProcessOnIdleShutdown=true, terminating JVM explicitly.");
+                        System.exit(0);
                     }
+
+                    break;
                 }
             }
         }, "jdemic-idle-timeout");
-        
+
         timeoutThread.setDaemon(true);
         timeoutThread.start();
     }

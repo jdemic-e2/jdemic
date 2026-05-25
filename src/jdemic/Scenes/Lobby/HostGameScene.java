@@ -113,6 +113,8 @@ public class HostGameScene {
                             true,
                             DedicatedServerConfig.DEFAULT_STATUS_HOST,
                             DedicatedServerConfig.DEFAULT_STATUS_PORT,
+                            false,
+                            0L,
                             false
                     );
                     boolean serverStarted = JdemicNetworkServer.startServer(embeddedConfig);

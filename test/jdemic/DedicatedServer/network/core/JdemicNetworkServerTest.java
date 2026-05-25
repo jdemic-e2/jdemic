@@ -19,7 +19,7 @@ public class JdemicNetworkServerTest {
     public void testStartServerFailsGracefullyWhenPortIsInUse() {
         try (ServerSocket blockerSocket = new ServerSocket(0)) {
             int blockedPort = blockerSocket.getLocalPort();
-            DedicatedServerConfig blockedConfig = new DedicatedServerConfig(blockedPort, false, "localhost", 0, false);
+            DedicatedServerConfig blockedConfig = new DedicatedServerConfig(blockedPort, false, "localhost", 0, false, 0L, false);
 
             // 2. Încercăm să pornim serverul Jdemic (acesta ar trebui să eșueze elegant)
             boolean result = JdemicNetworkServer.startServer(blockedConfig);
@@ -33,7 +33,7 @@ public class JdemicNetworkServerTest {
 
         // 5. Acum că portul este liber, încercăm din nou
         boolean secondResult = JdemicNetworkServer.startServer(
-                new DedicatedServerConfig(0, false, "localhost", 0, false)
+                new DedicatedServerConfig(0, false, "localhost", 0, false, 0L, false)
         );
 
         // 6. Verificăm că de data asta a reușit (TRUE)

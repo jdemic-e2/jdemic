@@ -30,7 +30,7 @@ class SecurityIntegrationTest {
     @BeforeAll
     void startServer() throws InterruptedException {
         // Configure a test server on port 9999, without status UI
-        DedicatedServerConfig config = new DedicatedServerConfig(TEST_PORT, false, "localhost", 0, false);
+        DedicatedServerConfig config = new DedicatedServerConfig(TEST_PORT, false, "localhost", 0, false, 0L, false);
         server = new JdemicNetworkServer(config);
         
         Thread serverThread = new Thread(server::start, "it-server-thread");
