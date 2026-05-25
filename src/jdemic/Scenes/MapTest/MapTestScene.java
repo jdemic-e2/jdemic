@@ -577,6 +577,9 @@ public class MapTestScene {
         if (outbreakScore != null && outbreakScore.isNumber()) {
             manager.getState().getDiseaseManager().setOutbreakScore(outbreakScore.asInt());
         }
+
+        // Recompute cube supply and eradication state from the restored map snapshot.
+        manager.getState().getDiseaseManager().recomputeCubeSupplyFromMap();
     }
 
     private boolean isCuredInSnapshot(JsonNode diseaseManagerNode, DiseaseColor color) {

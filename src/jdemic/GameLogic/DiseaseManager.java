@@ -192,27 +192,8 @@ public class DiseaseManager {
         int newLeft = Math.min(CUBES_PER_COLOR, currentLeft + amount);
         cubesRemaining.put(color, newLeft);
 
-        // If the disease has a discovered cure and now there are no cubes of that
-        // color left on the entire board, mark it as eradicated.
-        if (isCured(color)) {
-            int total = 0;
-            for (CityNode c : gameManager.getState().getMap().getCityList()) {
-                total += c.getCubeCount(color);
-            }
-            if (total == 0) {
-                switch (color) {
-                    case BLUE: this.isBlueEradicated = true; break;
-                    case YELLOW: this.isYellowEradicated = true; break;
-                    case BLACK: this.isBlackEradicated = true; break;
-                    case RED: this.isRedEradicated = true; break;
-                }
-
-                // Notify UI that eradication happened
-                if (gameManager != null) {
-                    try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
-                }
-            }
-        }
+        // After cube removal, recompute eradication state for the disease color.
+        evaluateEradication(color, false);
     }
 
     public boolean isCured(DiseaseColor color) {
@@ -247,6 +228,10 @@ public class DiseaseManager {
             case BLACK: this.isBlackCured = true; break;
             case RED: this.isRedCured = true; break;
         }
+
+        // If there are no cubes of this color on the board, mark it as eradicated immediately.
+        evaluateEradication(color, true);
+
         // Notify UI that a cure was discovered so widgets can update
         if (gameManager != null) {
             try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
@@ -263,5 +248,43 @@ public class DiseaseManager {
             curedDiseases.put(color, isCured(color));
         }
         return curedDiseases;
+    }
+
+    public void recomputeCubeSupplyFromMap() {
+        if (gameManager == null || gameManager.getState() == null || gameManager.getState().getMap() == null) {
+            return;
+        }
+
+        for (DiseaseColor color : DiseaseColor.values()) {
+            int totalCubesOnBoard = 0;
+            for (CityNode city : gameManager.getState().getMap().getCityList()) {
+                totalCubesOnBoard += city.getCubeCount(color);
+            }
+            int supply = CUBES_PER_COLOR - totalCubesOnBoard;
+            cubesRemaining.put(color, Math.max(0, Math.min(CUBES_PER_COLOR, supply)));
+            evaluateEradication(color, false);
+        }
+    }
+
+    private void evaluateEradication(DiseaseColor color, boolean notify) {
+        boolean shouldBeEradicated = isCured(color);
+        if (shouldBeEradicated) {
+            int total = 0;
+            for (CityNode city : gameManager.getState().getMap().getCityList()) {
+                total += city.getCubeCount(color);
+            }
+            shouldBeEradicated = (total == 0);
+        }
+
+        switch (color) {
+            case BLUE: this.isBlueEradicated = shouldBeEradicated; break;
+            case YELLOW: this.isYellowEradicated = shouldBeEradicated; break;
+            case BLACK: this.isBlackEradicated = shouldBeEradicated; break;
+            case RED: this.isRedEradicated = shouldBeEradicated; break;
+        }
+
+        if (notify && shouldBeEradicated && gameManager != null) {
+            try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
+        }
     }
 }

@@ -63,6 +63,29 @@ class DiseaseManagerTest {
         assertFalse(diseaseManager.getCuredDiseases().get(DiseaseColor.RED));
     }
 
+    @Test
+    void shouldMarkEradicatedWhenCureDiscoveredAndNoCubesRemain() {
+        DiseaseManager diseaseManager = newManager().getState().getDiseaseManager();
+
+        diseaseManager.discoverCure(DiseaseColor.RED);
+
+        assertTrue(diseaseManager.isCured(DiseaseColor.RED));
+        assertTrue(diseaseManager.isEradicated(DiseaseColor.RED));
+    }
+
+    @Test
+    void shouldRecomputeCubeSupplyFromMap() {
+        GameManager manager = newManager();
+        DiseaseManager diseaseManager = manager.getState().getDiseaseManager();
+        CityNode atlanta = manager.getState().getMap().getCity("Atlanta");
+
+        diseaseManager.addInfectionCubes(atlanta, 2);
+        assertEquals(22, diseaseManager.getCubesLeftForColor(DiseaseColor.BLUE));
+
+        diseaseManager.recomputeCubeSupplyFromMap();
+        assertEquals(22, diseaseManager.getCubesLeftForColor(DiseaseColor.BLUE));
+    }
+
     private GameManager newManager() {
         return new GameManager(List.of(new PlayerState("Ruben")));
     }
