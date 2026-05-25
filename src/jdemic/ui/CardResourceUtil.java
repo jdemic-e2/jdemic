@@ -1,6 +1,7 @@
 package jdemic.ui;
 
 import jdemic.GameLogic.CityNode;
+import jdemic.GameLogic.Card;
 
 public final class CardResourceUtil {
     private CardResourceUtil() {
@@ -29,5 +30,26 @@ public final class CardResourceUtil {
 
     public static String epidemicCardPath(CityNode city) {
         return "/epidemicCards/" + colorPrefix(city) + cityResourceName(city.getName()) + ".png";
+    }
+
+    public static String eventCardPath(Card card) {
+        if (card == null) {
+            return null;
+        }
+
+        if (card.getEventType() == null) {
+            String fallbackName = card.getCardName();
+            return fallbackName == null ? null : "/eventCards/Event" + fallbackName.replace(" ", "") + ".png";
+        }
+
+        String resourceName = switch (card.getEventType()) {
+            case FIREWALL -> "FirewallLockdown";
+            case SATELLITE -> "SatelliteOverride";
+            case SERVER -> "ServerDeployment";
+            case CONTROL -> "SystemControl";
+            case THREAT -> "ThreatScan";
+        };
+
+        return "/eventCards/Event" + resourceName + ".png";
     }
 }

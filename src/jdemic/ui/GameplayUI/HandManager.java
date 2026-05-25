@@ -6,6 +6,7 @@ import javafx.scene.Cursor;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.CardType;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.ui.GlowUtil;
@@ -93,6 +94,9 @@ public class HandManager {
         CityNode city = card.getTargetCity();
         if (city != null) {
             return deckManager.createCityCard(city);
+        }
+        if (card.getType() == CardType.EVENT) {
+            return deckManager.createEventCard(card);
         }
 
         Label title = TextUtil.createText(card.getCardName(), "hkmodular", 0.010, "#ffffff", root);

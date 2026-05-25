@@ -6,6 +6,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import jdemic.ui.CardResourceUtil;
+import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CityNode;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.UIImageUtil;
@@ -136,6 +137,24 @@ public class DeckManager {
         return createCardWrapper(city, CardResourceUtil.epidemicCardPath(city), "#ff2d2d", 10);
     }
 
+    public StackPane createEventCard(Card card) {
+        String path = CardResourceUtil.eventCardPath(card);
+        if (path == null) {
+            return fallbackCard(card == null ? "EVENT" : card.getCardName());
+        }
+
+        ImageView imageView = UIImageUtil.loadResponsive(root, path, 48, 84, 0.055);
+        if (imageView == null || imageView.getImage() == null) {
+            return fallbackCard(card.getCardName());
+        }
+
+        imageView.setPreserveRatio(true);
+        StackPane wrapper = new StackPane(imageView);
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        GlowUtil.applyGlow(wrapper, "#cfc900", 8);
+        return wrapper;
+    }
+
     private StackPane createCardWrapper(CityNode city, String path, String glowColor, double glowRadius) {
         ImageView card;
         try {
@@ -154,5 +173,9 @@ public class DeckManager {
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         GlowUtil.applyGlow(wrapper, glowColor, glowRadius);
         return wrapper;
+    }
+
+    private StackPane fallbackCard(String label) {
+        return new StackPane(new javafx.scene.control.Label(label == null ? "CARD" : label));
     }
 }

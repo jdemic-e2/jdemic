@@ -31,6 +31,8 @@ import jdemic.DedicatedServer.network.transport.Packet;
 import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.Scenes.Settings.AudioManager;
+import jdemic.GameLogic.Actions.GameAction;
+import jdemic.GameLogic.Actions.Other.BuildResearchStation;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.DeckAnimationManager;
 import jdemic.ui.PauseMenuOverlay;
@@ -818,7 +820,7 @@ public class MapTestScene {
         String playerNameForMenu = (gameClient != null) ? playerName : null;
         
         this.actionMenuManager = gameClient == null
-                ? new ActionMenuManager(root, notificationManager, gameManager, null, this::highlightValidNodes, playerNameForMenu, this::refreshTurnUI)
+                ? new ActionMenuManager(root, notificationManager, gameManager, this::handleMenuAction, this::highlightValidNodes, playerNameForMenu, this::refreshTurnUI)
                 : new ActionMenuManager(root, notificationManager, gameManager, this::sendMenuActionPacket, this::highlightValidNodes, playerNameForMenu, this::refreshTurnUI);
     }
 
@@ -1157,6 +1159,44 @@ public class MapTestScene {
         }
 
         gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+    }
+
+    private void handleMenuAction(String action) {
+        if (gameClient != null) {
+            sendMenuActionPacket(action);
+            return;
+        }
+
+        GameAction localAction = createLocalMenuAction(action);
+        if (localAction == null) {
+            notificationManager.showNotification("Action not available locally");
+            return;
+        }
+
+        PlayerState playerState = gameManager.getState().getCurrentPlayer();
+        if (playerState == null || playerState.getPlayer() == null) {
+            notificationManager.showNotification("No active player");
+            return;
+        }
+
+        int actionsBefore = gameManager.getState().getActionsRemaining();
+        gameManager.performAction(playerState.getPlayer(), localAction);
+
+        if (gameManager.getState().getActionsRemaining() == actionsBefore) {
+            notificationManager.showNotification("Cannot build here");
+            return;
+        }
+
+        refreshTurnUI();
+        actionMenuManager.updateMenuState();
+        notificationManager.showNotification("Build complete");
+    }
+
+    private GameAction createLocalMenuAction(String action) {
+        if (ACTION_BUILD_RESEARCH_STATION.equals(action)) {
+            return new BuildResearchStation();
+        }
+        return null;
     }
 
     private void sendMovementActionPacket(String action, CityNode destination) {

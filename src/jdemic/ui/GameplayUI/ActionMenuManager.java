@@ -170,7 +170,6 @@ public class ActionMenuManager {
             if (left > 0) {
                 if (actionSender != null) {
                     actionSender.accept(action.packetAction());
-                    notificationManager.showNotification("Action " + action.label() + " sent to server");
                 } else {
                     gameManager.getState().setActionsRemaining(left - 1);
                     //animation
