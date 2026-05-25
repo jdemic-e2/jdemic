@@ -64,7 +64,6 @@ public class MainMenuScene {
     private void setupUI() {
 
         Label title = TextUtil.createText("CYBER\nCRISIS", FONT_HKMODULAR, 0.05, "#cfc900", root);
-        Label title = TextUtil.createText("CYBER\nCRISIS", FONT_HKMODULAR, 0.05, "#cfc900", root);
         title.setTextAlignment(TextAlignment.CENTER);
         GlowUtil.applyGlow(title, "#000000", 10);
         title.translateYProperty().bind(root.heightProperty().multiply(0.06));

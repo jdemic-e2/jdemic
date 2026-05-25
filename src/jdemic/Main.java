@@ -24,7 +24,6 @@ public class Main extends Application {
 
         stage.setTitle("Cyber Crisis");
         SceneManager.switchScene("MAIN_MENU");
-        stage.setOnCloseRequest(event -> shutdownNetworkResources());
 
         stage.setOnCloseRequest(event -> {
             exitApplication();
