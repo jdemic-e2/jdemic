@@ -228,9 +228,7 @@ public class GameManager {
         if (state.isGameOver()) return;
 
         for(CityNode city : getState().getMap().getCityList()){
-            if(city.hasResearchStation()){
-                System.out.println(city.getName()+ " has research station: " + city.hasResearchStation());
-            }
+            System.out.println(city.getName()+ " has research station: " + city.hasResearchStation());
         }
 
         PlayerState currentPlayer = state.getCurrentPlayer();
