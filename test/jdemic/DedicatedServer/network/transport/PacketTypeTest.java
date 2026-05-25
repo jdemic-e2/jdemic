@@ -11,7 +11,7 @@ class PacketTypeTest {
         PacketType[] values = PacketType.values();
 
         assertNotNull(values);
-        assertEquals(9, values.length);
+        assertEquals(8, values.length);
         assertTrue(contains(PacketType.PING, values));
         assertTrue(contains(PacketType.PONG, values));
         assertTrue(contains(PacketType.GAME_DATA, values));
