@@ -826,8 +826,10 @@ public class MapTestScene {
 
     private void setupChat()
     {
-        String playerName = gameManager.getCurrentPlayer().getPlayerName();
-        this.chatManager = new ChatManager(root, playerName, notificationManager, gameClient);
+        String chatPlayerName = gameClient != null
+                ? this.playerName
+                : gameManager.getCurrentPlayer().getPlayerName();
+        this.chatManager = new ChatManager(root, chatPlayerName, notificationManager, gameClient);
     }
 
     private void updateHandUI() {
