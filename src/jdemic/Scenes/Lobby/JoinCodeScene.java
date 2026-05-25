@@ -19,6 +19,7 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
+import jdemic.Scenes.Tutorial.TutorialUtil;
 
 import java.util.function.UnaryOperator;
 
@@ -37,22 +38,11 @@ public class JoinCodeScene {
         this.stage = stage;
         this.presetNickname = presetNickname;
         root = new StackPane();
-        setupBackground();
+        TutorialUtil.setBackground(root);
         setupUI();
     }
 
-    private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource("/background.png");
-        if (bgUrl == null) {
-            System.err.println("[JoinCodeScene] Missing resource: /background.png");
-            return;
-        }
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
-    }
+    
 
     private void setupUI() {
         Label title = TextUtil.createText("LOBBY", "hkmodular", 0.05, "#cfc900", root);
