@@ -92,6 +92,7 @@ public class ActionMenuManager {
         }, root.widthProperty(), root.heightProperty()));
 
         root.getChildren().add(actionSubMenu);
+        actionSubMenu.toFront(); // ensure action menu is clickable above decorative elements
     }
 
     private ButtonsUtil getButtonsUtil(MenuAction action) {
@@ -201,6 +202,7 @@ public class ActionMenuManager {
             }
         }
         actionSubMenu.getChildren().setAll(createButtonsForCurrentMode());
+        actionSubMenu.toFront(); // make sure buttons remain on top so they can be clicked
     }
 
     public void clearSelectedMovementAction() {

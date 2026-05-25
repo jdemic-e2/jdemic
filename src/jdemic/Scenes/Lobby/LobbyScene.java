@@ -60,15 +60,15 @@ public class LobbyScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource("/background.png");
-        if (bgUrl == null) {
-            System.err.println("[LobbyScene] Missing resource: /background.png");
+        javafx.scene.image.Image bg = SafeResourceLoader.loadImage("/background.png");
+        if (bg == null) {
             return;
         }
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
+        ImageView background = new ImageView(bg);
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
+        background.setMouseTransparent(true); // decorative background shouldn't steal clicks
         root.getChildren().add(background);
     }
 
@@ -85,21 +85,31 @@ public class LobbyScene {
         nicknameField = new TextField(savedPlayerName());
         nicknameField.setTextFormatter(new TextFormatter<>(nicknameFilter()));
         nicknameField.setMaxWidth(280);
-        nicknameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 16;");
+        nicknameField.setMinHeight(50); // explicit larger hit box
+        nicknameField.setPrefHeight(50);
+        nicknameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 16; -fx-padding: 8;");
+        nicknameField.setPickOnBounds(true);
+        nicknameField.setFocusTraversable(true);
 
         HBox nicknameRow = new HBox(12, nameLabel, nicknameField);
         nicknameRow.setAlignment(Pos.CENTER);
+        nicknameRow.setPickOnBounds(false); // don't consume clicks on empty space
+        nicknameRow.setMouseTransparent(false);
+        nicknameRow.setViewOrder(-1.0);
 
         Label listTitle = TextUtil.createText("SERVERS", "hkmodular", 0.03, "#cfc900", root);
         GlowUtil.applyGlow(listTitle, "#cfc900", 6);
+        listTitle.setPickOnBounds(false);
 
         ButtonsUtil refreshBtn = new ButtonsUtil("REFRESH", "#00d1ff", "black", "#00d4ff", "#00d4ff", 2, 12, 12, 0.14, 0.06, 0.020, root);
+        refreshBtn.setPickOnBounds(false); // only capture clicks on button itself, not surrounding area
         refreshBtn.setOnMouseClicked(e -> scanServers());
 
         HBox listHeader = new HBox(listTitle, spacer(), refreshBtn);
         listHeader.setAlignment(Pos.CENTER);
         listHeader.maxWidthProperty().bind(root.widthProperty().multiply(0.60));
-
+        listHeader.setPickOnBounds(false);
+        
         serverListBox = new VBox(8);
         serverListBox.setAlignment(Pos.TOP_CENTER);
         serverListBox.setPadding(new Insets(8));
@@ -151,6 +161,19 @@ public class LobbyScene {
         StackPane.setAlignment(centerBox, Pos.TOP_CENTER);
         centerBox.translateYProperty().bind(root.heightProperty().multiply(0.15));
 
+        // Ensure title and other decorative nodes don't intercept clicks
+        title.setMouseTransparent(true);
+        nameLabel.setMouseTransparent(true);
+
+        // Make nickname field reliably focusable
+        nicknameField.setPickOnBounds(true);
+        nicknameField.setFocusTraversable(true);
+        nicknameField.setOnMousePressed(e -> nicknameField.requestFocus());
+
+        // Bring input container to front so it receives clicks above overlays
+        centerBox.setMouseTransparent(false);
+        centerBox.toFront();
+
         ButtonsUtil backBtn = new ButtonsUtil("BACK", "#ff0000", "black", "#ff0000", "#ff0000", 2, 12, 12, 0.15, 0.06, 0.02, root);
         StackPane.setAlignment(backBtn, Pos.BOTTOM_CENTER);
         backBtn.translateYProperty().bind(root.heightProperty().multiply(-0.04));
@@ -158,7 +181,7 @@ public class LobbyScene {
             shutdownScanExecutor();
             SceneManager.switchScene("MAIN_MENU");
         });
-
+ 
         root.getChildren().addAll(title, centerBox, backBtn);
     }
 

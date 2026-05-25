@@ -19,6 +19,7 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
+import jdemic.ui.UIImageUtil;
 
 import java.util.function.UnaryOperator;
 
@@ -42,15 +43,15 @@ public class JoinCodeScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource("/background.png");
-        if (bgUrl == null) {
-            System.err.println("[JoinCodeScene] Missing resource: /background.png");
+        javafx.scene.image.Image bg = UIImageUtil.load("/background.png");
+        if (bg == null) {
             return;
         }
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
+        ImageView background = new ImageView(bg);
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
+        background.setMouseTransparent(true); // allow clicks to pass through decorative background
         root.getChildren().add(background);
     }
 

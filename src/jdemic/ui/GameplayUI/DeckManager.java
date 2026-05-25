@@ -10,6 +10,7 @@ import javafx.scene.layout.*;
 import jdemic.GameLogic.CityNode;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.SafeResourceLoader;
+import jdemic.ui.UIImageUtil;
 
 public class DeckManager {
 
@@ -26,6 +27,7 @@ public class DeckManager {
 
         StackPane wrapper = new StackPane(decks);
         wrapper.setPickOnBounds(false);
+        wrapper.setMouseTransparent(true); // decorative; don't intercept clicks
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         root.getChildren().add(wrapper);
 
@@ -52,18 +54,16 @@ public class DeckManager {
     }
 
     public HBox createCityDeck() {
-        java.net.URL cityVersoUrl = getClass().getResource("/cityCards/cityCardsVerso.png");
-        if (cityVersoUrl == null) {
-            System.err.println("[DeckManager] Missing resource: /cityCards/cityCardsVerso.png");
+        Image verso = UIImageUtil.load("/cityCards/cityCardsVerso.png");
+        if (verso == null) {
             return new HBox();
         }
-        Image verso = SafeResourceLoader.loadImage(cityVersoUrl);
         StackPane drawPile = createCardStack(verso, 6);
         Image topCard;
         try {
             String path = "/cityCards/BlueAtlanta.png"; //for test
-            var res = getClass().getResource(path);
-            topCard = (res != null) ? SafeResourceLoader.loadImage(res) : verso;
+            topCard = UIImageUtil.load(path);
+            if (topCard == null) topCard = verso;
         } catch (Exception e) { topCard = verso; }
 
         StackPane discardPile = createCardStack(topCard, 4);
@@ -91,10 +91,9 @@ public class DeckManager {
 
             String cityName = city.getName().replace(" ", "").replace(".", "");
             String path = "/cityCards/" + colorPrefix + cityName + ".png";
-            var resource = getClass().getResource(path);
-
-            if (resource == null) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
-            card = new ImageView(SafeResourceLoader.loadImage(resource));
+            ImageView iv = UIImageUtil.loadResponsive(root, path, 48, 84, 0.055);
+            if (iv == null || iv.getImage() == null) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
+            card = iv;
 
         } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
 
@@ -125,18 +124,16 @@ public class DeckManager {
     }
 
     public HBox createEpidemicDeck() {
-        java.net.URL epidemicVersoUrl = getClass().getResource("/epidemicCards/epidemicCardsVerso.png");
-        if (epidemicVersoUrl == null) {
-            System.err.println("[DeckManager] Missing resource: /epidemicCards/epidemicCardsVerso.png");
+        Image verso = UIImageUtil.load("/epidemicCards/epidemicCardsVerso.png");
+        if (verso == null) {
             return new HBox();
         }
-        Image verso = SafeResourceLoader.loadImage(epidemicVersoUrl);
         StackPane drawPile = createCardStack(verso, 5);
         Image topCard;
         try {
             String path = "/epidemicCards/BlueAtlanta.png"; //for test
-            var res = getClass().getResource(path);
-            topCard = (res != null) ? SafeResourceLoader.loadImage(res) : verso;
+            topCard = UIImageUtil.load(path);
+            if (topCard == null) topCard = verso;
         } catch (Exception e) { topCard = verso; }
 
         StackPane discardPile = createCardStack(topCard, 3);
@@ -153,12 +150,8 @@ public class DeckManager {
 
     //for shuffling animation, creates a single card back to be animated from the deck to the player's hand
     public StackPane createBackCard() {
-        Image image = SafeResourceLoader.loadImage(Objects.requireNonNull(getClass().getResource("/cityCards/cityCardsVerso.png")));
-        ImageView imageView = new ImageView(image);
-        imageView.fitWidthProperty().bind(Bindings.createDoubleBinding(
-                () -> Math.max(44, Math.min(76, root.getWidth() * 0.05)),
-                root.widthProperty()
-        ));
+        ImageView imageView = UIImageUtil.loadResponsive(root, "/cityCards/cityCardsVerso.png", 44, 76, 0.05);
+        if (imageView == null || imageView.getImage() == null) return new StackPane();
         imageView.setPreserveRatio(true);
         StackPane wrapper = new StackPane(imageView);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
@@ -178,9 +171,9 @@ public class DeckManager {
 
             String cityName = city.getName().replace(" ", "").replace(".", "");
             String path ="/epidemicCards/" + colorPrefix + cityName + ".png";
-            var resource =getClass().getResource(path);
-            if (resource == null) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
-            card = new ImageView(SafeResourceLoader.loadImage(resource));
+            ImageView iv = UIImageUtil.loadResponsive(root, path, 48, 84, 0.055);
+            if (iv == null || iv.getImage() == null) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
+            card = iv;
 
         } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
 

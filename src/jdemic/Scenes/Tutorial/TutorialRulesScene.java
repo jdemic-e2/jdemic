@@ -10,6 +10,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.*;
+import jdemic.ui.UIImageUtil;
 
 public class TutorialRulesScene {
 
@@ -24,16 +25,7 @@ public class TutorialRulesScene {
     }
 
     private ImageView createThreatIcon(String path) {
-        java.net.URL iconUrl = getClass().getResource(path);
-        if (iconUrl == null) {
-            System.err.println("[TutorialRulesScene] Missing resource: " + path);
-            return new ImageView();
-        }
-        ImageView img = new ImageView(SafeResourceLoader.loadImage(iconUrl));
-        img.fitWidthProperty().bind(root.widthProperty().multiply(0.015));
-        img.fitHeightProperty().bind(root.widthProperty().multiply(0.015));
-        img.setPreserveRatio(true);
-        return img;
+        return UIImageUtil.loadSquare(root, path, 0.015);
     }
 
     private void setupUI() {
