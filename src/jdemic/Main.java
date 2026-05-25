@@ -3,6 +3,7 @@ package jdemic;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import jdemic.Scenes.Settings.AudioManager;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
@@ -47,7 +48,7 @@ public class Main extends Application {
         Runtime.getRuntime().addShutdownHook(new Thread(Main::performShutdown, "jdemic-app-shutdown"));
         launch();
     }
-    public static voide performShutdown() {
+    public static void performShutdown() {
         AudioManager.getInstance().stopMusic();
         JdemicNetworkServer.shutdown();
     }

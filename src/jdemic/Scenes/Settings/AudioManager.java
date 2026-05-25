@@ -149,4 +149,10 @@ public class AudioManager {
         if (instance == null) instance = new AudioManager();
         return instance;
     }
+    
+    public void stopMusic() {
+        if (musicPlayer != null) {
+            musicPlayer.stop();
+        }
+    }
 }
