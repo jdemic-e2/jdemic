@@ -11,7 +11,7 @@ class PacketTypeTest {
         PacketType[] values = PacketType.values();
 
         assertNotNull(values);
-        assertEquals(9, values.length);
+        assertEquals(8, values.length);
         assertTrue(contains(PacketType.PING, values));
         assertTrue(contains(PacketType.PONG, values));
         assertTrue(contains(PacketType.GAME_DATA, values));
@@ -20,7 +20,6 @@ class PacketTypeTest {
         assertTrue(contains(PacketType.LOBBY_READY, values));
         assertTrue(contains(PacketType.DISCONNECT, values));
         assertTrue(contains(PacketType.ERROR, values));
-        assertTrue(contains(PacketType.VERIFY_GAME, values));
     }
 
     @Test
@@ -33,7 +32,6 @@ class PacketTypeTest {
         assertEquals("LOBBY_READY", PacketType.LOBBY_READY.name());
         assertEquals("DISCONNECT", PacketType.DISCONNECT.name());
         assertEquals("ERROR", PacketType.ERROR.name());
-        assertEquals("VERIFY_GAME", PacketType.VERIFY_GAME.name());
     }
 
     private boolean contains(PacketType target, PacketType[] values) {

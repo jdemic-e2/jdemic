@@ -17,6 +17,7 @@ import javafx.stage.Stage;
 import javafx.application.Platform;
 import jdemic.DedicatedServer.network.core.DedicatedServerConfig;
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
+import jdemic.DedicatedServer.network.security.SecureConnectionManager;
 import jdemic.GameLogic.GameClient;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.Scenes.Settings.SettingsManager;
@@ -24,13 +25,6 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import jdemic.DedicatedServer.network.security.SecureConnectionManager;
-import jdemic.DedicatedServer.network.transport.Packet;
-import jdemic.DedicatedServer.network.transport.PacketType;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -219,7 +213,6 @@ public class LobbyScene {
         return nickname;
     }
 
-    private record ServerInfo(boolean gameStarted, String gameName, int maxPlayers, int currentPlayers) {}
 
     private void scanServers() {
         shutdownScanExecutor();
@@ -233,9 +226,9 @@ public class LobbyScene {
         for (int port = SCAN_PORT_MIN; port <= SCAN_PORT_MAX; port++) {
             final int p = port;
             executor.submit(() -> {
-                ServerInfo info = verifyGame(SCAN_HOST, p);
-                if (info != null && !info.gameStarted() && info.currentPlayers() > 0) {
-                    Platform.runLater(() -> addSortedRow(createServerRow(p, info.gameName(), info.currentPlayers(), info.maxPlayers())));
+                boolean info = verifyGame(SCAN_HOST, p);
+                if (info == true) {
+                    Platform.runLater(() -> addSortedRow(createServerRow(p)));
                 }
             });
         }
@@ -243,42 +236,32 @@ public class LobbyScene {
         executor.shutdown();
     }
 
-    private ServerInfo verifyGame(String host, int port) {
+    private boolean verifyGame(String host, int port) {
         try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(host, port), 1000);
-
+            boolean canConnect = false;
+            socket.setSoTimeout(3000);
+            try{
+                socket.connect(new InetSocketAddress(host, port), 2000);
+            } catch (Exception ex) {
+                System.err.println("[LobbyScene] Failed to connect to " + host + ":" + port + " - " + ex.getMessage());
+                return false;
+            }
+            
             SecureConnectionManager.SecureSocket secureSocket = SecureConnectionManager.wrapClientSocket(socket);
-            if (secureSocket == null) return null;
+            if (secureSocket == null) return false;
 
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            System.out.println("[LobbyScene] Connected to " + host + ":" + port + ", verifying game...");
+            canConnect = true;
+            System.out.println("[LobbyScene] Status for port " + port + ": " + canConnect);
+            return canConnect;
 
-            ObjectNode payload = new ObjectMapper().createObjectNode();
-            payload.put("id", 1);
-            out.println(secureSocket.encrypt(new Packet(PacketType.VERIFY_GAME, payload).toJson()));
-
-            socket.setSoTimeout(2000);
-            String line = in.readLine();
-            if (line == null) return null;
-
-            Packet response = Packet.fromJson(secureSocket.decrypt(line));
-            if (response == null || response.getType() != PacketType.VERIFY_GAME) return null;
-
-            JsonNode rp = response.getPayload();
-            if (rp == null || !rp.has("id") || !rp.get("id").isInt() || rp.get("id").asInt() != 2) return null;
-
-            return new ServerInfo(
-                rp.has("gameStarted") && rp.get("gameStarted").asBoolean(),
-                rp.has("gameName") ? rp.get("gameName").asText() : "SERVER " + port,
-                rp.has("maxPlayers") ? rp.get("maxPlayers").asInt() : 4,
-                rp.has("currentPlayers") ? rp.get("currentPlayers").asInt() : 1
-            );
+            
         } catch (Exception ex) {
-            return null;
+            return false;
         }
     }
 
-    private StackPane createServerRow(int port, String gameName, int players, int maxPlayers) {
+    private StackPane createServerRow(int port) {
         StackPane row = new StackPane();
         row.setUserData(port);
         row.maxWidthProperty().bind(root.widthProperty().multiply(0.55));
@@ -290,11 +273,8 @@ public class LobbyScene {
                 "-fx-background-radius: 8;"
         );
 
-        Label portLabel = TextUtil.createText(gameName, "hkmodular", 0.022, "#00d9ff", root);
-        Label statusLabel = TextUtil.createText(players + "/" + maxPlayers, "hkmodular", 0.02, "#cfc900", root);
-
-        ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff",
-                2, 10, 10, 0.10, 0.05, 0.018, root);
+        Label portLabel = TextUtil.createText("Port: " + port, "hkmodular", 0.022, "#00d9ff", root);
+        ButtonsUtil joinBtn = new ButtonsUtil("JOIN", "#00d1ff", "black", "#00d4ff", "#00d4ff", 2, 10, 10, 0.10, 0.05, 0.018, root);
         joinBtn.setOnMouseClicked(e -> {
             String nickname = requireNickname();
             if (nickname == null) return;
@@ -305,7 +285,7 @@ public class LobbyScene {
             }, "jdemic-join-server-" + port).start();
         });
 
-        HBox inner = new HBox(12, portLabel, spacer(), statusLabel, joinBtn);
+        HBox inner = new HBox(12, portLabel, spacer(), joinBtn);
         inner.setAlignment(Pos.CENTER_LEFT);
         inner.setPadding(new Insets(8, 12, 8, 12));
         row.getChildren().add(inner);

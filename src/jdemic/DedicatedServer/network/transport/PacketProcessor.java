@@ -94,7 +94,6 @@ public class PacketProcessor {
             case LOBBY_READY: handleLobbyReady(packet); break;
             case DISCONNECT: handleDisconnect(packet); break;
             case ERROR: handleError(packet); break;
-            case VERIFY_GAME: handleVerifyGame(packet); break;
             default: LOGGER.severe("[PacketProcessor] Unsupported packet type: " + packet.getType());
         }
     }
@@ -444,40 +443,7 @@ public class PacketProcessor {
         LOGGER.severe("[PacketProcessor] Received ERROR packet: " + packet);
     }
 
-    private void handleVerifyGame(Packet packet) {
-        LOGGER.info("[PacketProcessor] Received VERIFY_GAME packet.");
-        JsonNode payload = packet.getPayload();
-
-        if (payload == null || !payload.has("id") || !payload.get("id").isInt()) {
-            LOGGER.severe("[PacketProcessor] VERIFY_GAME rejected: missing or invalid id.");
-            return;
-        }
-
-        if (payload.get("id").asInt() != 1) {
-            LOGGER.severe("[PacketProcessor] VERIFY_GAME ignored: unsupported request id = "
-                    + payload.get("id").asInt());
-            return;
-        }
-
-        boolean gameStarted;
-        int currentPlayers;
-        synchronized (gameManager.getStateLock()) {
-            gameStarted = gameManager.getState().isGameStarted();
-            currentPlayers = gameManager.getState().getPlayers().size();
-        }
-
-        ObjectNode response = OBJECT_MAPPER.createObjectNode();
-        response.put("id", 2);
-        response.put("gameStarted", gameStarted);
-        response.put("gameName", "Pandemic");
-        response.put("maxPlayers", MAX_PLAYERS);
-        response.put("currentPlayers", currentPlayers);
-
-        if (clientHandler != null) {
-            clientHandler.sendPacketToClient(new Packet(PacketType.VERIFY_GAME, response));
-            clientHandler.closeConnection();
-        }
-    }
+    
 
     private void handleDiscardCard(JsonNode payload, PlayerState playerState) {
         if (!payload.has(CARD_INDEX_STRING) || !payload.get(CARD_INDEX_STRING).isInt()) {
