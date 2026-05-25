@@ -148,7 +148,7 @@ public class JdemicNetworkServer {
 
             while (running.get()) {
                 try {
-                    Thread.sleep(5000); 
+                    Thread.sleep(500);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -159,7 +159,7 @@ public class JdemicNetworkServer {
                 } else {
                     long idleDuration = System.currentTimeMillis() - emptySince;
                     
-                    if (idleDuration >= 60000) { 
+                    if (idleDuration >= 10000) {
                         LOGGER.info("[SERVER] 1 minute inactivity detected (0 players).This server will close.");
                         stop(); 
                         System.exit(0); 
