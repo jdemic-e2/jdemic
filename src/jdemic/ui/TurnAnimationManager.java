@@ -301,7 +301,7 @@ public class TurnAnimationManager {
                 for (int i = 0; i < 24; i++) {
                         double offsetX = (Math.random() * 30) - 15;
                         double offsetY = (Math.random() * 18) - 9;
-                        shake.getKeyFrames().add(new KeyFrame(Duration.millis(i * 22), new KeyValue(root.translateXProperty(), offsetX),  new KeyValue(root.translateYProperty(), offsetY)));
+                        shake.getKeyFrames().add(new KeyFrame(Duration.millis(i * 22.0), new KeyValue(root.translateXProperty(), offsetX),  new KeyValue(root.translateYProperty(), offsetY)));
                 }
                 shake.getKeyFrames().add(new KeyFrame(Duration.millis(600), new KeyValue(root.translateXProperty(), 0), new KeyValue(root.translateYProperty(), 0)));
 
@@ -494,7 +494,7 @@ public class TurnAnimationManager {
                 for (int i = 0; i < 30; i++) {
                         double offsetX = (Math.random() * 40) - 20;
                         double offsetY = (Math.random() * 24) - 12;
-                        shake.getKeyFrames().add(new KeyFrame(Duration.millis(i * 22), new KeyValue(root.translateXProperty(), offsetX), new KeyValue(root.translateYProperty(), offsetY)));
+                        shake.getKeyFrames().add(new KeyFrame(Duration.millis(i * 22.0), new KeyValue(root.translateXProperty(), offsetX), new KeyValue(root.translateYProperty(), offsetY)));
                 }
 
                 shake.getKeyFrames().add(new KeyFrame(Duration.millis(700), new KeyValue(root.translateXProperty(), 0),new KeyValue( root.translateYProperty(), 0)));

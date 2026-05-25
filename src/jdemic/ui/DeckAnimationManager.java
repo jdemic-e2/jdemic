@@ -2,14 +2,12 @@ package jdemic.ui;
 
 import javafx.animation.*;
 import javafx.geometry.Pos;
-import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import javafx.scene.text.TextAlignment;
 import javafx.util.Duration;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
@@ -136,7 +134,7 @@ public class DeckAnimationManager {
                         FadeTransition glowFade = new FadeTransition(Duration.millis(220), card);
                         glowFade.setToValue(0.9);
                         ParallelTransition dealAnimation = new ParallelTransition(moveToHand, scaleDown, glowFade);
-                        dealAnimation.setDelay(Duration.millis(i * 22));
+                        dealAnimation.setDelay(Duration.millis(i * 22.0));
                         dealAllCards.getChildren().add(dealAnimation);
                 }
                 fullSequence.getChildren().add(dealAllCards);
@@ -223,7 +221,7 @@ public class DeckAnimationManager {
                         double offsetX = (Math.random() * 14) - 7;
                         double offsetY = (Math.random() * 10) - 5;
 
-                        shake.getKeyFrames().add(new KeyFrame(Duration.millis(i * 22),
+                        shake.getKeyFrames().add(new KeyFrame(Duration.millis(i * 22.0),
                                                         new KeyValue(root.translateXProperty(), offsetX),
                                                         new KeyValue(root.translateYProperty(), offsetY)));
                 }
