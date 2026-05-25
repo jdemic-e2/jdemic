@@ -50,7 +50,16 @@ public class TutorialUtil {
             + "-fx-max-height: 30;";
 
     public static void setBackground(StackPane root) {
-        jdemic.Scenes.SceneUtil.setBackground(root);
+        java.net.URL bgUrl = TutorialUtil.class.getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[TutorialUtil] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
+        background.fitWidthProperty().bind(root.widthProperty());
+        background.fitHeightProperty().bind(root.heightProperty());
+        background.setPreserveRatio(false);
+        root.getChildren().add(background);
     }
 
     public static void addBottomButtons(

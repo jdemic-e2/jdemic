@@ -59,7 +59,7 @@ public class SettingsScene {
         this.stage = stage;
         this.root = new StackPane();
         setupStylesheet();
-        jdemic.Scenes.SceneUtil.setBackground(root);
+        setupBackground();
         setupConfirmationOverlay();
         setupUI();
     }
@@ -448,7 +448,18 @@ public class SettingsScene {
         confirmationOverlay.toFront();
     }
 
-
+    private void setupBackground() {
+        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
+        if (bgUrl == null) {
+            System.err.println("[SettingsScene] Missing resource: " + BACKGROUND_RESOURCE);
+            return;
+        }
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
+        background.fitWidthProperty().bind(root.widthProperty());
+        background.fitHeightProperty().bind(root.heightProperty());
+        background.setPreserveRatio(false);
+        root.getChildren().add(background);
+    }
 
     public StackPane getRoot() {return root;}
 }

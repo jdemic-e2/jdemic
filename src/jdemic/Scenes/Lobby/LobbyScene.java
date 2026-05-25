@@ -53,24 +53,39 @@ public class LobbyScene {
     public LobbyScene(Stage stage) {
         this.stage = stage;
         root = new StackPane();
-        jdemic.Scenes.SceneUtil.setBackground(root);
+        setupBackground();
         setupUI();
         // Kick off an initial scan so the list is populated when the scene opens.
         Platform.runLater(this::scanServers);
     }
 
-    
+    private void setupBackground() {
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[LobbyScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
+        background.fitWidthProperty().bind(root.widthProperty());
+        background.fitHeightProperty().bind(root.heightProperty());
+        background.setPreserveRatio(false);
+        root.getChildren().add(background);
+    }
 
     private void setupUI() {
-        Label title = jdemic.Scenes.SceneUtil.createSceneTitle(root, "LOBBY", 0.05, "#cfc900", Pos.TOP_CENTER, 0, 0.04, "#cfc900", 7);
+        Label title = TextUtil.createText("LOBBY", "hkmodular", 0.05, "#cfc900", root);
+        title.setTextAlignment(TextAlignment.CENTER);
+        StackPane.setAlignment(title, Pos.TOP_CENTER);
+        title.translateYProperty().bind(root.heightProperty().multiply(0.04));
+        GlowUtil.applyGlow(title, "#cfc900", 7);
 
         Label nameLabel = TextUtil.createText("NICKNAME:", "hkmodular", 0.022, "#00b5d4", root);
         GlowUtil.applyGlow(nameLabel, "#00b5d4", 6);
 
-        nicknameField = new TextField(jdemic.util.PlayerNameUtil.savedPlayerName());
-        nicknameField.setTextFormatter(new TextFormatter<>(jdemic.util.PlayerNameUtil.nicknameFilter()));
+        nicknameField = new TextField(savedPlayerName());
+        nicknameField.setTextFormatter(new TextFormatter<>(nicknameFilter()));
         nicknameField.setMaxWidth(280);
-        nicknameField.setStyle(jdemic.ui.UIStyles.INPUT_FIELD_SMALL);
+        nicknameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 16;");
 
         HBox nicknameRow = new HBox(12, nameLabel, nicknameField);
         nicknameRow.setAlignment(Pos.CENTER);
@@ -105,8 +120,9 @@ public class LobbyScene {
         );
         GlowUtil.applyGlow(serverScroll, "#00b5d4", 8);
 
-        errorLabel = jdemic.Scenes.SceneUtil.createErrorLabel(root);
+        errorLabel = TextUtil.createText("", "hkmodular", 0.022, "#ff2d2d", root);
         errorLabel.setTextAlignment(TextAlignment.CENTER);
+        errorLabel.setVisible(false);
 
         ButtonsUtil hostBtn = new ButtonsUtil("CREATE SERVER", "#ff0000", "black", "#ff0000", "#ff0000", 2, 15, 15, 0.30, 0.08, 0.024, root);
         hostBtn.setOnMouseClicked(e -> {
@@ -143,7 +159,7 @@ public class LobbyScene {
             SceneManager.switchScene("MAIN_MENU");
         });
 
-        root.getChildren().addAll(centerBox, backBtn);
+        root.getChildren().addAll(title, centerBox, backBtn);
     }
 
     public StackPane getRoot() {
@@ -156,6 +172,34 @@ public class LobbyScene {
         return r;
     }
 
+    private void savePlayerName(String nickname) {
+        SettingsManager settingsManager = SettingsManager.getInstance();
+        settingsManager.playerNameProperty().set(nickname);
+        settingsManager.saveSettings();
+    }
+
+    private String savedPlayerName() {
+        String savedName = SettingsManager.getInstance().playerNameProperty().get();
+        return normalizeNickname(savedName);
+    }
+
+    private UnaryOperator<TextFormatter.Change> nicknameFilter() {
+        return change -> {
+            String text = change.getControlNewText();
+            return text.matches("[a-zA-Z0-9]*") && text.length() <= 16 ? change : null;
+        };
+    }
+
+    private String normalizeNickname(String nickname) {
+        if (nickname == null) {
+            return "Player";
+        }
+        String normalized = nickname.replaceAll("[^a-zA-Z0-9]", "");
+        if (normalized.length() > 16) {
+            normalized = normalized.substring(0, 16);
+        }
+        return normalized.isBlank() ? "Player" : normalized;
+    }
 
     private String requireNickname() {
         String nickname = nicknameField.getText().trim();
@@ -165,7 +209,7 @@ public class LobbyScene {
             return null;
         }
         errorLabel.setVisible(false);
-        jdemic.util.PlayerNameUtil.savePlayerName(nickname);
+        savePlayerName(nickname);
         return nickname;
     }
 
@@ -335,7 +379,7 @@ public class LobbyScene {
                 return;
             }
 
-            if (!connectHostAndOpenWaitingRoom(getLocalHostAddress(), DEFAULT_GAME_PORT, nickname, hostBtn, true)) {
+            if (!connectHostAndOpenWaitingRoom(SCAN_HOST, DEFAULT_GAME_PORT, nickname, hostBtn, true)) {
                 JdemicNetworkServer.shutdown();
             }
         }, "jdemic-create-server").start();

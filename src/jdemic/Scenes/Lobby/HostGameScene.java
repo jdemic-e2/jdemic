@@ -37,7 +37,7 @@ public class HostGameScene {
         this.root = new StackPane();
         this.nickname = nickname == null || nickname.isBlank() ? "PLAYER" : nickname.toUpperCase();
         this.hostCode = generateHostCode();
-        jdemic.Scenes.SceneUtil.setBackground(root);
+        setupBackground();
         setupUI();
     }
 
@@ -45,7 +45,18 @@ public class HostGameScene {
         return root;
     }
 
-    
+    private void setupBackground() {
+        java.net.URL bgUrl = getClass().getResource("/background.png");
+        if (bgUrl == null) {
+            System.err.println("[HostGameScene] Missing resource: /background.png");
+            return;
+        }
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
+        background.fitWidthProperty().bind(root.widthProperty());
+        background.fitHeightProperty().bind(root.heightProperty());
+        background.setPreserveRatio(false);
+        root.getChildren().add(background);
+    }
 
     private void setupUI() {
         Label title = TextUtil.createText("LOBBY", "hkmodular", 0.06, "#d1d412", root);

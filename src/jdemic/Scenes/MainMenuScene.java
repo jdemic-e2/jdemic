@@ -44,11 +44,22 @@ public class MainMenuScene {
     public MainMenuScene(Stage stage) {
         this.stage = stage;
         root = new StackPane();
-        jdemic.Scenes.SceneUtil.setBackground(root);
+        setupBackground();
         setupUI();
     }
 
-    
+    private void setupBackground() {
+        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
+        if (bgUrl == null) {
+            System.err.println("[MainMenuScene] Missing resource: " + BACKGROUND_RESOURCE);
+            return;
+        }
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
+        background.fitWidthProperty().bind(root.widthProperty());
+        background.fitHeightProperty().bind(root.heightProperty());
+        background.setPreserveRatio(false);
+        root.getChildren().add(background);
+    }
 
     private void setupUI() {
 

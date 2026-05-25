@@ -203,7 +203,7 @@ public class MapTestScene {
     private void initializeScene() {
         AudioManager.getInstance().playGameMusic();
         this.root.setStyle("-fx-background-color: #050a14;");
-        jdemic.Scenes.SceneUtil.setBackground(root, GAME_BACKGROUND_RESOURCE);
+        setupBackground();
         setupContent();
         animationManager = new TurnAnimationManager(root);
         setupPauseMenu();
@@ -1701,7 +1701,18 @@ public class MapTestScene {
         return root;
     }
 
-
+    private void setupBackground() {
+        java.net.URL bgUrl = getClass().getResource("/bgGame.png");
+        if (bgUrl == null) {
+            System.err.println("[MapTestScene] Missing resource: /bgGame.png");
+            return;
+        }
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
+        background.fitWidthProperty().bind(root.widthProperty());
+        background.fitHeightProperty().bind(root.heightProperty());
+        background.setPreserveRatio(false);
+        root.getChildren().add(background);
+    }
 
     private void cleanupScene() {
         if (sceneListener != null) {

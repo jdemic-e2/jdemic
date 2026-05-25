@@ -19,7 +19,7 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
-import jdemic.Scenes.SceneUtil;
+import jdemic.Scenes.Tutorial.TutorialUtil;
 
 import java.util.function.UnaryOperator;
 
@@ -38,22 +38,26 @@ public class JoinCodeScene {
         this.stage = stage;
         this.presetNickname = presetNickname;
         root = new StackPane();
-        jdemic.Scenes.SceneUtil.setBackground(root);
+        TutorialUtil.setBackground(root);
         setupUI();
     }
 
     
 
     private void setupUI() {
-        Label title = jdemic.Scenes.SceneUtil.createSceneTitle(root, "LOBBY", 0.05, "#cfc900", Pos.TOP_CENTER, 0, 0.05, "#cfc900", 7);
+        Label title = TextUtil.createText("LOBBY", "hkmodular", 0.05, "#cfc900", root);
+        title.setTextAlignment(TextAlignment.CENTER);
+        StackPane.setAlignment(title, Pos.TOP_CENTER);
+        title.translateYProperty().bind(root.heightProperty().multiply(0.05));
+        GlowUtil.applyGlow(title, "#cfc900", 7);
 
         Label accessLabel = TextUtil.createText("ENTER IP ADDRESS", "hkmodular", 0.03, "#ff0000", root);
         accessLabel.setTextAlignment(TextAlignment.CENTER);
 
-        TextField nicknameField = new TextField(presetNickname == null ? jdemic.util.PlayerNameUtil.savedPlayerName() : jdemic.util.PlayerNameUtil.normalizeNickname(presetNickname));
-        nicknameField.setTextFormatter(new TextFormatter<>(jdemic.util.PlayerNameUtil.nicknameFilter()));
+        TextField nicknameField = new TextField(presetNickname == null ? savedPlayerName() : normalizeNickname(presetNickname));
+        nicknameField.setTextFormatter(new TextFormatter<>(nicknameFilter()));
         nicknameField.setMaxWidth(300);
-        nicknameField.setStyle(jdemic.ui.UIStyles.INPUT_FIELD);
+        nicknameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
         nicknameField.setVisible(presetNickname == null);
         nicknameField.setManaged(presetNickname == null);
 
@@ -67,7 +71,7 @@ public class JoinCodeScene {
         codeField.setMaxWidth(500);
         codeField.setPrefHeight(75);
         codeField.setPromptText("192.168.1.100");
-        codeField.setStyle(jdemic.ui.UIStyles.INPUT_FIELD);
+        codeField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
 
         ButtonsUtil cancelBtn = new ButtonsUtil("CANCEL", "#ff0000", "black", "#ff0000", "#ff0000", 2, 15, 15, 0.2, 0.1, 0.02, root);
         cancelBtn.setOnMouseClicked(e -> SceneManager.switchScene("HOST_SCREEN"));
@@ -88,12 +92,13 @@ public class JoinCodeScene {
             }
             joinBtn.setDisable(true);
             errorLabel.setVisible(false);
-            jdemic.util.PlayerNameUtil.savePlayerName(nickname);
+            savePlayerName(nickname);
             connectToLobby(code, nickname, joinBtn);
         });
 
-        errorLabel = jdemic.Scenes.SceneUtil.createErrorLabel(root);
+        errorLabel = TextUtil.createText("", "hkmodular", 0.025, "#ff0000", root);
         errorLabel.setTextAlignment(TextAlignment.CENTER);
+        errorLabel.setVisible(false);
 
         VBox inputBox = new VBox(10, nameLabel, nicknameField, accessLabel, codeField);
         inputBox.setAlignment(Pos.CENTER);
@@ -113,6 +118,34 @@ public class JoinCodeScene {
         return root;
     }
 
+    private void savePlayerName(String nickname) {
+        SettingsManager settingsManager = SettingsManager.getInstance();
+        settingsManager.playerNameProperty().set(nickname);
+        settingsManager.saveSettings();
+    }
+
+    private String savedPlayerName() {
+        String savedName = SettingsManager.getInstance().playerNameProperty().get();
+        return normalizeNickname(savedName);
+    }
+
+    private UnaryOperator<TextFormatter.Change> nicknameFilter() {
+        return change -> {
+            String text = change.getControlNewText();
+            return text.matches("[a-zA-Z0-9]*") && text.length() <= 16 ? change : null;
+        };
+    }
+
+    private String normalizeNickname(String nickname) {
+        if (nickname == null) {
+            return "Player";
+        }
+        String normalized = nickname.replaceAll("[^a-zA-Z0-9]", "");
+        if (normalized.length() > 16) {
+            normalized = normalized.substring(0, 16);
+        }
+        return normalized.isBlank() ? "Player" : normalized;
+    }
 
     private void connectToLobby(String code, String nickname, ButtonsUtil joinBtn) {
         new Thread(() -> {
