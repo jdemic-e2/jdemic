@@ -1,9 +1,9 @@
 package jdemic.Scenes.Tutorial;
 
 import javafx.geometry.*;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
 
@@ -45,7 +45,7 @@ public class TutorialEventCardsScene {
 
         leftPanel.translateXProperty().bind(root.widthProperty().multiply(0.05));
 
-        String[] eventCards = {"FireWallLockdown", "SatelliteOverride", "ServerDeployment", "SystemControl", "ThreatScan"};
+        String[] eventCards = {"FirewallLockdown", "SatelliteOverride", "ServerDeployment", "SystemControl", "ThreatScan"};
 
         HBox cardContainer = new HBox(40);
         cardContainer.setAlignment(Pos.CENTER_LEFT);
@@ -56,13 +56,10 @@ public class TutorialEventCardsScene {
         rightArea.prefHeightProperty().bind(root.heightProperty());
         rightArea.setAlignment(Pos.CENTER_LEFT);
 
-        StackPane viewport = new StackPane(cardContainer);
-        viewport.setAlignment(Pos.CENTER_LEFT);
-
+        ScrollPane viewport = TutorialUtil.createHorizontalCardScrollPane(cardContainer);
         viewport.prefWidthProperty().bind(rightArea.widthProperty());
-        viewport.prefHeightProperty().bind(rightArea.heightProperty());
-
-        TutorialUtil.clipToBounds(viewport);
+        viewport.prefHeightProperty().bind(rightArea.heightProperty().multiply(0.8));
+        viewport.setPadding(new Insets(0, 24, 0, 24));
 
         viewport.translateXProperty().bind(rightArea.widthProperty().multiply(0.05));
 

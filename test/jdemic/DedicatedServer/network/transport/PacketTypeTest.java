@@ -1,9 +1,3 @@
-/**
- * This test verifies that the PacketType enum defines the expected packet
- * types used by the network protocol and that their names match the values
- * expected during packet parsing and processing.
- */
-
 package jdemic.DedicatedServer.network.transport;
 
 import org.junit.jupiter.api.Test;
@@ -14,7 +8,6 @@ class PacketTypeTest {
 
     @Test
     void shouldContainExpectedPacketTypes() {
-        // This test verifies that the protocol enum contains the expected packet types.
         PacketType[] values = PacketType.values();
 
         assertNotNull(values);
@@ -31,7 +24,6 @@ class PacketTypeTest {
 
     @Test
     void shouldExposeCorrectEnumNames() {
-        // This test verifies that enum constants keep the exact names used by the network protocol.
         assertEquals("PING", PacketType.PING.name());
         assertEquals("PONG", PacketType.PONG.name());
         assertEquals("GAME_DATA", PacketType.GAME_DATA.name());

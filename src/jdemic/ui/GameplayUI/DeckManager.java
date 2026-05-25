@@ -1,5 +1,7 @@
 package jdemic.ui.GameplayUI;
 
+import java.util.Objects;
+
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Pos;
 import javafx.scene.image.Image;
@@ -7,6 +9,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import jdemic.GameLogic.CityNode;
 import jdemic.ui.GlowUtil;
+import jdemic.ui.SafeResourceLoader;
 
 public class DeckManager {
 
@@ -24,9 +27,6 @@ public class DeckManager {
         StackPane wrapper = new StackPane(decks);
         wrapper.setPickOnBounds(false);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        wrapper.translateXProperty().bind(root.widthProperty().multiply(-0.018));
-        wrapper.translateYProperty().bind(root.heightProperty().multiply(-0.018));
-
         root.getChildren().add(wrapper);
 
         StackPane.setAlignment(wrapper, Pos.BOTTOM_RIGHT);
@@ -39,7 +39,10 @@ public class DeckManager {
         for (int i = 0; i < stackSize; i++) {
             ImageView card = new ImageView(topImage);
             card.setPreserveRatio(true);
-            card.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(60, root.getWidth() * 0.06), root.widthProperty()));
+            card.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                    () -> Math.max(48, Math.min(84, root.getWidth() * 0.055)),
+                    root.widthProperty()
+            ));
             card.setTranslateX((double) i);
             card.setTranslateY(-(double) i);
             card.setRotate(((i % 3) - 1) * 0.75);
@@ -54,13 +57,13 @@ public class DeckManager {
             System.err.println("[DeckManager] Missing resource: /cityCards/cityCardsVerso.png");
             return new HBox();
         }
-        Image verso = new Image(cityVersoUrl.toExternalForm());
+        Image verso = SafeResourceLoader.loadImage(cityVersoUrl);
         StackPane drawPile = createCardStack(verso, 6);
         Image topCard;
         try {
             String path = "/cityCards/BlueAtlanta.png"; //for test
             var res = getClass().getResource(path);
-            topCard = (res != null) ? new Image(res.toExternalForm()) : verso;
+            topCard = (res != null) ? SafeResourceLoader.loadImage(res) : verso;
         } catch (Exception e) { topCard = verso; }
 
         StackPane discardPile = createCardStack(topCard, 4);
@@ -91,12 +94,15 @@ public class DeckManager {
             var resource = getClass().getResource(path);
 
             if (resource == null) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
-            card = new ImageView(new Image(resource.toExternalForm()));
+            card = new ImageView(SafeResourceLoader.loadImage(resource));
 
         } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
 
         card.setPreserveRatio(true);
-        card.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(70, root.getWidth() * 0.06),root.widthProperty()));
+        card.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(48, Math.min(84, root.getWidth() * 0.055)),
+                root.widthProperty()
+        ));
 
         StackPane wrapper = new StackPane(card);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
@@ -124,13 +130,13 @@ public class DeckManager {
             System.err.println("[DeckManager] Missing resource: /epidemicCards/epidemicCardsVerso.png");
             return new HBox();
         }
-        Image verso = new Image(epidemicVersoUrl.toExternalForm());
+        Image verso = SafeResourceLoader.loadImage(epidemicVersoUrl);
         StackPane drawPile = createCardStack(verso, 5);
         Image topCard;
         try {
             String path = "/epidemicCards/BlueAtlanta.png"; //for test
             var res = getClass().getResource(path);
-            topCard = (res != null) ? new Image(res.toExternalForm()) : verso;
+            topCard = (res != null) ? SafeResourceLoader.loadImage(res) : verso;
         } catch (Exception e) { topCard = verso; }
 
         StackPane discardPile = createCardStack(topCard, 3);
@@ -143,5 +149,49 @@ public class DeckManager {
                 root.widthProperty()
         ));
         return epidemicDeck;
+    }
+
+    //for shuffling animation, creates a single card back to be animated from the deck to the player's hand
+    public StackPane createBackCard() {
+        Image image = SafeResourceLoader.loadImage(Objects.requireNonNull(getClass().getResource("/cityCards/cityCardsVerso.png")));
+        ImageView imageView = new ImageView(image);
+        imageView.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(44, Math.min(76, root.getWidth() * 0.05)),
+                root.widthProperty()
+        ));
+        imageView.setPreserveRatio(true);
+        StackPane wrapper = new StackPane(imageView);
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        GlowUtil.applyGlow(wrapper, "#00b5d4", 8);
+        return wrapper;
+    }
+
+    public StackPane createEpidemicCard(CityNode city) {
+        ImageView card;
+        try {
+            String colorPrefix = switch (city.getNativeColor()) {
+                case BLUE -> "Blue";
+                case YELLOW -> "Yellow";
+                case BLACK -> "Green"; // ?? black/green? It's functional, but confusing.
+                case RED -> "Red";
+            };
+
+            String cityName = city.getName().replace(" ", "").replace(".", "");
+            String path ="/epidemicCards/" + colorPrefix + cityName + ".png";
+            var resource =getClass().getResource(path);
+            if (resource == null) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
+            card = new ImageView(SafeResourceLoader.loadImage(resource));
+
+        } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
+
+        card.setPreserveRatio(true);
+        card.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(48, Math.min(84, root.getWidth() * 0.055)),
+                root.widthProperty()
+        ));
+        StackPane wrapper = new StackPane(card);
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        GlowUtil.applyGlow(wrapper, "#ff2d2d", 10);
+        return wrapper;
     }
 }

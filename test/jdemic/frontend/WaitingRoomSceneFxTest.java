@@ -1,5 +1,7 @@
 package jdemic.frontend;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.scene.Scene;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.TextArea;
@@ -13,6 +15,8 @@ import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 import org.testfx.util.WaitForAsyncUtils;
+
+import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -28,6 +32,8 @@ import static org.testfx.matcher.control.LabeledMatchers.hasText;
  */
 @ExtendWith(ApplicationExtension.class)
 class WaitingRoomSceneFxTest {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private WaitingRoomScene waitingRoomScene;
 
@@ -47,7 +53,51 @@ class WaitingRoomSceneFxTest {
         assertNotNull(robot.lookup(hasText("WAITING ROOM")).query());
         // Nickname is uppercased by the constructor.
         assertNotNull(robot.lookup(hasText("GUEST")).query());
+        assertNotNull(robot.lookup(hasText("PLAYERS: 1/4")).query());
         assertNotNull(robot.lookup(hasText("PLAYER CHAT:")).query());
+    }
+
+    @Test
+    void roomPortIsShownInCorner(FxRobot robot) {
+        WaitForAsyncUtils.waitForFxEvents();
+        boolean[] hasPort = {false};
+        robot.interact(() -> {
+            Stage local = new Stage();
+            WaitingRoomScene room = new WaitingRoomScene(local, "Guest", "127.0.0.1:9001");
+            local.setScene(new Scene(room.getRoot(), 400, 300));
+            hasPort[0] = room.getRoot().lookupAll(".label").stream()
+                    .anyMatch(n -> n instanceof Labeled l && "PORT: 9001".equals(l.getText()));
+        });
+        assertTrue(hasPort[0], "waiting room should show the lobby port");
+    }
+
+    @Test
+    void playerCountUpdatesFromLobbyState(FxRobot robot) throws Exception {
+        WaitForAsyncUtils.waitForFxEvents();
+        JsonNode gameState = OBJECT_MAPPER.readTree("""
+                {
+                  "players": [
+                    {"playerName": "Guest", "ready": false},
+                    {"playerName": "Alex", "ready": true},
+                    {"playerName": "Sam", "ready": false}
+                  ]
+                }
+                """);
+
+        Method updateLobbyState = WaitingRoomScene.class.getDeclaredMethod("updateLobbyState", JsonNode.class);
+        updateLobbyState.setAccessible(true);
+        robot.interact(() -> {
+            try {
+                updateLobbyState.invoke(waitingRoomScene, gameState);
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError(e);
+            }
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertNotNull(robot.lookup(hasText("PLAYERS: 3/4")).query());
+        assertNotNull(robot.lookup(hasText("Alex")).query());
+        assertNotNull(robot.lookup(hasText("Sam")).query());
     }
 
     @Test
@@ -98,7 +148,7 @@ class WaitingRoomSceneFxTest {
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil sendBtn = LobbySceneFxTest.buttonByText(robot, "SEND");
-        robot.clickOn(sendBtn);
+        robot.interact(() -> sendBtn.fireEvent(LobbySceneFxTest.mouseClicked()));
         WaitForAsyncUtils.waitForFxEvents();
 
         assertEquals("", chatArea.getText());
@@ -115,7 +165,7 @@ class WaitingRoomSceneFxTest {
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil sendBtn = LobbySceneFxTest.buttonByText(robot, "SEND");
-        robot.clickOn(sendBtn);
+        robot.interact(() -> sendBtn.fireEvent(LobbySceneFxTest.mouseClicked()));
         WaitForAsyncUtils.waitForFxEvents();
 
         assertTrue(chatArea.getText().isEmpty(), "blank input must not append to the chat");

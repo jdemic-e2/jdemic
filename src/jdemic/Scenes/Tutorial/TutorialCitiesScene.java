@@ -31,12 +31,20 @@ public class TutorialCitiesScene {
         String colorPrefix = switch (city.getNativeColor()) {
             case BLUE -> "Blue";
             case YELLOW -> "Yellow";
-            case BLACK -> "Black";
+            case BLACK -> "Green";
             case RED -> "Red";
         };
 
-        String cityName = city.getName().replace(" ", "").replace(".", "");
-        TutorialUtil.openCardOverlay(root, "/cards/" + colorPrefix + cityName + ".png", city.getName(), "TutorialCitiesScene");
+        String cityName = toCityCardResourceName(city.getName());
+        TutorialUtil.openCardOverlay(root, "/cityCards/" + colorPrefix + cityName + ".png", city.getName(), "TutorialCitiesScene");
+    }
+
+    private String toCityCardResourceName(String cityName) {
+        return switch (cityName) {
+            case "Moscow" -> "Moskow";
+            case "Tehran" -> "Teheran";
+            default -> cityName.replace(" ", "").replace(".", "");
+        };
     }
 
     private void setupUI() {
@@ -49,7 +57,7 @@ public class TutorialCitiesScene {
             System.err.println("[TutorialCitiesScene] Missing resource: /backgroundMap.png");
             return;
         }
-        ImageView map = new ImageView(new Image(mapUrl.toExternalForm()));
+        ImageView map = new ImageView(SafeResourceLoader.loadImage(mapUrl));
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.75));
         StackPane.setAlignment(map, Pos.CENTER);

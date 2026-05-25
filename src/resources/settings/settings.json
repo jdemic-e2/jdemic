@@ -1,8 +1,9 @@
 {
-  "playerName": "asli",
-  "resolution": "800x600",
+  "playerName": "nga",
+  "resolution": "1600x900",
   "isFullScreen": false,
-  "masterVolume": 0.15352343245037608,
-  "musicVolume": 0.1496815286624204,
-  "animationSpeed": "FAST"
+  "masterVolume": 1.0,
+  "musicVolume": 0.08778625954198475,
+  "sfxVolume": 1.0,
+  "animationSpeed": "MEDIUM"
 }

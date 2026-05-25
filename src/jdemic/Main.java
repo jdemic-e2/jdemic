@@ -3,11 +3,12 @@ package jdemic;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import jdemic.Scenes.Settings.AudioManager;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import jdemic.DedicatedServer.network.core.JdemicNetworkServer;
+import jdemic.GameLogic.GameClient;
 import jdemic.Scenes.SceneManager.SceneManager;
-import jdemic.Scenes.Settings.AudioManager;
 import jdemic.Scenes.Settings.SettingsManager;
 
 public class Main extends Application {
@@ -30,14 +31,23 @@ public class Main extends Application {
         });
 
         stage.show();
-        AudioManager.getInstance().playMusic("MENU");
+    }
+
+    @Override
+    public void stop() {
+        shutdownNetworkResources();
+    }
+
+    private void shutdownNetworkResources() {
+        SceneManager.shutdownCurrentScene();
+        GameClient.disconnectAllFromLobby();
+        JdemicNetworkServer.shutdown();
     }
 
     public static void main(String[] args) {
         Runtime.getRuntime().addShutdownHook(new Thread(Main::performShutdown, "jdemic-app-shutdown"));
         launch();
     }
-
     public static void performShutdown() {
         AudioManager.getInstance().stopMusic();
         JdemicNetworkServer.shutdown();
@@ -49,3 +59,4 @@ public class Main extends Application {
         System.exit(0);
     }
 }
+

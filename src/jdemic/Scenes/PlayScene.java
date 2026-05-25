@@ -11,16 +11,17 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
+import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 import java.security.SecureRandom;
 import java.util.function.UnaryOperator;
@@ -71,7 +72,7 @@ public class PlayScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource(BACKGROUND_RESOURCE).toExternalForm()));
+        ImageView background = new ImageView(SafeResourceLoader.loadImage(BACKGROUND_RESOURCE));
         background.fitWidthProperty().bind(root.widthProperty());
         background.fitHeightProperty().bind(root.heightProperty());
         background.setPreserveRatio(false);
@@ -148,7 +149,7 @@ public class PlayScene {
             if (name.isEmpty()) { errorLabel.setVisible(true); return; }
             errorLabel.setVisible(false); nickname = name; showHostCodeScreen();
         });
-        backBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new MainMenuScene(stage).getRoot()));
+        backBtn.setOnMouseClicked(e -> SceneManager.setRoot(new MainMenuScene(stage).getRoot()));
         VBox content = new VBox(nickRow, errorLabel, hostBtn, joinBtn, backBtn);
         content.setAlignment(Pos.TOP_CENTER);
         content.spacingProperty().bind(root.heightProperty().multiply(0.038));

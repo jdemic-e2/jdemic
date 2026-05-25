@@ -29,7 +29,7 @@ public class TutorialRulesScene {
             System.err.println("[TutorialRulesScene] Missing resource: " + path);
             return new ImageView();
         }
-        ImageView img = new ImageView(new Image(iconUrl.toExternalForm()));
+        ImageView img = new ImageView(SafeResourceLoader.loadImage(iconUrl));
         img.fitWidthProperty().bind(root.widthProperty().multiply(0.015));
         img.fitHeightProperty().bind(root.widthProperty().multiply(0.015));
         img.setPreserveRatio(true);
@@ -69,16 +69,16 @@ public class TutorialRulesScene {
         content.getChildren().add(TutorialUtil.createRow(root, "What are the threats?", "",LEFT, RIGHT, SIZE));
         content.getChildren().add(TutorialUtil.createLine(tutorialPanel, "#000000", 6));
 
-        content.getChildren().add(TutorialUtil.createRow(root, "What role can you play?","Incident Responder | Artificial Intelligence Analyst | Network Controller | Encryption Specialist | System Engineer | Threat Strategist | Firewall Specialist", LEFT, RIGHT, SIZE));
+        content.getChildren().add(TutorialUtil.createRow(root, "What role can you play?","Incident Responder | Artificial Intelligence Analyst | Network Controller | Encryption Specialist | System Engineer | Threat Strategist | Firewall Specialist.", LEFT, RIGHT, SIZE));
         content.getChildren().add(TutorialUtil.createLine(tutorialPanel, "#000000", 6));
 
-        content.getChildren().add(TutorialUtil.createRow(root, "Game Phases:","Actions: Move, Treat, Share, Build, Discover\nDraw Cards: Take 2 city cards, risk drawing a System Breach card\nInfect Cities: Draw infection cards, virus are added to the city", LEFT, RIGHT, SIZE));
+        content.getChildren().add(TutorialUtil.createRow(root, "Game Phases:","Actions: Move, Treat, Share, Build, Discover.\nDraw Cards: Take 2 city cards, risk drawing a System Breach card.\nInfect Cities: Draw infection cards. Viruses are added to the city.", LEFT, RIGHT, SIZE));
         content.getChildren().add(TutorialUtil.createLine(tutorialPanel, "#000000", 6));
 
-        content.getChildren().add(TutorialUtil.createRow(root, "When do you win?","All 4 cures are discovered",LEFT, RIGHT, SIZE));
+        content.getChildren().add(TutorialUtil.createRow(root, "When do you win?","All 4 cures are discovered.",LEFT, RIGHT, SIZE));
         content.getChildren().add(TutorialUtil.createLine(tutorialPanel, "#000000", 6));
 
-        content.getChildren().add( TutorialUtil.createRow(root, "When do you lose?","Too many outbreaks occur, or you run out of malware cubes or the player deck runs out", LEFT, RIGHT, SIZE));
+        content.getChildren().add( TutorialUtil.createRow(root, "When do you lose?","Too many outbreaks occur, you run out of malware cubes, or the player deck runs out.", LEFT, RIGHT, SIZE));
         content.getChildren().add(TutorialUtil.createLine(tutorialPanel, "#000000", 6));
 
         HBox threatsRow = new HBox();

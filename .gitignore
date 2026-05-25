@@ -3,3 +3,4 @@ target/
 .idea
 *.iml
 .DS_Store
+src/resources/settings/settings.json

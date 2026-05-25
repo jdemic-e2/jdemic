@@ -1,5 +1,6 @@
 package jdemic.GameLogic;
 import java.util.List;
+import java.util.function.Consumer;
 
 import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
@@ -8,6 +9,7 @@ import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 public class GameManager {
     GameState state;
     private final Object stateLock = new Object();
+    public static final int MAX_PLAYERS = 4;
     private static final int ACTIONS_PER_TURN = 4;
     private static final int HAND_LIMIT = 7;
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
@@ -18,6 +20,7 @@ public class GameManager {
 
     // Simple state-change listener hooks for UI to react to model updates
     private final java.util.List<Runnable> stateChangeListeners = new java.util.ArrayList<>();
+    private final java.util.List<Consumer<CityNode>> outbreakListeners = new java.util.ArrayList<>();
 
     public void addStateChangeListener(Runnable listener) {
         if (listener == null) return;
@@ -31,6 +34,21 @@ public class GameManager {
     public void notifyStateChange() {
         for (Runnable r : new java.util.ArrayList<>(stateChangeListeners)) {
             try { r.run(); } catch (Exception ignored) {}
+        }
+    }
+
+    public void addOutbreakListener(Consumer<CityNode> listener) {
+        if (listener == null) return;
+        outbreakListeners.add(listener);
+    }
+
+    public void removeOutbreakListener(Consumer<CityNode> listener) {
+        outbreakListeners.remove(listener);
+    }
+
+    public void notifyOutbreak(CityNode city) {
+        for (Consumer<CityNode> listener : new java.util.ArrayList<>(outbreakListeners)) {
+            try { listener.accept(city); } catch (Exception ignored) {}
         }
     }
 
@@ -147,9 +165,8 @@ public class GameManager {
     {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
-        // If the current player is discarding, reject attempts from other players.
-        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()
-                && (player == null || !state.isPlayerTurn(player.getState()))) return;
+        // A player who is over the hand limit must discard before any normal action can be taken.
+        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
 
         // Only allow the current player to perform actions
         if(!state.isPlayerTurn(player.getState())) return;
