@@ -1,6 +1,7 @@
 package jdemic;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
@@ -25,6 +26,10 @@ public class Main extends Application {
         SceneManager.switchScene("MAIN_MENU");
         stage.setOnCloseRequest(event -> shutdownNetworkResources());
 
+        stage.setOnCloseRequest(event -> {
+            exitApplication();
+        });
+
         stage.show();
     }
 
@@ -40,6 +45,18 @@ public class Main extends Application {
     }
 
     public static void main(String[] args) {
+        Runtime.getRuntime().addShutdownHook(new Thread(Main::performShutdown, "jdemic-app-shutdown"));
         launch();
     }
+    public static voide performShutdown() {
+        AudioManager.getInstance().stopMusic();
+        JdemicNetworkServer.shutdown();
+    }
+
+    public static void exitApplication() {
+        performShutdown();
+        Platform.exit();
+        System.exit(0);
+    }
 }
+

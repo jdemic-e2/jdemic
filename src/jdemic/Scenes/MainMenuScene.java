@@ -13,6 +13,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
+import jdemic.Main;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.Animations;
 import jdemic.ui.ButtonsUtil;
@@ -62,6 +63,7 @@ public class MainMenuScene {
 
     private void setupUI() {
 
+        Label title = TextUtil.createText("CYBER\nCRISIS", FONT_HKMODULAR, 0.05, "#cfc900", root);
         Label title = TextUtil.createText("CYBER\nCRISIS", FONT_HKMODULAR, 0.05, "#cfc900", root);
         title.setTextAlignment(TextAlignment.CENTER);
         GlowUtil.applyGlow(title, "#000000", 10);
@@ -209,9 +211,11 @@ public class MainMenuScene {
 
         tutorialBtn.setOnMouseClicked(e -> {
             SceneManager.switchScene(SCENE_TUTORIAL);
+            SceneManager.switchScene(SCENE_TUTORIAL);
         });
 
         playBtn.setOnMouseClicked(e -> {
+            SceneManager.switchScene(SCENE_HOST_SCREEN);
             SceneManager.switchScene(SCENE_HOST_SCREEN);
         });
 
@@ -253,7 +257,7 @@ public class MainMenuScene {
             ButtonsUtil yesBtn = new ButtonsUtil("YES", BRIGHT_CYAN, BLACK, BRIGHT_CYAN, BRIGHT_CYAN, 2, 12, 12, 0.14, 0.06, 0.015, root);
             ButtonsUtil noBtn = new ButtonsUtil("NO", "#ff274c", BLACK, "#ff274c", "#ff274c", 2, 12, 12, 0.14, 0.06, 0.015, root);
 
-            yesBtn.setOnMouseClicked(ev -> System.exit(0));
+            yesBtn.setOnMouseClicked(ev -> Main.exitApplication());
             noBtn.setOnMouseClicked(ev -> root.getChildren().remove(confirmOverlay));
 
             HBox buttonContainer = new HBox(30); // 30px spacing between YES and NO
