@@ -178,7 +178,6 @@ public class MapTestScene {
         this.root = new StackPane();
         SceneManager.registerLifecycle(root, this::cleanupScene);
         this.mapGraph = new PandemicMapGraph();
-        addDefaultResearchStationToSceneMap();
 
         this.gameManager = createLocalGameManager();
         initializeScene();
@@ -362,13 +361,11 @@ public class MapTestScene {
 
     private GameManager createLocalGameManager() {
         List<PlayerState> players = new ArrayList<>();
-        CityNode startingCity = mapGraph.getCity("Atlanta");
         PlayerState testPlayer = new PlayerState(playerName);
-        testPlayer.setCurrentCity(startingCity);
         players.add(testPlayer);
         // Ensure local test players get assigned roles so the UI can display them
         RoleManager.assignRandomRoles(players);
-        GameManager manager = new GameManager(players);
+        GameManager manager = new GameManager(players, mapGraph);
         // Ensure initial infections and setup occur for local single-player scenes
         manager.startGame();
         return manager;
@@ -380,7 +377,7 @@ public class MapTestScene {
             players.add(new PlayerState(playerName));
         }
 
-        GameManager manager = new GameManager(players, false);
+        GameManager manager = new GameManager(players, mapGraph, false);
         applyGameStateSnapshot(manager, gameState);
         return manager;
     }

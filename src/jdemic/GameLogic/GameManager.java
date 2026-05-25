@@ -1,6 +1,7 @@
 package jdemic.GameLogic;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
@@ -56,9 +57,13 @@ public class GameManager {
         this(players, true);
     }
 
-    public GameManager(List<PlayerState> players, boolean dealInitialHands) {
+    public GameManager(List<PlayerState> players, PandemicMapGraph map) {
+        this(players, map, true);
+    }
+
+    public GameManager(List<PlayerState> players, PandemicMapGraph map, boolean dealInitialHands) {
         this.state = new GameState(); 
-        state.setMap(new PandemicMapGraph());
+        state.setMap(map);
         state.setDiseaseManager(new DiseaseManager(this));
         state.setCardDeck(new Deck(this));
         state.setCurrentPlayerIndex(0);
@@ -74,6 +79,10 @@ public class GameManager {
         if (dealInitialHands) {
             dealInitialHands();
         }
+    }
+
+    public GameManager(List<PlayerState> players, boolean dealInitialHands) {
+        this(players, new PandemicMapGraph(), dealInitialHands);
     }
 
     private void setupGame() {
@@ -217,6 +226,12 @@ public class GameManager {
      */
     public void nextTurn() {
         if (state.isGameOver()) return;
+
+        for(CityNode city : getState().getMap().getCityList()){
+            if(city.hasResearchStation()){
+                System.out.println(city.getName()+ " has research station: " + city.hasResearchStation());
+            }
+        }
 
         PlayerState currentPlayer = state.getCurrentPlayer();
         if(currentPlayer == null) return;
