@@ -20,7 +20,7 @@ public class ResearchStationUI {
 
     public ResearchStationUI(ReadOnlyDoubleProperty mapHeight) {
         root = new StackPane();
-        Image image = SafeResourceLoader.loadImage("/researchStation.png");
+        Image image = SafeResourceLoader.loadImage("/ResearchStation.png");
         stationImage = new ImageView(image);
         stationImage.setPreserveRatio(true);
         stationImage.fitHeightProperty().bind(mapHeight.multiply(0.045));

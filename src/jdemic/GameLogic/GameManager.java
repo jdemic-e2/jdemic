@@ -184,10 +184,7 @@ public class GameManager {
             checkWinCondition();
             if(state.isGameOver()) return;
             
-            // Automatically advance to next turn when actions reach 0
-            if(state.getActionsRemaining() <= 0){
-                nextTurn();
-            }
+
         }
     }
 
@@ -371,7 +368,18 @@ public class GameManager {
             state.setGameWon(false);
         }
 
-        // Player deck loss is handled when a draw is attempted and cannot be completed.
+        setGameWinStateBasedOnColor(DiseaseColor.BLUE);
+        setGameWinStateBasedOnColor(DiseaseColor.RED);
+        setGameWinStateBasedOnColor(DiseaseColor.BLUE);
+        setGameWinStateBasedOnColor(DiseaseColor.YELLOW);
+        setGameWinStateBasedOnColor(DiseaseColor.BLACK);
+    }
+
+    private void setGameWinStateBasedOnColor(DiseaseColor color){
+        if (state.getDiseaseManager().getCubesLeftForColor(color) <= 0) {
+            state.setGameOver(true);
+            state.setGameWon(false);
+        }
     }
 
     public int getInfectionRate() {
