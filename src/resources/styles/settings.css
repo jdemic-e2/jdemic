@@ -25,9 +25,8 @@
     -fx-effect: dropshadow(gaussian, rgba(0, 217, 255, 1.0), 14, 0.55, 0, 0);
 }
 
-/* sonar will give a medium warning here cause it thinks focused should be focus, but in javafx focused parses just fine.*/
-/* nosonar */
-.cyber-slider:focused .thumb {
+
+.cyber-slider[focused=true] .thumb {
     -fx-background-color:
         #d1d412,
         #00d9ff,
