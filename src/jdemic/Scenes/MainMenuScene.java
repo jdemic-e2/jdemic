@@ -21,6 +21,7 @@ import jdemic.ui.DotUtil;
 import jdemic.ui.GlowLineUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 public class MainMenuScene {
@@ -49,16 +50,7 @@ public class MainMenuScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
-        if (bgUrl == null) {
-            System.err.println("[MainMenuScene] Missing resource: " + BACKGROUND_RESOURCE);
-            return;
-        }
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        SceneBackgroundUtil.addCoverBackground(root, BACKGROUND_RESOURCE);
     }
 
     private void setupUI() {

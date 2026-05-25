@@ -35,6 +35,7 @@ import jdemic.ui.ButtonsUtil;
 import jdemic.ui.DeckAnimationManager;
 import jdemic.ui.PauseMenuOverlay;
 import jdemic.ui.SafeResourceLoader;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TurnAnimationManager;
 import jdemic.GameLogic.*;
 import jdemic.GameLogic.RoleManager;
@@ -1705,16 +1706,7 @@ public class MapTestScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource("/bgGame.png");
-        if (bgUrl == null) {
-            System.err.println("[MapTestScene] Missing resource: /bgGame.png");
-            return;
-        }
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        SceneBackgroundUtil.addCoverBackground(root, SceneBackgroundUtil.GAME_BACKGROUND);
     }
 
     private void cleanupScene() {

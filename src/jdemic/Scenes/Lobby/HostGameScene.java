@@ -13,7 +13,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
@@ -23,7 +22,7 @@ import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
-import jdemic.ui.SafeResourceLoader;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TextUtil;
 
 public class HostGameScene {
@@ -46,16 +45,7 @@ public class HostGameScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource("/background.png");
-        if (bgUrl == null) {
-            System.err.println("[HostGameScene] Missing resource: /background.png");
-            return;
-        }
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        SceneBackgroundUtil.addCoverBackground(root, SceneBackgroundUtil.MENU_BACKGROUND);
     }
 
     private void setupUI() {

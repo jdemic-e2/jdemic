@@ -28,23 +28,7 @@ public class TutorialCitiesScene {
     }
 
     private void openCityCard(CityNode city) {
-        String colorPrefix = switch (city.getNativeColor()) {
-            case BLUE -> "Blue";
-            case YELLOW -> "Yellow";
-            case BLACK -> "Green";
-            case RED -> "Red";
-        };
-
-        String cityName = toCityCardResourceName(city.getName());
-        TutorialUtil.openCardOverlay(root, "/cityCards/" + colorPrefix + cityName + ".png", city.getName(), "TutorialCitiesScene");
-    }
-
-    private String toCityCardResourceName(String cityName) {
-        return switch (cityName) {
-            case "Moscow" -> "Moskow";
-            case "Tehran" -> "Teheran";
-            default -> cityName.replace(" ", "").replace(".", "");
-        };
+        TutorialUtil.openCardOverlay(root, CardResourceUtil.cityCardPath(city), city.getName(), "TutorialCitiesScene");
     }
 
     private void setupUI() {

@@ -1,15 +1,13 @@
 package jdemic.ui.GameplayUI;
 
-import java.util.Objects;
-
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Pos;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import jdemic.ui.CardResourceUtil;
 import jdemic.GameLogic.CityNode;
 import jdemic.ui.GlowUtil;
-import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.UIImageUtil;
 
 public class DeckManager {
@@ -80,32 +78,7 @@ public class DeckManager {
     }
 
     public StackPane createCityCard(CityNode city) {
-        ImageView card;
-        try {
-            String colorPrefix = switch (city.getNativeColor()) {
-                case BLUE -> "Blue";
-                case YELLOW -> "Yellow";
-                case BLACK -> "Green"; // MISMATCHH (Black should be changed Green everywhere to not cause confusion)
-                case RED -> "Red";
-            };
-
-            String cityName = city.getName().replace(" ", "").replace(".", "");
-            String path = "/cityCards/" + colorPrefix + cityName + ".png";
-            ImageView iv = UIImageUtil.loadResponsive(root, path, 48, 84, 0.055);
-            if (iv == null || iv.getImage() == null) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
-            card = iv;
-
-        } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
-
-        card.setPreserveRatio(true);
-        card.fitWidthProperty().bind(Bindings.createDoubleBinding(
-                () -> Math.max(48, Math.min(84, root.getWidth() * 0.055)),
-                root.widthProperty()
-        ));
-
-        StackPane wrapper = new StackPane(card);
-        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        GlowUtil.applyGlow(wrapper, "#00b5d4", 5);
+        StackPane wrapper = createCardWrapper(city, CardResourceUtil.cityCardPath(city), "#00b5d4", 5);
 
         wrapper.setOnMouseEntered(e -> {
             wrapper.setViewOrder(-1);
@@ -160,17 +133,12 @@ public class DeckManager {
     }
 
     public StackPane createEpidemicCard(CityNode city) {
+        return createCardWrapper(city, CardResourceUtil.epidemicCardPath(city), "#ff2d2d", 10);
+    }
+
+    private StackPane createCardWrapper(CityNode city, String path, String glowColor, double glowRadius) {
         ImageView card;
         try {
-            String colorPrefix = switch (city.getNativeColor()) {
-                case BLUE -> "Blue";
-                case YELLOW -> "Yellow";
-                case BLACK -> "Green"; // ?? black/green? It's functional, but confusing.
-                case RED -> "Red";
-            };
-
-            String cityName = city.getName().replace(" ", "").replace(".", "");
-            String path ="/epidemicCards/" + colorPrefix + cityName + ".png";
             ImageView iv = UIImageUtil.loadResponsive(root, path, 48, 84, 0.055);
             if (iv == null || iv.getImage() == null) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
             card = iv;
@@ -184,7 +152,7 @@ public class DeckManager {
         ));
         StackPane wrapper = new StackPane(card);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        GlowUtil.applyGlow(wrapper, "#ff2d2d", 10);
+        GlowUtil.applyGlow(wrapper, glowColor, glowRadius);
         return wrapper;
     }
 }

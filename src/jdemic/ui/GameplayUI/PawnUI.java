@@ -1,9 +1,6 @@
 package jdemic.ui.GameplayUI;
 
 import javafx.animation.Interpolator;
-import javafx.animation.ParallelTransition;
-import javafx.animation.ScaleTransition;
-import javafx.animation.TranslateTransition;
 import javafx.beans.binding.DoubleExpression;
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.geometry.Pos;
@@ -14,6 +11,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.util.Duration;
+import jdemic.ui.AnimationUiUtil;
 import jdemic.ui.AnimationSpeedUtil;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.GameLogic.PlayerRoles;
@@ -98,17 +96,17 @@ public class PawnUI {
     }
     
     public void animateMoveTo(double targetX, double targetY, Runnable onFinished) {
-        TranslateTransition move = new TranslateTransition(Duration.millis(850), root);
-        move.setToX(targetX);
-        move.setToY(targetY);
-        move.setInterpolator(Interpolator.EASE_BOTH);
-
-        ScaleTransition pulse = new ScaleTransition(Duration.millis(420), root);
-        pulse.setToX(1.18);
-        pulse.setToY(1.18);
-        pulse.setAutoReverse(true);
-        pulse.setCycleCount(2);
-        ParallelTransition full = new ParallelTransition(move, pulse);
+        javafx.animation.ParallelTransition full = AnimationUiUtil.createMoveWithPulse(
+                root,
+                Duration.millis(850),
+                root.getTranslateX(),
+                root.getTranslateY(),
+                targetX,
+                targetY,
+                1.18,
+                Duration.millis(420),
+                Interpolator.EASE_BOTH
+        );
         full.setOnFinished(e -> {
             root.setTranslateX(0);
             root.setTranslateY(0);
@@ -119,21 +117,17 @@ public class PawnUI {
     }
 
     public void animateMoveFrom(double startX, double startY, Runnable onFinished) {
-        root.setTranslateX(startX);
-        root.setTranslateY(startY);
-
-        TranslateTransition move = new TranslateTransition(Duration.millis(850), root);
-        move.setToX(0);
-        move.setToY(0);
-        move.setInterpolator(Interpolator.EASE_BOTH);
-
-        ScaleTransition pulse = new ScaleTransition(Duration.millis(420), root);
-        pulse.setToX(1.18);
-        pulse.setToY(1.18);
-        pulse.setAutoReverse(true);
-        pulse.setCycleCount(2);
-
-        ParallelTransition full = new ParallelTransition(move, pulse);
+        javafx.animation.ParallelTransition full = AnimationUiUtil.createMoveWithPulse(
+                root,
+                Duration.millis(850),
+                startX,
+                startY,
+                0,
+                0,
+                1.18,
+                Duration.millis(420),
+                Interpolator.EASE_BOTH
+        );
         full.setOnFinished(e -> {
             root.setTranslateX(0);
             root.setTranslateY(0);

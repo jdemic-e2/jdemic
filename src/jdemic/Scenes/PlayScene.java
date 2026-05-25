@@ -21,10 +21,10 @@ import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
-import jdemic.ui.SafeResourceLoader;
+import jdemic.ui.PlayerNameUtil;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TextUtil;
 import java.security.SecureRandom;
-import java.util.function.UnaryOperator;
 
 public class PlayScene {
     private static final String FONT_HKMODULAR = "hkmodular";
@@ -72,11 +72,8 @@ public class PlayScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(BACKGROUND_RESOURCE));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        ImageView background = SceneBackgroundUtil.addCoverBackground(root, BACKGROUND_RESOURCE);
+        if (background == null) return;
         background.toBack();
     }
 
@@ -134,8 +131,7 @@ public class PlayScene {
         nickField.setText(nickname);
         nickField.prefWidthProperty().bind(root.widthProperty().multiply(0.27));
         nickField.prefHeightProperty().bind(root.heightProperty().multiply(0.065));
-        UnaryOperator<TextFormatter.Change> filter = change -> change.getControlNewText().length() <= 16 ? change : null;
-        nickField.setTextFormatter(new TextFormatter<>(filter));
+        nickField.setTextFormatter(new TextFormatter<>(PlayerNameUtil.nicknameFilter()));
         Label errorLabel = TextUtil.createText("ENTER NICKNAME", FONT_HKMODULAR, 0.017, RED, root);
         errorLabel.setVisible(false);
         HBox nickRow = new HBox(nickLabel, nickField);

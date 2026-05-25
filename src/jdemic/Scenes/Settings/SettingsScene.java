@@ -4,17 +4,14 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.PanelUtil;
-import jdemic.ui.SafeResourceLoader;
+import jdemic.ui.PlayerNameUtil;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TextUtil;
-
-import java.util.function.UnaryOperator;
 
 public class SettingsScene {
     private static final String FONT_HKMODULAR = "hkmodular";
@@ -353,13 +350,7 @@ public class SettingsScene {
         Label header = TextUtil.createText("GENERAL SETTINGS", FONT_HKMODULAR, 0.03, WHITE, root);
         nameField = new TextField();
 
-        UnaryOperator<TextFormatter.Change> filter = change -> {
-            String text = change.getControlNewText();
-            if (text.matches("[a-zA-Z0-9]*") && text.length() <= 16) return change;
-            return null;
-        };
-
-        nameField.setTextFormatter(new TextFormatter<>(filter));
+        nameField.setTextFormatter(new TextFormatter<>(PlayerNameUtil.nicknameFilter()));
         nameField.setPromptText("Enter Username");
         nameField.setText(sm.playerNameProperty().get()); // Load from manager
         nameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: " + CYAN + "; -fx-border-color: " + CYAN + "; -fx-border-width: 1; -fx-font-family: '" + FONT_HKMODULAR + "'; -fx-font-size: 12px;");
@@ -449,16 +440,7 @@ public class SettingsScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
-        if (bgUrl == null) {
-            System.err.println("[SettingsScene] Missing resource: " + BACKGROUND_RESOURCE);
-            return;
-        }
-        ImageView background = new ImageView(SafeResourceLoader.loadImage(bgUrl));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        SceneBackgroundUtil.addCoverBackground(root, BACKGROUND_RESOURCE);
     }
 
     public StackPane getRoot() {return root;}

@@ -23,7 +23,8 @@ import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.Scenes.Settings.SettingsManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
-import jdemic.ui.SafeResourceLoader;
+import jdemic.ui.PlayerNameUtil;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TextUtil;
 
 import java.io.BufferedReader;
@@ -35,7 +36,6 @@ import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.UnaryOperator;
 
 public class LobbyScene {
     private final StackPane root;
@@ -60,16 +60,9 @@ public class LobbyScene {
     }
 
     private void setupBackground() {
-        javafx.scene.image.Image bg = SafeResourceLoader.loadImage("/background.png");
-        if (bg == null) {
-            return;
-        }
-        ImageView background = new ImageView(bg);
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
+        ImageView background = SceneBackgroundUtil.addCoverBackground(root, SceneBackgroundUtil.MENU_BACKGROUND);
+        if (background == null) return;
         background.setMouseTransparent(true); // decorative background shouldn't steal clicks
-        root.getChildren().add(background);
     }
 
     private void setupUI() {
@@ -83,7 +76,7 @@ public class LobbyScene {
         GlowUtil.applyGlow(nameLabel, "#00b5d4", 6);
 
         nicknameField = new TextField(savedPlayerName());
-        nicknameField.setTextFormatter(new TextFormatter<>(nicknameFilter()));
+        nicknameField.setTextFormatter(new TextFormatter<>(PlayerNameUtil.nicknameFilter()));
         nicknameField.setMaxWidth(280);
         nicknameField.setMinHeight(50); // explicit larger hit box
         nicknameField.setPrefHeight(50);
@@ -109,7 +102,7 @@ public class LobbyScene {
         listHeader.setAlignment(Pos.CENTER);
         listHeader.maxWidthProperty().bind(root.widthProperty().multiply(0.60));
         listHeader.setPickOnBounds(false);
-        
+
         serverListBox = new VBox(8);
         serverListBox.setAlignment(Pos.TOP_CENTER);
         serverListBox.setPadding(new Insets(8));
@@ -203,25 +196,7 @@ public class LobbyScene {
 
     private String savedPlayerName() {
         String savedName = SettingsManager.getInstance().playerNameProperty().get();
-        return normalizeNickname(savedName);
-    }
-
-    private UnaryOperator<TextFormatter.Change> nicknameFilter() {
-        return change -> {
-            String text = change.getControlNewText();
-            return text.matches("[a-zA-Z0-9]*") && text.length() <= 16 ? change : null;
-        };
-    }
-
-    private String normalizeNickname(String nickname) {
-        if (nickname == null) {
-            return "Player";
-        }
-        String normalized = nickname.replaceAll("[^a-zA-Z0-9]", "");
-        if (normalized.length() > 16) {
-            normalized = normalized.substring(0, 16);
-        }
-        return normalized.isBlank() ? "Player" : normalized;
+        return PlayerNameUtil.normalizeNickname(savedName);
     }
 
     private String requireNickname() {

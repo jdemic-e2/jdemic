@@ -7,7 +7,6 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -17,11 +16,9 @@ import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.Scenes.Settings.SettingsManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
-import jdemic.ui.SafeResourceLoader;
+import jdemic.ui.PlayerNameUtil;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TextUtil;
-import jdemic.ui.UIImageUtil;
-
-import java.util.function.UnaryOperator;
 
 public class JoinCodeScene {
     private final StackPane root;
@@ -43,16 +40,9 @@ public class JoinCodeScene {
     }
 
     private void setupBackground() {
-        javafx.scene.image.Image bg = UIImageUtil.load("/background.png");
-        if (bg == null) {
-            return;
-        }
-        ImageView background = new ImageView(bg);
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
+        javafx.scene.image.ImageView background = SceneBackgroundUtil.addCoverBackground(root, SceneBackgroundUtil.MENU_BACKGROUND);
+        if (background == null) return;
         background.setMouseTransparent(true); // allow clicks to pass through decorative background
-        root.getChildren().add(background);
     }
 
     private void setupUI() {
@@ -65,8 +55,8 @@ public class JoinCodeScene {
         Label accessLabel = TextUtil.createText("ENTER IP ADDRESS", "hkmodular", 0.03, "#ff0000", root);
         accessLabel.setTextAlignment(TextAlignment.CENTER);
 
-        TextField nicknameField = new TextField(presetNickname == null ? savedPlayerName() : normalizeNickname(presetNickname));
-        nicknameField.setTextFormatter(new TextFormatter<>(nicknameFilter()));
+        TextField nicknameField = new TextField(presetNickname == null ? savedPlayerName() : PlayerNameUtil.normalizeNickname(presetNickname));
+        nicknameField.setTextFormatter(new TextFormatter<>(PlayerNameUtil.nicknameFilter()));
         nicknameField.setMaxWidth(300);
         nicknameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
         nicknameField.setVisible(presetNickname == null);
@@ -137,25 +127,7 @@ public class JoinCodeScene {
 
     private String savedPlayerName() {
         String savedName = SettingsManager.getInstance().playerNameProperty().get();
-        return normalizeNickname(savedName);
-    }
-
-    private UnaryOperator<TextFormatter.Change> nicknameFilter() {
-        return change -> {
-            String text = change.getControlNewText();
-            return text.matches("[a-zA-Z0-9]*") && text.length() <= 16 ? change : null;
-        };
-    }
-
-    private String normalizeNickname(String nickname) {
-        if (nickname == null) {
-            return "Player";
-        }
-        String normalized = nickname.replaceAll("[^a-zA-Z0-9]", "");
-        if (normalized.length() > 16) {
-            normalized = normalized.substring(0, 16);
-        }
-        return normalized.isBlank() ? "Player" : normalized;
+        return PlayerNameUtil.normalizeNickname(savedName);
     }
 
     private void connectToLobby(String code, String nickname, ButtonsUtil joinBtn) {

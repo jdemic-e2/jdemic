@@ -1,12 +1,12 @@
 package jdemic.Scenes.Tutorial;
 
 import javafx.geometry.Pos;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.SafeResourceLoader;
+import jdemic.ui.SceneBackgroundUtil;
 
 public class TutorialMapScene {
 
@@ -25,12 +25,8 @@ public class TutorialMapScene {
         TutorialUtil.createTutorialTitle(root,"TUTORIAL",0.02, "#00b5d4", Pos.TOP_LEFT, 0.03, 0.03, null, 0);
         TutorialUtil.createTutorialTitle(root,"1. THE MAP",0.05,"#cfc900", Pos.TOP_CENTER,0.14,0.08,"#cfc900",5);
 
-        java.net.URL mapUrl = getClass().getResource("/backgroundMap.png");
-        if (mapUrl == null) {
-            System.err.println("[TutorialMapScene] Missing resource: /backgroundMap.png");
-            return;
-        }
-        ImageView map = new ImageView(SafeResourceLoader.loadImage(mapUrl));
+        ImageView map = new ImageView(SafeResourceLoader.loadImage(SceneBackgroundUtil.MAP_BACKGROUND));
+        if (map.getImage() == null) return;
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.75));
         map.translateXProperty().bind(root.widthProperty().multiply(0.1));
