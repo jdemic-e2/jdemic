@@ -38,7 +38,7 @@ public class BuildResearchStation extends GameAction {
         if (!isValid(state, playerState)) {
             return;
         }
-
+        
         CityNode currentCity = playerState.getPlayerCurrentCity();
         currentCity.addResearchStation();
 

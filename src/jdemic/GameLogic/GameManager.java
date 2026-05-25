@@ -195,6 +195,9 @@ public class GameManager {
             
 
         }
+        else {
+            System.out.println("the action is NOT valid.");
+        }
     }
 
     public void consumeAction(PlayerState playerState)
@@ -227,9 +230,7 @@ public class GameManager {
     public void nextTurn() {
         if (state.isGameOver()) return;
 
-        for(CityNode city : getState().getMap().getCityList()){
-            System.out.println(city.getName()+ " has research station: " + city.hasResearchStation());
-        }
+    
 
         PlayerState currentPlayer = state.getCurrentPlayer();
         if(currentPlayer == null) return;
