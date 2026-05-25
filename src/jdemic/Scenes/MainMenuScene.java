@@ -210,11 +210,9 @@ public class MainMenuScene {
 
         tutorialBtn.setOnMouseClicked(e -> {
             SceneManager.switchScene(SCENE_TUTORIAL);
-            SceneManager.switchScene(SCENE_TUTORIAL);
         });
 
         playBtn.setOnMouseClicked(e -> {
-            SceneManager.switchScene(SCENE_HOST_SCREEN);
             SceneManager.switchScene(SCENE_HOST_SCREEN);
         });
 
