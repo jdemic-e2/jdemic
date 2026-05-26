@@ -2,7 +2,12 @@ package jdemic.GameLogic;
 import java.util.List;
 import java.util.function.Consumer;
 
+import jdemic.GameLogic.Actions.FirewallAction;
 import jdemic.GameLogic.Actions.GameAction;
+import jdemic.GameLogic.Actions.SatelliteAction;
+import jdemic.GameLogic.Actions.ServerAction;
+import jdemic.GameLogic.Actions.SystemControlAction;
+import jdemic.GameLogic.Actions.ThreatAction;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
@@ -181,6 +186,7 @@ public class GameManager {
 
         if (action.isValid(state, player.getState())) {
             action.execute(state, player.getState());
+            discardUsedEventCardIfNeeded(player.getState(), action);
             state.setActionsRemaining(state.getActionsRemaining() - 1);
             checkWinCondition();
             if(state.isGameOver()) return;
@@ -197,6 +203,36 @@ public class GameManager {
         else {
             System.out.println("the action is NOT valid.");
         }
+    }
+
+    private void discardUsedEventCardIfNeeded(PlayerState playerState, GameAction action) {
+        Card cardToDiscard = getEventCardToDiscard(action);
+        if (cardToDiscard == null || playerState == null || state.getCardDeck() == null) {
+            return;
+        }
+
+        if (playerState.getHand().remove(cardToDiscard)) {
+            state.getCardDeck().discard(cardToDiscard);
+        }
+    }
+
+    private Card getEventCardToDiscard(GameAction action) {
+        if (action instanceof FirewallAction firewallAction) {
+            return firewallAction.getCardToDiscard();
+        }
+        if (action instanceof SatelliteAction satelliteAction) {
+            return satelliteAction.getCardToDiscard();
+        }
+        if (action instanceof ServerAction serverAction) {
+            return serverAction.getCardToDiscard();
+        }
+        if (action instanceof SystemControlAction systemControlAction) {
+            return systemControlAction.getCardToDiscard();
+        }
+        if (action instanceof ThreatAction threatAction) {
+            return threatAction.getCardToDiscard();
+        }
+        return null;
     }
 
     public void consumeAction(PlayerState playerState)

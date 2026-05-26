@@ -17,6 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 /**
@@ -361,13 +363,14 @@ class PacketProcessorGameActionsTest {
     @Test
     void firewallValidBroadcasts() {
         when(clientHandler.getConnectedPlayerName()).thenReturn("ALICE");
-        addEventCardToAlice("Firewall Card", Card.EventType.FIREWALL);
+        Card eventCard = addEventCardToAlice("Firewall Card", Card.EventType.FIREWALL);
 
         ObjectNode payload = baseGameData("FIREWALL", "ALICE");
         payload.put("cardIndex", 0);
 
         packetProcessor.process(gameDataPacket(payload));
 
+        assertEventCardDiscarded(eventCard);
         verify(clientHandler).broadcastGameStateToAll();
     }
 
@@ -402,7 +405,7 @@ class PacketProcessorGameActionsTest {
     @Test
     void serverActionValidBroadcasts() {
         when(clientHandler.getConnectedPlayerName()).thenReturn("ALICE");
-        addEventCardToAlice("Server Card", Card.EventType.SERVER);
+        Card eventCard = addEventCardToAlice("Server Card", Card.EventType.SERVER);
 
         ObjectNode payload = baseGameData("SERVER", "ALICE");
         payload.put("cardIndex", 0);
@@ -410,6 +413,7 @@ class PacketProcessorGameActionsTest {
 
         packetProcessor.process(gameDataPacket(payload));
 
+        assertEventCardDiscarded(eventCard);
         verify(clientHandler).broadcastGameStateToAll();
     }
 
@@ -655,7 +659,7 @@ class PacketProcessorGameActionsTest {
     @Test
     void satelliteValidBroadcasts() {
         when(clientHandler.getConnectedPlayerName()).thenReturn("ALICE");
-        addEventCardToAlice("Satellite Card", Card.EventType.SATELLITE);
+        Card eventCard = addEventCardToAlice("Satellite Card", Card.EventType.SATELLITE);
 
         ObjectNode payload = baseGameData("SATELLITE", "ALICE");
         payload.put("cardIndex", 0);
@@ -664,6 +668,7 @@ class PacketProcessorGameActionsTest {
 
         packetProcessor.process(gameDataPacket(payload));
 
+        assertEventCardDiscarded(eventCard);
         verify(clientHandler).broadcastGameStateToAll();
     }
 
@@ -760,7 +765,7 @@ class PacketProcessorGameActionsTest {
     @Test
     void controlActionValidWithDiscardIndexBroadcasts() {
         when(clientHandler.getConnectedPlayerName()).thenReturn("ALICE");
-        addEventCardToAlice("Control Event Card", Card.EventType.CONTROL);
+        Card eventCard = addEventCardToAlice("Control Event Card", Card.EventType.CONTROL);
 
         Card discarded = new Card("Paris", CardType.INFECTION, gameManager.getState().getMap().getCity("Paris"));
         gameManager.getState().getCardDeck().getInfectionDiscardPile().add(discarded);
@@ -771,6 +776,7 @@ class PacketProcessorGameActionsTest {
 
         packetProcessor.process(gameDataPacket(payload));
 
+        assertEventCardDiscarded(eventCard);
         verify(clientHandler).broadcastGameStateToAll();
     }
 
@@ -838,7 +844,7 @@ class PacketProcessorGameActionsTest {
     @Test
     void threatActionValidBroadcasts() {
         when(clientHandler.getConnectedPlayerName()).thenReturn("ALICE");
-        addEventCardToAlice("Threat Scan Card", Card.EventType.THREAT);
+        Card eventCard = addEventCardToAlice("Threat Scan Card", Card.EventType.THREAT);
 
         // Populate top infection cards
         for (int i = 0; i < 6; i++) {
@@ -854,6 +860,7 @@ class PacketProcessorGameActionsTest {
 
         packetProcessor.process(gameDataPacket(payload));
 
+        assertEventCardDiscarded(eventCard);
         verify(clientHandler).broadcastGameStateToAll();
     }
 
@@ -910,5 +917,10 @@ class PacketProcessorGameActionsTest {
         packetProcessor.process(gameDataPacket(payload));
 
         verify(clientHandler, never()).broadcastGameStateToAll();
+    }
+
+    private void assertEventCardDiscarded(Card eventCard) {
+        assertFalse(alice.getHand().contains(eventCard));
+        assertTrue(gameManager.getState().getCardDeck().getPlayerDiscardPile().contains(eventCard));
     }
 }
