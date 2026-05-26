@@ -194,6 +194,9 @@ public class GameManager {
             
 
         }
+        else {
+            System.out.println("the action is NOT valid.");
+        }
     }
 
     public void consumeAction(PlayerState playerState)
@@ -226,9 +229,7 @@ public class GameManager {
     public void nextTurn() {
         if (state.isGameOver()) return;
 
-        for(CityNode city : getState().getMap().getCityList()){
-            System.out.println(city.getName()+ " has research station: " + city.hasResearchStation());
-        }
+    
 
         PlayerState currentPlayer = state.getCurrentPlayer();
         if(currentPlayer == null) return;
@@ -363,7 +364,8 @@ public class GameManager {
     }
 
     public void checkWinCondition() {
-        if (state.getDiseaseManager().areAllCured()) {
+        if (state.getDiseaseManager().areAllCured()
+                || state.getDiseaseManager().hasClearedAllInfections()) {
             state.setGameOver(true);
             state.setGameWon(true);
         }
