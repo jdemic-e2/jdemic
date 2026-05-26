@@ -1,0 +1,27 @@
+package jdemic.DedicatedServer.network.security.strategies;
+
+import org.json.JSONObject;
+
+public class GlobalSecurityStrategy implements MaskingStrategy {
+
+    private final String infectionCard = "infectionCards";
+
+    @Override
+    public void apply(JSONObject gameState, String targetPlayerId) {
+        // Anti-Cheat: Prevent clients from seeing the upcoming infection cards
+        if (gameState.has("infectionDeck")) {
+            gameState.remove("infectionDeck");
+        }
+
+        if (gameState.has("cardDeck")) {
+            JSONObject cardDeck = gameState.optJSONObject("cardDeck");
+            if (cardDeck != null && cardDeck.has(infectionCard)) {
+                int remainingInfectionCards = cardDeck.getJSONArray(infectionCard).length();
+                cardDeck.remove(infectionCard);
+                cardDeck.put("infectionCardCount", remainingInfectionCards);
+            }
+        }
+        
+        // You can add more global rules here later (e.g., hiding the game seed)
+    }
+}

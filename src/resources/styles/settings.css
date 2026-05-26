@@ -1,0 +1,63 @@
+.cyber-slider {
+    -fx-pref-width: 280px;
+    -fx-padding: 8 0 8 0;
+}
+
+.cyber-slider .track {
+    -fx-background-color:
+        rgba(0, 217, 255, 0.30),
+        black;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 2;
+    -fx-pref-height: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 217, 255, 0.85), 10, 0.35, 0, 0);
+}
+
+.cyber-slider .thumb {
+    -fx-background-color:
+        #ffffff,
+        #00d9ff,
+        black;
+    -fx-background-insets: 0, 2, 5;
+    -fx-background-radius: 0;
+    -fx-pref-width: 18px;
+    -fx-pref-height: 26px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 217, 255, 1.0), 14, 0.55, 0, 0);
+}
+
+
+.cyber-slider[focused=true] .thumb {
+    -fx-background-color:
+        #d1d412,
+        #00d9ff,
+        black;
+}
+
+.cyber-toggle {
+    -fx-font-family: "hkmodular";
+    -fx-font-size: 13px;
+    -fx-min-width: 76px;
+    -fx-pref-width: 76px;
+    -fx-min-height: 34px;
+    -fx-pref-height: 34px;
+    -fx-background-radius: 2;
+    -fx-border-radius: 2;
+    -fx-border-width: 2;
+    -fx-cursor: hand;
+}
+
+.cyber-toggle-on {
+    -fx-background-color:
+        linear-gradient(to right, black 0%, black 42%, #00d9ff 43%, #00d9ff 100%);
+    -fx-border-color: #00d9ff;
+    -fx-text-fill: #001014;
+    -fx-effect: dropshadow(gaussian, rgba(0, 217, 255, 0.90), 14, 0.45, 0, 0);
+}
+
+.cyber-toggle-off {
+    -fx-background-color:
+        linear-gradient(to right, #ff2d2d 0%, #ff2d2d 57%, black 58%, black 100%);
+    -fx-border-color: #ff2d2d;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(255, 45, 45, 0.70), 10, 0.35, 0, 0);
+}

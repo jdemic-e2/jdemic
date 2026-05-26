@@ -1,0 +1,37 @@
+FROM maven:3.9-eclipse-temurin-21 AS build
+
+WORKDIR /app
+
+COPY pom.xml .
+RUN mvn -B -DskipTests dependency:go-offline
+
+COPY src ./src
+RUN mvn -B -DskipTests package dependency:copy-dependencies
+
+FROM eclipse-temurin:21-jre
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends curl; \
+    rm -rf /var/lib/apt/lists/*; \
+    groupadd --system --gid 10001 jdemic; \
+    useradd --system --uid 10001 --gid jdemic --home-dir /app --shell /usr/sbin/nologin jdemic
+
+WORKDIR /app
+
+COPY --from=build --chown=jdemic:jdemic /app/target/jdemic-engine-1.0-SNAPSHOT.jar ./jdemic-engine.jar
+COPY --from=build --chown=jdemic:jdemic /app/target/dependency ./dependency
+
+ENV JDEMIC_ORCHESTRATOR_PORT=8090
+ENV JDEMIC_SERVER_PORT_MIN=9001
+ENV JDEMIC_SERVER_PORT_MAX=9010
+
+EXPOSE 8090
+EXPOSE 9001-9010
+EXPOSE 10001-10010
+USER jdemic
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD curl -fsS "http://127.0.0.1:${JDEMIC_ORCHESTRATOR_PORT}/health" >/dev/null || exit 1
+
+CMD ["java", "-cp", "jdemic-engine.jar:dependency/*", "jdemic.DedicatedServer.network.core.MasterOrchestrator"]

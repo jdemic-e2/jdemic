@@ -1,0 +1,212 @@
+package jdemic.ui.GameplayUI;
+
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
+import javafx.animation.ParallelTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.SequentialTransition;
+import javafx.beans.binding.Bindings;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Label;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.util.Duration;
+import jdemic.ui.AnimationSpeedUtil;
+import jdemic.GameLogic.GameManager;
+import jdemic.ui.GlowUtil;
+import jdemic.ui.TextUtil;
+
+public class InfectionRateManager {
+    private final StackPane root;
+    private final GameManager gameManager;
+    private HBox trackBox;
+    private StackPane[] slots;
+    private final int[] rates;
+    private VBox container;
+
+    int infection_stage;
+    private int lastInfectionIndex = -1;
+
+    public InfectionRateManager(StackPane root, GameManager gameManager)
+    {
+        this.root = root;
+        this.gameManager = gameManager;
+        this.rates = gameManager.getInfectionRateTrack();
+        infection_stage = 1;
+        setupTrack();
+        updateTrack();
+    }
+
+    public void setupTrack() {
+        VBox content = new VBox();
+        content.setAlignment(Pos.TOP_CENTER);
+        content.spacingProperty().bind(root.heightProperty().multiply(0.015));
+
+        Label title = TextUtil.createText("INFECTION RATE", "hkmodular", 0.010, "#00d9ff", root);
+
+        title.setMaxWidth(Double.MAX_VALUE);
+        title.setMinWidth(Region.USE_PREF_SIZE);
+        title.setAlignment(Pos.CENTER);
+
+        content.getChildren().add(title);
+
+        trackBox = new HBox();
+        trackBox.spacingProperty().bind(root.widthProperty().multiply(0.004));
+        trackBox.setAlignment(Pos.CENTER);
+
+        slots = new StackPane[rates.length];
+        for (int i = 0 ; i < rates.length ; i++)
+        {
+            StackPane slot = new StackPane();
+
+            Rectangle diamond = new Rectangle();
+            diamond.widthProperty().bind(Bindings.createDoubleBinding(
+                    () -> Math.max(14, Math.min(28, root.getWidth() * 0.018)),
+                    root.widthProperty()
+            ));
+            diamond.heightProperty().bind(diamond.widthProperty());
+            diamond.setRotate(45);
+            diamond.setFill(Color.rgb(20, 20, 20));
+            diamond.setStroke(Color.web("#444444"));
+            diamond.setStrokeWidth(1);
+
+            Label label = new Label(String.valueOf(rates[i]));
+            label.setStyle("-fx-text-fill: #666666; -fx-font-family: 'hkmodular';");
+            label.setMinWidth(Region.USE_PREF_SIZE);
+
+            label.fontProperty().bind(Bindings.createObjectBinding(() -> javafx.scene.text.Font.font("hkmodular", root.getHeight() * 0.018),root.heightProperty()));
+            label.setRotate(0);
+            slot.getChildren().addAll(diamond, label);
+
+            slots[i] = slot;
+            trackBox.getChildren().add(slot);
+        }
+
+        content.getChildren().add(trackBox);
+
+        content.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(
+                                root.getHeight() * 0.015,
+                                root.getWidth() * 0.015,
+                                root.getHeight() * 0.03,
+                                root.getWidth() * 0.015),
+                        root.widthProperty(),
+                        root.heightProperty()));
+
+        StackPane wrapper = new StackPane(content);
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        wrapper.setStyle("-fx-background-color: rgba(0,0,0,0.9);" + "-fx-border-color: transparent transparent transparent #00eaff;" + "-fx-border-width: 0 0 0 2;");
+        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(230, Math.min(420, root.getWidth() * 0.34)),
+                root.widthProperty()
+        ));
+        GlowUtil.applyGlow(wrapper, "#00eaff", Math.max(8, root.getWidth() * 0.01));
+        container = new VBox(wrapper);
+        container.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+    }
+
+    public void updateTrack() {
+        if (gameManager == null || gameManager.getState() == null) return;
+
+        int currentIndex = gameManager.getState().getInfectionRate();
+        int previousIndex = lastInfectionIndex;
+        infection_stage = currentIndex;
+
+        for (int i = 0; i < slots.length; i++) {
+
+            StackPane slot = slots[i];
+            Rectangle diamond = (Rectangle) slot.getChildren().get(0);
+            Label label = (Label) slot.getChildren().get(1);
+
+            if (i == currentIndex) {
+                diamond.setFill(Color.web("#b10606"));
+                diamond.setStroke(Color.WHITE);
+                label.setStyle("-fx-text-fill: white; -fx-font-family: 'hkmodular';");
+                DropShadow glow = new DropShadow(20, Color.web("#ff8b8b"));
+                diamond.setEffect(glow);
+
+            } else if (i < currentIndex) {
+                diamond.setFill(Color.web("#006a80"));
+                diamond.setStroke(Color.web("#00eaff", 0.3));
+                label.setStyle("-fx-text-fill: white; -fx-font-family: 'hkmodular';");
+                diamond.setEffect(null);
+
+            } else {
+                diamond.setFill(Color.rgb(20, 20, 20));
+                diamond.setStroke(Color.web("#444444"));
+                label.setStyle("-fx-text-fill: #666666; -fx-font-family: 'hkmodular';");
+                diamond.setEffect(null);
+            }
+        }
+
+        if (previousIndex >= 0 && currentIndex > previousIndex) {
+            animateRateIncrease(previousIndex, currentIndex);
+        }
+        lastInfectionIndex = currentIndex;
+    }
+
+    private void animateRateIncrease(int previousIndex, int currentIndex) {
+        if (currentIndex < 0 || currentIndex >= slots.length) {
+            return;
+        }
+
+        StackPane currentSlot = slots[currentIndex];
+        Rectangle currentDiamond = (Rectangle) currentSlot.getChildren().get(0);
+        Label currentLabel = (Label) currentSlot.getChildren().get(1);
+
+        if (previousIndex >= 0 && previousIndex < slots.length) {
+            StackPane previousSlot = slots[previousIndex];
+            ScaleTransition previousSettle = new ScaleTransition(Duration.millis(180), previousSlot);
+            previousSettle.setToX(0.92);
+            previousSettle.setToY(0.92);
+            previousSettle.setAutoReverse(true);
+            previousSettle.setCycleCount(2);
+            AnimationSpeedUtil.play(previousSettle);
+        }
+
+        DropShadow flare = new DropShadow(45, Color.web("#ff2d2d"));
+        currentDiamond.setEffect(flare);
+
+        ScaleTransition grow = new ScaleTransition(Duration.millis(240), currentSlot);
+        grow.setFromX(0.72);
+        grow.setFromY(0.72);
+        grow.setToX(1.35);
+        grow.setToY(1.35);
+        grow.setInterpolator(Interpolator.EASE_OUT);
+
+        ScaleTransition settle = new ScaleTransition(Duration.millis(260), currentSlot);
+        settle.setToX(1.0);
+        settle.setToY(1.0);
+        settle.setInterpolator(Interpolator.EASE_BOTH);
+
+        FadeTransition labelFlash = new FadeTransition(Duration.millis(180), currentLabel);
+        labelFlash.setFromValue(0.35);
+        labelFlash.setToValue(1.0);
+        labelFlash.setCycleCount(4);
+        labelFlash.setAutoReverse(true);
+
+        ParallelTransition flash = new ParallelTransition(new SequentialTransition(grow, settle), labelFlash);
+        flash.setOnFinished(event -> {
+            currentSlot.setScaleX(1.0);
+            currentSlot.setScaleY(1.0);
+            currentLabel.setOpacity(1.0);
+            currentDiamond.setEffect(new DropShadow(20, Color.web("#ff8b8b")));
+        });
+        AnimationSpeedUtil.play(flash);
+    }
+
+    public int getInfection_stage()
+    {
+        return infection_stage;
+    }
+
+    public VBox getContainer()
+    {
+        return container; 
+    }
+}

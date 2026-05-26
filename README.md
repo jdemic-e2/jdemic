@@ -113,11 +113,13 @@ E2E tests live under `test/jdemic/e2e`. They are isolated from the default Suref
 
 ## Run the Dedicated Server Locally
 
-The dedicated server entry point is:
+The Docker/server entry point is the master orchestrator:
 
 ```text
-jdemic.DedicatedServer.network.core.JdemicNetworkServer
+jdemic.DedicatedServer.network.core.MasterOrchestrator
 ```
+
+The orchestrator listens on port `8080`. When the client sends `HOST`, it starts a new `JdemicNetworkServer` process on an available game port.
 
 Build the application and copy runtime dependencies:
 
@@ -137,10 +139,19 @@ On Windows, use `;` instead of `:` in the classpath:
 java -cp "target/jdemic-engine-1.0-SNAPSHOT.jar;target/dependency/*" jdemic.DedicatedServer.network.core.JdemicNetworkServer
 ```
 
+To run the multi-server orchestrator locally after packaging:
+
+```bash
+java -cp "target/jdemic-engine-1.0-SNAPSHOT.jar:target/dependency/*" jdemic.DedicatedServer.network.core.MasterOrchestrator
+```
+
 ### Dedicated Server Environment Variables
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
+| `JDEMIC_ORCHESTRATOR_PORT` | `8080` | TCP control port for `HOST` requests and HTTP `/health` |
+| `JDEMIC_SERVER_PORT_MIN` | `9001` | First port the orchestrator can assign to a game server |
+| `JDEMIC_SERVER_PORT_MAX` | `9999` | Last port the orchestrator can assign to a game server |
 | `JDEMIC_SERVER_PORT` | `9000` | TCP port for game client connections |
 | `JDEMIC_STATUS_ENABLED` | `true` | Enables the HTTP status/health server |
 | `JDEMIC_STATUS_HOST` | `localhost` locally, `0.0.0.0` in Docker | Status server bind host |
@@ -169,8 +180,8 @@ docker compose up --build dedicated-server
 
 The Compose setup exposes:
 
-- Game server: `localhost:9000`
-- Status/health server: `localhost:8080`
+- Orchestrator and health: `localhost:8080`
+- Game servers: `localhost:9001` through `localhost:9010`
 
 Check the health endpoint:
 

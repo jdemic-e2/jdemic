@@ -1,0 +1,169 @@
+package jdemic.GameLogic.ServerRelatedClasses;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import jdemic.GameLogic.Deck;
+import jdemic.GameLogic.DiseaseManager;
+import jdemic.GameLogic.PandemicMapGraph;
+
+public class GameState{
+
+    // player info
+    private List<PlayerState> playerArray = new ArrayList<>();
+    private List<LobbyChatMessage> lobbyChatMessages = new ArrayList<>();
+    private long lobbyCountdownStartedAt;
+
+    private DiseaseManager diseaseManager;
+    private Deck cardDeck;
+
+    private PandemicMapGraph map;
+
+    private int currentPlayerIndex;
+    private int actionsRemaining;
+    private int infectionRate;
+    private int epidemicCount;
+    private boolean skipInfection = false;
+
+    // variables to account win/lose and finished/ongoing
+
+    private boolean gameOver;
+    private boolean gameWon;
+    private boolean gameStarted;
+
+    public GameState(){
+        this.playerArray = new ArrayList<>();
+    }
+
+    public void addPlayer(PlayerState s){
+        this.playerArray.add(s);
+    }
+
+    public void removePlayer(PlayerState s){
+        this.playerArray.remove(s);
+    }
+
+    public List<PlayerState> getPlayers(){
+        return this.playerArray;
+    }
+
+    public List<LobbyChatMessage> getLobbyChatMessages(){
+        return this.lobbyChatMessages;
+    }
+
+    public void addLobbyChatMessage(LobbyChatMessage message){
+        this.lobbyChatMessages.add(message);
+    }
+
+    public long getLobbyCountdownStartedAt(){
+        return this.lobbyCountdownStartedAt;
+    }
+
+    public void setLobbyCountdownStartedAt(long lobbyCountdownStartedAt){
+        this.lobbyCountdownStartedAt = lobbyCountdownStartedAt;
+    }
+
+    public DiseaseManager getDiseaseManager(){
+        return this.diseaseManager;
+    }
+
+    public void setDiseaseManager(DiseaseManager diseaseManager){
+        this.diseaseManager = diseaseManager;
+    }
+
+    public Deck getCardDeck(){
+        return this.cardDeck;
+    }
+
+    public void setCardDeck(Deck cardDeck){
+        this.cardDeck = cardDeck;
+    }
+
+    public PandemicMapGraph getMap(){
+        return this.map;
+    }
+
+    public void setMap(PandemicMapGraph map){
+        this.map = map;
+    }
+
+    public int getCurrentPlayerIndex(){
+        return this.currentPlayerIndex;
+    }
+
+    public void setCurrentPlayerIndex(int currentPlayerIndex){
+        this.currentPlayerIndex = currentPlayerIndex;
+    }
+
+    public int getActionsRemaining(){
+        return this.actionsRemaining;
+    }
+
+    public void setActionsRemaining(int actionsRemaining){
+        this.actionsRemaining = actionsRemaining;
+    }
+
+    public int getInfectionRate(){
+        return this.infectionRate;
+    }
+
+    public void setInfectionRate(int infectionRate){
+        this.infectionRate = infectionRate;
+    }
+
+    public int getEpidemicCount(){
+        return this.epidemicCount;
+    }
+
+    public void setEpidemicCount(int epidemicCount){
+        this.epidemicCount = epidemicCount;
+    }
+
+    public boolean isGameOver(){
+        return this.gameOver;
+    }
+
+    public void setGameOver(boolean gameOver){
+        this.gameOver = gameOver;
+    }
+
+    public boolean isGameWon(){
+        return this.gameWon;
+    }
+
+    public void setGameWon(boolean gameWon){
+        this.gameWon = gameWon;
+    }
+
+    public boolean isGameStarted(){
+        return this.gameStarted;
+    }
+
+    public void setGameStarted(boolean gameStarted){
+        this.gameStarted = gameStarted;
+    }
+
+    public boolean isSkipInfection() { return this.skipInfection; }
+
+    public void setSkipInfection(boolean skipInfection) { this.skipInfection = skipInfection; }
+    /**
+     * Gets the current player whose turn it is
+     * @return the current PlayerState, or null if no players exist
+     */
+    public PlayerState getCurrentPlayer(){
+        if(playerArray == null || playerArray.isEmpty()){
+            return null;
+        }
+        return playerArray.get(currentPlayerIndex);
+    }
+
+    /**
+     * Checks if the given player is the current player
+     * @param playerState the player to check
+     * @return true if it's the player's turn, false otherwise
+     */
+    public boolean isPlayerTurn(PlayerState playerState){
+        PlayerState currentPlayer = getCurrentPlayer();
+        return currentPlayer != null && currentPlayer.getPlayerName().equalsIgnoreCase(playerState.getPlayerName());
+    }
+}
