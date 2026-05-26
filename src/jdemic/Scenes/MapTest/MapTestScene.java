@@ -432,6 +432,7 @@ public class MapTestScene {
         if (chatManager != null) chatManager.updateMessages(gameState.get("lobbyChatMessages"));
         Platform.runLater(() -> {
             syncResearchStationVisuals();
+            if (cureManager != null) cureManager.updateUI();
             updatePawnPositions();
             playSnapshotAnimations(before);
         });
@@ -569,10 +570,11 @@ public class MapTestScene {
             return;
         }
 
+        DiseaseManager diseaseManager = manager.getState().getDiseaseManager();
         for (DiseaseColor color : DiseaseColor.values()) {
-            if (isCuredInSnapshot(diseaseManagerNode, color)
-                    && !manager.getState().getDiseaseManager().isCured(color)) {
-                manager.getState().getDiseaseManager().discoverCure(color);
+            Boolean cured = getCuredStateFromSnapshot(diseaseManagerNode, color);
+            if (cured != null) {
+                diseaseManager.setCured(color, cured);
             }
         }
 
@@ -585,7 +587,18 @@ public class MapTestScene {
         manager.getState().getDiseaseManager().recomputeCubeSupplyFromMap();
     }
 
-    private boolean isCuredInSnapshot(JsonNode diseaseManagerNode, DiseaseColor color) {
+    private Boolean getCuredStateFromSnapshot(JsonNode diseaseManagerNode, DiseaseColor color) {
+        JsonNode curedDiseases = diseaseManagerNode.get("curedDiseases");
+        if (curedDiseases != null && curedDiseases.isObject()) {
+            JsonNode cured = curedDiseases.get(color.name());
+            if (cured == null) {
+                cured = curedDiseases.get(color.name().toLowerCase(Locale.ROOT));
+            }
+            if (cured != null && cured.isBoolean()) {
+                return cured.asBoolean();
+            }
+        }
+
         String lower = color.name().substring(0, 1).toUpperCase(Locale.ROOT)
                 + color.name().substring(1).toLowerCase(Locale.ROOT);
         String[] fieldNames = {
@@ -595,11 +608,11 @@ public class MapTestScene {
 
         for (String fieldName : fieldNames) {
             JsonNode cured = diseaseManagerNode.get(fieldName);
-            if (cured != null && cured.asBoolean(false)) {
-                return true;
+            if (cured != null && cured.isBoolean()) {
+                return cured.asBoolean();
             }
         }
-        return false;
+        return null;
     }
 
     private JsonNode getPlayersArray(JsonNode gameState) {

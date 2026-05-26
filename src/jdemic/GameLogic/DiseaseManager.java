@@ -213,6 +213,17 @@ public class DiseaseManager {
         }
     }
 
+    public void setCured(DiseaseColor color, boolean cured) {
+        switch (color) {
+            case BLUE: this.isBlueCured = cured; break;
+            case YELLOW: this.isYellowCured = cured; break;
+            case BLACK: this.isBlackCured = cured; break;
+            case RED: this.isRedCured = cured; break;
+        }
+
+        evaluateEradication(color, false);
+    }
+
     /**
      * Returns true if the disease color has been eradicated (cured and no cubes
      * remain on the board). When eradicated, no further cubes of that color
