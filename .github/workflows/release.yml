@@ -29,6 +29,7 @@ jobs:
 
       - name: Generate Version Tag
         id: versioning
+        shell: bash
         run: |
           # Generate a unique version based on run number and attempt (e.g., v1.0.42.1)
           VERSION="v1.0.${{ github.run_number }}.${{ github.run_attempt }}"
