@@ -1,7 +1,6 @@
 package jdemic.GameLogic;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.logging.Logger;
 
 import jdemic.GameLogic.Actions.GameAction;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;

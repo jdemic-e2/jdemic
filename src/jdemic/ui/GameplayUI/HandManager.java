@@ -22,6 +22,11 @@ public class HandManager {
     private DeckManager deckManager;
 
     private HBox handContainer;
+    private java.util.List<Card> lastHand = new ArrayList<>();
+    private final java.util.Map<Integer, javafx.animation.Animation> handGlows = new java.util.HashMap<>();
+    private final java.util.Map<Integer, javafx.event.EventHandler<? super javafx.scene.input.MouseEvent>> previousClickHandlers = new java.util.HashMap<>();
+    private java.util.function.Consumer<Integer> selectionCallback = null;
+    private Runnable selectionCancelCallback = null;
 
     public HandManager(StackPane root, DeckManager deckManager) {
         this.root = root;
@@ -69,25 +74,93 @@ public class HandManager {
         root.getChildren().add(wrapper);
     }
 
-    public void updateHand(PlayerState player, boolean discardMode, Consumer<Integer> discardHandler) {
+    public void updateHand(PlayerState player, boolean discardMode, Consumer<Integer> discardHandler, Consumer<Integer> eventcardHandler) {
         handContainer.getChildren().clear();
         if (player == null || player.getHand() == null) {
             return;
         }
 
         List<Card> hand = player.getHand();
+        // store last hand for selection-mode operations
+        lastHand = new ArrayList<>(hand);
+
+        // for debugging - print hand contents to console
+        /*for (Card card : hand) {
+            System.out.println("Player hand contains: " + card.getCardName() + " (" + card.getType() + ")");
+        }*/
+
         for (int i = 0; i < hand.size(); i++) {
             Card card = hand.get(i);
             StackPane cardNode = createCardNode(card);
             int cardIndex = i;
 
-            if (discardMode && discardHandler != null) {
+            if (discardMode && discardHandler != null && card.getType() != CardType.EVENT) {
                 cardNode.setCursor(Cursor.HAND);
                 cardNode.setOnMouseClicked(e -> discardHandler.accept(cardIndex));
+            }
+            else if (card.getType() == CardType.EVENT && eventcardHandler != null) {
+                cardNode.setCursor(Cursor.HAND);
+                cardNode.setOnMouseClicked(e -> eventcardHandler.accept(cardIndex));
             }
 
             handContainer.getChildren().add(cardNode);
         }
+    }
+
+    public void enterSelectionMode(java.util.function.Predicate<Card> selectablePredicate, java.util.function.Consumer<Integer> onSelect, Runnable onCancel) {
+        if (lastHand == null || handContainer == null) return;
+        selectionCallback = onSelect;
+        selectionCancelCallback = onCancel;
+        previousClickHandlers.clear();
+        handGlows.clear();
+
+        for (int i = 0; i < handContainer.getChildren().size(); i++) {
+            Node node = handContainer.getChildren().get(i);
+            Card card = i < lastHand.size() ? lastHand.get(i) : null;
+            // save previous click handler
+            previousClickHandlers.put(i, node.getOnMouseClicked());
+
+            if (card != null && selectablePredicate.test(card)) {
+                node.setMouseTransparent(false);
+                node.setCursor(Cursor.HAND);
+                final int idx = i;
+                node.setOnMouseClicked(e -> {
+                    exitSelectionMode();
+                    if (selectionCallback != null) selectionCallback.accept(idx);
+                });
+                javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(javafx.util.Duration.millis(700), node);
+                ft.setFromValue(1.0);
+                ft.setToValue(0.6);
+                ft.setCycleCount(javafx.animation.Animation.INDEFINITE);
+                ft.setAutoReverse(true);
+                ft.play();
+                handGlows.put(i, ft);
+            } else {
+                node.setMouseTransparent(true);
+                node.setOnMouseClicked(null);
+                node.setCursor(Cursor.DEFAULT);
+            }
+        }
+    }
+
+    public void exitSelectionMode() {
+        for (int i = 0; i < handContainer.getChildren().size(); i++) {
+            Node node = handContainer.getChildren().get(i);
+            // stop glow if any
+            javafx.animation.Animation a = handGlows.get(i);
+            if (a != null) try { a.stop(); } catch (Exception ignored) {}
+            node.setMouseTransparent(false);
+            // restore previous click handler
+            javafx.event.EventHandler<? super javafx.scene.input.MouseEvent> prev = previousClickHandlers.get(i);
+            node.setOnMouseClicked(prev);
+            if (prev != null) node.setCursor(Cursor.HAND);
+            else node.setCursor(Cursor.DEFAULT);
+        }
+        handGlows.clear();
+        previousClickHandlers.clear();
+        selectionCallback = null;
+        if (selectionCancelCallback != null) selectionCancelCallback.run();
+        selectionCancelCallback = null;
     }
 
     private StackPane createCardNode(Card card) {

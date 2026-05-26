@@ -30,6 +30,7 @@ public class ActionMenuManager {
     private final Consumer<String> validNodesHighlighter;
     private MenuMode menuMode = MenuMode.MAIN;
     private String selectedMovementAction = null;
+    private boolean locked = false;
 
     private enum MenuMode {
         MAIN,
@@ -193,6 +194,11 @@ public class ActionMenuManager {
     }
 
     public void updateMenuState() {
+        if (locked) {
+            // when locked, force menu to MAIN and prevent interactions
+            menuMode = MenuMode.MAIN;
+            selectedMovementAction = null;
+        }
         if (!isCurrentPlayerTurn()) {
             menuMode = MenuMode.MAIN;
             selectedMovementAction = null;
@@ -202,6 +208,11 @@ public class ActionMenuManager {
         }
         actionSubMenu.getChildren().setAll(createButtonsForCurrentMode());
         actionSubMenu.toFront(); // make sure buttons remain on top so they can be clicked
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+        updateMenuState();
     }
 
     public void clearSelectedMovementAction() {
@@ -252,6 +263,7 @@ public class ActionMenuManager {
     }
 
     private boolean shouldDisable(MenuAction action) {
+        if (locked) return true;
         // Check if it's not the current player's turn
         if (playerName != null && !isCurrentPlayerTurn()) {
             return true; // Disable all buttons for non-current players
