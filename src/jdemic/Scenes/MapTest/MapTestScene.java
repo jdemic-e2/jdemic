@@ -431,6 +431,7 @@ public class MapTestScene {
         if (cureManager != null) cureManager.updateUI();
         if (chatManager != null) chatManager.updateMessages(gameState.get("lobbyChatMessages"));
         Platform.runLater(() -> {
+            syncResearchStationVisuals();
             updatePawnPositions();
             playSnapshotAnimations(before);
         });
@@ -511,6 +512,8 @@ public class MapTestScene {
             int maxPlayerIndex = manager.getState().getPlayers().size() - 1;
             manager.getState().setCurrentPlayerIndex(Math.max(0, Math.min(currentPlayerIndex, maxPlayerIndex)));
         }
+
+        syncResearchStationVisuals();
     }
 
     private void applyMapSnapshot(JsonNode gameState) {
@@ -1661,12 +1664,14 @@ public class MapTestScene {
         for (CityNode city : mapGraph.getCityList()) {
             updateResearchStationVisual(city);
         }
+        syncResearchStationVisuals();
         setupPawns(mapPane);
         // Create virus UI groups so disease cubes are rendered on the map
         for (CityNode city : mapGraph.getCityList()) {
             jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI group = new jdemic.ui.GameplayUI.Viruses.CityVirusGroupUI(city, mapPane, mapPane.heightProperty());
             cityVirusUIs.put(city, group);
         }
+        syncResearchStationVisuals();
         MapZoomPanHandler.attach(mapPane);
         mapContainer.getChildren().add(mapPane);
         root.getChildren().add(mapContainer);
@@ -1700,6 +1705,7 @@ public class MapTestScene {
         }
 
         if (existing != null) {
+            existing.getNode().toFront();
             return;
         }
 
@@ -1713,6 +1719,16 @@ public class MapTestScene {
         researchStationUIs.put(city, stationUI);
         mapPane.getChildren().add(stationUI.getNode());
         stationUI.getNode().toFront();
+    }
+
+    private void syncResearchStationVisuals() {
+        if (mapGraph == null || mapPane == null) {
+            return;
+        }
+
+        for (CityNode city : mapGraph.getCityList()) {
+            updateResearchStationVisual(city);
+        }
     }
 
     private static class AnimationSnapshot {
