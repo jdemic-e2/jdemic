@@ -5,6 +5,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import jdemic.Scenes.Lobby.JoinCodeScene;
+import jdemic.Scenes.SceneManager.SceneManager;
+import jdemic.Scenes.Settings.SettingsManager;
 import jdemic.ui.ButtonsUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +39,8 @@ class JoinCodeSceneFxTest {
     @Start
     void start(Stage stage) {
         this.stage = stage;
+        SceneManager.init(stage);
+        SettingsManager.getInstance().playerNameProperty().set("Player");
         joinCodeScene = new JoinCodeScene(stage);
         stage.setScene(new Scene(joinCodeScene.getRoot(), 1024, 768));
         stage.show();
@@ -86,7 +90,7 @@ class JoinCodeSceneFxTest {
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil joinBtn = LobbySceneFxTest.buttonByText(robot, "JOIN");
-        robot.clickOn(joinBtn);
+        robot.interact(() -> joinBtn.fireEvent(LobbySceneFxTest.mouseClicked()));
         WaitForAsyncUtils.waitForFxEvents();
 
         long visibleIpPromptCount = robot.lookup(hasText("ENTER IP ADDRESS")).queryAll().stream()
@@ -105,13 +109,13 @@ class JoinCodeSceneFxTest {
         TextField nicknameField = fields.get(0);
         TextField codeField = fields.get(1);
         robot.interact(() -> {
-            nicknameField.setText("   ");
+            nicknameField.setText("");
             codeField.setText("127.0.0.1");
         });
         WaitForAsyncUtils.waitForFxEvents();
 
         ButtonsUtil joinBtn = LobbySceneFxTest.buttonByText(robot, "JOIN");
-        robot.clickOn(joinBtn);
+        robot.interact(() -> joinBtn.fireEvent(LobbySceneFxTest.mouseClicked()));
         WaitForAsyncUtils.waitForFxEvents();
 
         assertNotNull(robot.lookup(hasText("ENTER NICKNAME")).queryLabeled());

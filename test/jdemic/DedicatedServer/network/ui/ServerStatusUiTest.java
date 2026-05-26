@@ -24,7 +24,7 @@ class ServerStatusUiTest {
         GameManager gameManager = new GameManager(new ArrayList<>(List.of(alice)), false);
 
         ServerStatusUi statusUi = new ServerStatusUi(
-                new DedicatedServerConfig(9000, false, "localhost", 8080, false),
+                new DedicatedServerConfig(9000, false, "localhost", 8080, false, 0L, false),
                 () -> gameManager,
                 () -> 1,
                 () -> null,

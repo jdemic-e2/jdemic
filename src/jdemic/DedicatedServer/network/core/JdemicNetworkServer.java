@@ -27,6 +27,8 @@ public class JdemicNetworkServer {
     private static final AtomicReference<JdemicNetworkServer> ACTIVE_SERVER = new AtomicReference<>();
     private static final Logger LOGGER = Logger.getLogger(JdemicNetworkServer.class.getName());
 
+  
+
     private final DedicatedServerConfig config;
     private final GameManager gameManager;
     private final List<ClientHandler> connectedClients = new CopyOnWriteArrayList<>();
@@ -91,7 +93,7 @@ public class JdemicNetworkServer {
     }
 
     public void start() {
-        LOGGER.info("Pornire Jdemic Network Server...");
+        LOGGER.info("Starting Jdemic Network Server...");
         if (!bindAndStartServices()) {
             return;
         }
@@ -100,7 +102,7 @@ public class JdemicNetworkServer {
     }
 
     public boolean startAsync() {
-        LOGGER.info("Pornire Jdemic Network Server...");
+        LOGGER.info("Starting Jdemic Network Server...");
         if (!bindAndStartServices()) {
             return false;
         }
@@ -118,12 +120,13 @@ public class JdemicNetworkServer {
 
         try {
             serverSocket = new ServerSocket(config.serverPort());
-            LOGGER.info("Serverul asculta pe portul " + config.serverPort());
+            LOGGER.info("The server is listening on the port: " + config.serverPort());
             startStatusUi();
+            startIdleTimeoutChecker();
             return true;
         } catch (Exception e) {
             running.set(false);
-            LOGGER.severe("Eroare fatala: Nu s-a putut porni serverul pe portul " + config.serverPort());
+            LOGGER.severe("Fatal error: The server with the port: \"" + config.serverPort()+"\" could not be started!");
             LOGGER.severe(e.getMessage());
             closeServerSocket();
             statusUi.stop();
@@ -138,6 +141,49 @@ public class JdemicNetworkServer {
             LOGGER.severe("[Status] Could not start status UI: " + e.getMessage());
         }
     }
+    //3rd change-> implemented a method that checks if the server has been idle for more than 60 seconds
+    private void startIdleTimeoutChecker() {
+        long idleShutdownMillis = config.idleShutdownMillis();
+        if (idleShutdownMillis <= 0) {
+            LOGGER.info("[SERVER] Idle shutdown is disabled.");
+            return;
+        }
+
+        Thread timeoutThread = new Thread(() -> {
+            long emptySince = System.currentTimeMillis();
+
+            while (running.get()) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                if (!connectedClients.isEmpty()) {
+                    emptySince = System.currentTimeMillis();
+                    continue;
+                }
+
+                long idleDuration = System.currentTimeMillis() - emptySince;
+                if (idleDuration >= idleShutdownMillis) {
+                    LOGGER.info("[SERVER] Idle timeout reached (" + idleShutdownMillis
+                            + " ms, 0 connected players). Stopping this server instance.");
+                    stop();
+
+                    if (config.exitProcessOnIdleShutdown()) {
+                        LOGGER.info("[SERVER] exitProcessOnIdleShutdown=true, terminating JVM explicitly.");
+                        System.exit(0);
+                    }
+
+                    break;
+                }
+            }
+        }, "jdemic-idle-timeout");
+
+        timeoutThread.setDaemon(true);
+        timeoutThread.start();
+    }
 
     private void acceptClients() {
         try {
@@ -147,11 +193,11 @@ public class JdemicNetworkServer {
                     handleClient(rawSocket);
                 } catch (SocketException e) {
                     if (running.get()) {
-                        LOGGER.severe("Eroare la acceptarea conexiunii: " + e.getMessage());
+                        LOGGER.severe("Error accepting connection: " + e.getMessage());
                     }
                 } catch (IOException e) {
                     if (running.get()) {
-                        LOGGER.severe("Eroare la acceptarea conexiunii: " + e.getMessage());
+                        LOGGER.severe("Error accepting connection: " + e.getMessage());
                     }
                 }
             }
@@ -174,18 +220,18 @@ public class JdemicNetworkServer {
     }
 
     private void handleClient(Socket rawSocket) throws IOException {
-        LOGGER.info("\n[SERVER] Client conectat: " + rawSocket.getInetAddress().getHostAddress());
-        LOGGER.info("[SERVER] Initializare handshake RSA/AES...");
+        LOGGER.info("\n[SERVER] Client Connected: " + rawSocket.getInetAddress().getHostAddress());
+        LOGGER.info("[SERVER] Initializing handshake RSA/AES...");
 
         SecureSocket secureSocket = SecureConnectionManager.wrapSocket(rawSocket);
 
         if (secureSocket == null) {
-            LOGGER.severe("[SERVER] Handshake esuat! Respingem clientul.");
+            LOGGER.severe("[SERVER] Failed handshake! Rejecting the client.");
             rawSocket.close();
             return;
         }
 
-        LOGGER.info("[SERVER] Handshake reusit. Delegare catre ClientHandler.");
+        LOGGER.info("[SERVER] Successful Handshake. Delegating to ClientHandler.");
         clientSockets.add(rawSocket);
         ClientHandler clientHandler = new ClientHandler(secureSocket, gameManager, connectedClients, latestPacket::set);
         connectedClients.add(clientHandler);

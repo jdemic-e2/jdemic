@@ -13,6 +13,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
+import jdemic.Main;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.Animations;
 import jdemic.ui.ButtonsUtil;
@@ -20,6 +21,8 @@ import jdemic.ui.DotUtil;
 import jdemic.ui.GlowLineUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
+import jdemic.ui.SceneBackgroundUtil;
+import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.TextUtil;
 public class MainMenuScene {
     private static final String FONT_HKMODULAR = "hkmodular";
@@ -47,16 +50,7 @@ public class MainMenuScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
-        if (bgUrl == null) {
-            System.err.println("[MainMenuScene] Missing resource: " + BACKGROUND_RESOURCE);
-            return;
-        }
-        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        SceneBackgroundUtil.addCoverBackground(root, BACKGROUND_RESOURCE);
     }
 
     private void setupUI() {
@@ -74,7 +68,7 @@ public class MainMenuScene {
             System.err.println("[MainMenuScene] Missing resource: " + GLOW_TITLE_FRAME_RESOURCE);
             return;
         }
-        ImageView titleBox = new ImageView(new Image(titleUrl.toExternalForm()));
+        ImageView titleBox = new ImageView(SafeResourceLoader.loadImage(titleUrl));
         titleBox.setPreserveRatio(true);
         titleBox.fitWidthProperty().bind(root.widthProperty().multiply(0.45));
         titleBox.translateYProperty().bind(root.heightProperty().multiply(0.06));
@@ -84,7 +78,7 @@ public class MainMenuScene {
         String text = "S Y S T E M   O N L I N E   •   A W A I T I N G   C O M M A N D   •   P R E S S   P L A Y   T O   B E G I N   •";
         Pane scrollingText = Animations.createScrollingText(root, text,60);
 
-       StackPane.setAlignment(scrollingText, Pos.BOTTOM_LEFT);
+       StackPane.setAlignment(scrollingText, Pos.TOP_LEFT);
        scrollingText.translateYProperty().bind(root.heightProperty().multiply(0.85));
 
         root.getChildren().add(scrollingText);
@@ -94,7 +88,7 @@ public class MainMenuScene {
             System.err.println("[MainMenuScene] Missing resource: " + BACKGROUND_MAP_RESOURCE);
             return;
         }
-        Image mapImg = new Image(mapUrl.toExternalForm());
+        Image mapImg = SafeResourceLoader.loadImage(mapUrl);
         ImageView map = new ImageView(mapImg);
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.8));
@@ -105,7 +99,6 @@ public class MainMenuScene {
       //  Animations.createPulse(map, 1.05, 2);
 
         VBox rightPanel = new VBox();
-        rightPanel.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.08, root.getWidth() * 0.02, 0, -root.getWidth() * 0.01), root.widthProperty(), root.heightProperty()));
         rightPanel.setSpacing(0);
         rightPanel.spacingProperty().bind(root.heightProperty().multiply(0.01));
         rightPanel.maxWidthProperty().bind(root.widthProperty().multiply(0.25));
@@ -190,24 +183,22 @@ public class MainMenuScene {
         virusContainer.setAlignment(Pos.TOP_CENTER);
         virusPanelBox.getChildren().add(virusContainer);
 
-        rightPanel.translateXProperty().bind(root.widthProperty().multiply(0.43));
         rightPanel.translateYProperty().bind(root.heightProperty().multiply(0.02));
         rightPanel.getChildren().addAll(statusPanelBox, virusPanelBox);
 
         root.getChildren().add(titleBox);
         root.getChildren().add(map);
         root.getChildren().add(title);
+        StackPane.setAlignment(rightPanel, Pos.TOP_RIGHT);
+        rightPanel.paddingProperty().bind(Bindings.createObjectBinding(() ->
+                new Insets(root.getHeight() * 0.08, root.getWidth() * 0.025, 0, 0),
+                root.widthProperty(), root.heightProperty()));
         root.getChildren().add(rightPanel);
 
         ButtonsUtil playBtn = new ButtonsUtil("PLAY", CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
-        ButtonsUtil maptestBtn = new ButtonsUtil("MAP TEST", CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil tutorialBtn = new ButtonsUtil(SCENE_TUTORIAL, CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil settingsBtn = new ButtonsUtil(SCENE_SETTINGS, CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
         ButtonsUtil exitBtn = new ButtonsUtil("EXIT", CYAN, BLACK, CYAN, CYAN, 2, 15, 15, 0.18, 0.08, 0.02, root);
-
-        maptestBtn.setOnMouseClicked(e -> {
-            SceneManager.switchScene(SCENE_MAP_TEST);
-        });
 
         tutorialBtn.setOnMouseClicked(e -> {
             SceneManager.switchScene(SCENE_TUTORIAL);
@@ -255,7 +246,7 @@ public class MainMenuScene {
             ButtonsUtil yesBtn = new ButtonsUtil("YES", BRIGHT_CYAN, BLACK, BRIGHT_CYAN, BRIGHT_CYAN, 2, 12, 12, 0.14, 0.06, 0.015, root);
             ButtonsUtil noBtn = new ButtonsUtil("NO", "#ff274c", BLACK, "#ff274c", "#ff274c", 2, 12, 12, 0.14, 0.06, 0.015, root);
 
-            yesBtn.setOnMouseClicked(ev -> System.exit(0));
+            yesBtn.setOnMouseClicked(ev -> Main.exitApplication());
             noBtn.setOnMouseClicked(ev -> root.getChildren().remove(confirmOverlay));
 
             HBox buttonContainer = new HBox(30); // 30px spacing between YES and NO
@@ -272,7 +263,7 @@ public class MainMenuScene {
         menuBox.setFillWidth(false);
         menuBox.setAlignment(Pos.BOTTOM_CENTER);
         menuBox.spacingProperty().bind(root.heightProperty().multiply(0.025));
-        menuBox.getChildren().addAll(playBtn, maptestBtn, tutorialBtn, settingsBtn, exitBtn);
+        menuBox.getChildren().addAll(playBtn, tutorialBtn, settingsBtn, exitBtn);
         menuBox.translateXProperty().bind(root.widthProperty().multiply(-0.35));
         menuBox.translateYProperty().bind(root.heightProperty().multiply(-0.25));
 

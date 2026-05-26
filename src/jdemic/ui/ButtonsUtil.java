@@ -3,11 +3,13 @@ package jdemic.ui;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.*;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.StrokeType;
+import jdemic.Scenes.Settings.AudioManager;
 
 public class ButtonsUtil extends StackPane {
 
@@ -28,7 +30,7 @@ public class ButtonsUtil extends StackPane {
             double fontRatio,
             StackPane root
     ) {
-        setPickOnBounds(true);
+        setPickOnBounds(false);
 
         // Bind size to scene
         sceneProperty().addListener((obs, oldScene, newScene) -> {
@@ -114,6 +116,8 @@ public class ButtonsUtil extends StackPane {
             baseGlow.setColor(Color.web(glowColor));
             baseGlow.setRadius(glowRadius * 1.6);
         });
+
+        addEventHandler(MouseEvent.MOUSE_CLICKED, e -> AudioManager.getInstance().playButtonSFX());
     }
 
     public void setText(String text) {

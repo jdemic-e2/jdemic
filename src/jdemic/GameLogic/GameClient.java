@@ -11,7 +11,9 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Scanner;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,6 +25,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class GameClient {
 
     private static final Logger LOGGER = Logger.getLogger(GameClient.class.getName());
+    private static final Set<GameClient> ACTIVE_CLIENTS = new CopyOnWriteArraySet<>();
     private SecureSocket secureSocket;
     private PrintWriter out;
     private BufferedReader in;
@@ -84,6 +87,7 @@ public class GameClient {
 
             // Start maintaining the connection
             isConnected = true;
+            ACTIVE_CLIENTS.add(this);
             startListeningThread();
             return true;
 
@@ -193,6 +197,12 @@ public class GameClient {
         disconnect();
     }
 
+    public static void disconnectAllFromLobby() {
+        for (GameClient client : ACTIVE_CLIENTS) {
+            client.disconnectFromLobby();
+        }
+    }
+
     /**
      * This method will be used to receive the updated Gamestate
      */
@@ -217,6 +227,7 @@ public class GameClient {
 
     public void disconnect() {
         isConnected = false;
+        ACTIVE_CLIENTS.remove(this);
         listeners.clear();
         latestGameState.set(null);
         try {

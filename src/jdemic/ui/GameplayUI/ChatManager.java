@@ -43,14 +43,20 @@ public class ChatManager {
     private void setupUI() {
         VBox chatPanel = new VBox();
         chatPanel.setAlignment(Pos.TOP_LEFT);
-        chatPanel.prefHeightProperty().bind(root.heightProperty().multiply(0.27));
+        chatPanel.prefHeightProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(135, Math.min(210, root.getHeight() * 0.25)),
+                root.heightProperty()
+        ));
         chatPanel.maxHeightProperty().bind(chatPanel.prefHeightProperty());
         StackPane wrapper = new StackPane(chatPanel);
         chatPanel.prefWidthProperty().bind(wrapper.prefWidthProperty());
         wrapper.setPickOnBounds(false);
         wrapper.setMaxSize(StackPane.USE_PREF_SIZE, StackPane.USE_PREF_SIZE);
         wrapper.setStyle("-fx-background-color: black;" + "-fx-border-color: transparent #00b5d4 transparent transparent;" + "-fx-border-width: 0 1 0 0;");
-        wrapper.prefWidthProperty().bind(root.widthProperty().multiply(0.24));
+        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(220, Math.min(390, root.getWidth() * 0.28)),
+                root.widthProperty()
+        ));
         GlowUtil.applyGlow(wrapper, "#00b5d4", 15);
 
         chatPanel.paddingProperty().bind(Bindings.createObjectBinding(
@@ -63,7 +69,10 @@ public class ChatManager {
         chatArea.setEditable(false);
         chatArea.setWrapText(true);
         chatArea.setFocusTraversable(false);
-        chatArea.prefHeightProperty().bind(root.heightProperty().multiply(0.09));
+        chatArea.prefHeightProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(56, Math.min(100, root.getHeight() * 0.10)),
+                root.heightProperty()
+        ));
         chatArea.prefWidthProperty().bind(chatPanel.widthProperty().multiply(0.97));
         chatArea.setStyle(
                 "-fx-control-inner-background: black;" +
@@ -82,8 +91,11 @@ public class ChatManager {
                 "-fx-border-width: 1;" +
                 "-fx-font-family: 'hkmodular';"
         );
-        chatInput.prefWidthProperty().bind(chatPanel.widthProperty().multiply(0.75));
-        chatInput.prefHeightProperty().bind(root.heightProperty().multiply(0.045));
+        chatInput.prefWidthProperty().bind(chatPanel.widthProperty().multiply(0.65));
+        chatInput.prefHeightProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(28, Math.min(42, root.getHeight() * 0.045)),
+                root.heightProperty()
+        ));
         chatInput.setOnAction(e -> sendMessage());
 
         ButtonsUtil sendBtn = new ButtonsUtil(
@@ -98,12 +110,9 @@ public class ChatManager {
 
         chatPanel.getChildren().addAll(title, chatArea, inputRow);
 
-        StackPane.setAlignment(chatPanel, Pos.BOTTOM_LEFT);
-        StackPane.setAlignment(wrapper, Pos.BOTTOM_LEFT);
-        StackPane.setMargin(wrapper, new Insets(0, 0, root.getHeight() * 0.02, root.getWidth() * 0.02));
-        wrapper.translateXProperty().bind(root.widthProperty().multiply(0.42));
-        wrapper.translateYProperty().bind(root.heightProperty().multiply(0.078));
-        
+        StackPane.setAlignment(wrapper, Pos.BOTTOM_CENTER);
+        StackPane.setMargin(wrapper, Insets.EMPTY);
+
         root.getChildren().add(wrapper);
     }
 

@@ -6,8 +6,6 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -30,6 +28,7 @@ import jdemic.Scenes.MapTest.MapTestScene;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TextUtil;
 
 public class WaitingRoomScene {
@@ -54,6 +53,7 @@ public class WaitingRoomScene {
     private static final String JSON_LOBBY_CHAT_MESSAGES = "lobbyChatMessages";
     private static final String JSON_MESSAGE = "message";
     private static final String JSON_LOBBY_COUNTDOWN_STARTED_AT = "lobbyCountdownStartedAt";
+    private static final int MAX_PLAYERS = 4;
 
     private final StackPane root;
     private final Stage stage;
@@ -62,6 +62,7 @@ public class WaitingRoomScene {
     private final GameClient gameClient;
     private final boolean ownsServer;
     private Label hostStatusLabel;
+    private Label playerCountLabel;
     private VBox playerList;
     private TextArea chatArea;
     private ButtonsUtil readyBtn;
@@ -85,6 +86,7 @@ public class WaitingRoomScene {
     public WaitingRoomScene(Stage stage, String nickname, String roomCode, GameClient gameClient, boolean ownsServer) {
         this.stage = stage;
         this.root = new StackPane();
+        SceneManager.registerLifecycle(root, this::cleanupScene);
         this.nickname = nickname == null || nickname.isBlank() ? DEFAULT_PLAYER_NAME : nickname.toUpperCase();
         this.roomCode = roomCode == null ? DEFAULT_ROOM_CODE : roomCode;
         this.gameClient = gameClient;
@@ -104,16 +106,7 @@ public class WaitingRoomScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
-        if (bgUrl == null) {
-            System.err.println("[WaitingRoomScene] Missing resource: " + BACKGROUND_RESOURCE);
-            return;
-        }
-        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        SceneBackgroundUtil.addCoverBackground(root, BACKGROUND_RESOURCE);
     }
 
     private void setupUI() {
@@ -131,10 +124,17 @@ public class WaitingRoomScene {
 
         hostStatusLabel = TextUtil.createText(NOT_READY_TEXT, FONT_HKMODULAR, 0.024, YELLOW, root);
 
+        playerCountLabel = TextUtil.createText("", FONT_HKMODULAR, 0.026, BRIGHT_CYAN, root);
+        updatePlayerCount(1);
+
         playerList = new VBox();
         playerList.spacingProperty().bind(root.heightProperty().multiply(0.012));
         playerList.setAlignment(Pos.TOP_LEFT);
         playerList.getChildren().add(createPlayerRow(nickname.toUpperCase(), hostStatusLabel));
+
+        VBox playersPanel = new VBox(playerCountLabel, playerList);
+        playersPanel.setAlignment(Pos.TOP_LEFT);
+        playersPanel.spacingProperty().bind(root.heightProperty().multiply(0.014));
 
         VBox chatPanel = new VBox();
         chatPanel.setAlignment(Pos.TOP_LEFT);
@@ -190,7 +190,7 @@ public class WaitingRoomScene {
 
         chatPanel.getChildren().addAll(chatTitle, chatArea, inputRow);
 
-        HBox upper = new HBox(playerList, chatPanel);
+        HBox upper = new HBox(playersPanel, chatPanel);
         upper.setAlignment(Pos.TOP_CENTER);
         upper.spacingProperty().bind(root.widthProperty().multiply(0.015));
 
@@ -219,9 +219,16 @@ public class WaitingRoomScene {
         StackPane.setAlignment(content, Pos.TOP_CENTER);
         content.translateYProperty().bind(root.heightProperty().multiply(0.24));
 
+        Label portLabel = TextUtil.createText("PORT: " + extractRoomPort(roomCode), FONT_HKMODULAR, 0.022, BRIGHT_CYAN, root);
+        GlowUtil.applyGlow(portLabel, BRIGHT_CYAN, 8);
+        StackPane.setAlignment(portLabel, Pos.TOP_RIGHT);
+        portLabel.translateXProperty().bind(root.widthProperty().multiply(-0.025));
+        portLabel.translateYProperty().bind(root.heightProperty().multiply(0.035));
+
         root.getChildren().addAll(
                 headerBox,
-                content
+                content,
+                portLabel
         );
     }
 
@@ -249,6 +256,7 @@ public class WaitingRoomScene {
         }
 
         playerList.getChildren().clear();
+        updatePlayerCount(playersArray.size());
         boolean foundCurrentPlayer = false;
         for (JsonNode playerNode : playersArray) {
             String playerName = playerNode.has(JSON_PLAYER_NAME) ? playerNode.get(JSON_PLAYER_NAME).asText() : "UNKNOWN";
@@ -270,6 +278,22 @@ public class WaitingRoomScene {
         updateCountdown(gameState);
 
         System.out.println("[WaitingRoomScene] Updated player list with " + playersArray.size() + " players");
+    }
+
+    private void updatePlayerCount(int count) {
+        playerCountLabel.setText("PLAYERS: " + count + "/" + MAX_PLAYERS);
+    }
+
+    private String extractRoomPort(String roomCode) {
+        if (roomCode == null || roomCode.isBlank()) {
+            return DEFAULT_ROOM_CODE;
+        }
+
+        int separatorIndex = roomCode.lastIndexOf(':');
+        if (separatorIndex >= 0 && separatorIndex < roomCode.length() - 1) {
+            return roomCode.substring(separatorIndex + 1).trim();
+        }
+        return roomCode;
     }
 
     private void updateChat(JsonNode gameState) {
@@ -374,7 +398,7 @@ public class WaitingRoomScene {
         }
         transitionedToGame = true;
         cleanupScene();
-        stage.getScene().setRoot(new MapTestScene(stage, nickname, gameClient, gameState).getRoot());
+        SceneManager.setRoot(new MapTestScene(stage, nickname, gameClient, gameState).getRoot());
     }
 
     @SuppressWarnings("unused")

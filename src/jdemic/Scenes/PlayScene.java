@@ -11,19 +11,20 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
 import jdemic.ui.PanelUtil;
+import jdemic.ui.PlayerNameUtil;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TextUtil;
 import java.security.SecureRandom;
-import java.util.function.UnaryOperator;
 
 public class PlayScene {
     private static final String FONT_HKMODULAR = "hkmodular";
@@ -71,11 +72,8 @@ public class PlayScene {
     }
 
     private void setupBackground() {
-        ImageView background = new ImageView(new Image(getClass().getResource(BACKGROUND_RESOURCE).toExternalForm()));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        ImageView background = SceneBackgroundUtil.addCoverBackground(root, BACKGROUND_RESOURCE);
+        if (background == null) return;
         background.toBack();
     }
 
@@ -133,8 +131,7 @@ public class PlayScene {
         nickField.setText(nickname);
         nickField.prefWidthProperty().bind(root.widthProperty().multiply(0.27));
         nickField.prefHeightProperty().bind(root.heightProperty().multiply(0.065));
-        UnaryOperator<TextFormatter.Change> filter = change -> change.getControlNewText().length() <= 16 ? change : null;
-        nickField.setTextFormatter(new TextFormatter<>(filter));
+        nickField.setTextFormatter(new TextFormatter<>(PlayerNameUtil.nicknameFilter()));
         Label errorLabel = TextUtil.createText("ENTER NICKNAME", FONT_HKMODULAR, 0.017, RED, root);
         errorLabel.setVisible(false);
         HBox nickRow = new HBox(nickLabel, nickField);
@@ -148,7 +145,7 @@ public class PlayScene {
             if (name.isEmpty()) { errorLabel.setVisible(true); return; }
             errorLabel.setVisible(false); nickname = name; showHostCodeScreen();
         });
-        backBtn.setOnMouseClicked(e -> stage.getScene().setRoot(new MainMenuScene(stage).getRoot()));
+        backBtn.setOnMouseClicked(e -> SceneManager.setRoot(new MainMenuScene(stage).getRoot()));
         VBox content = new VBox(nickRow, errorLabel, hostBtn, joinBtn, backBtn);
         content.setAlignment(Pos.TOP_CENTER);
         content.spacingProperty().bind(root.heightProperty().multiply(0.038));

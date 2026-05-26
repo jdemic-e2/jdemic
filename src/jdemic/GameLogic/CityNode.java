@@ -2,7 +2,6 @@ package jdemic.GameLogic;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.EnumMap;
@@ -17,7 +16,7 @@ public class CityNode {
     @JsonIgnore // erori
     private final Set<CityNode> connectedCities; // Represents graph edges
     
-    // Rendering coordinates for Vulkan
+    // Rendering coordinates for jdemic engine
     private float renderX; 
     private float renderY;
 

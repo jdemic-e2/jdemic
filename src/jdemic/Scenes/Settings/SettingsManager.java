@@ -17,7 +17,7 @@ public class SettingsManager {
     private final Gson gson;
 
     // GENERAL
-    private final StringProperty playerName = new SimpleStringProperty("Newbie");
+    private final StringProperty playerName = new SimpleStringProperty("Player");
     private final StringProperty language = new SimpleStringProperty("ENGLISH");
 
     // AUDIO
@@ -32,7 +32,7 @@ public class SettingsManager {
     private final BooleanProperty isFullscreen = new SimpleBooleanProperty(false);
 
     // GAMEPLAY
-    private final StringProperty animationSpeed = new SimpleStringProperty("FAST");
+    private final StringProperty animationSpeed = new SimpleStringProperty("MEDIUM");
 
     // Constructors
     private SettingsManager() {
@@ -93,11 +93,12 @@ public class SettingsManager {
             SettingsData settingsData = gson.fromJson(reader, SettingsData.class);
             if (settingsData != null)
             {
-                this.playerName.set(settingsData.playerName);
+                this.playerName.set(normalizePlayerName(settingsData.playerName));
                 this.resolution.set(settingsData.resolution);
                 this.isFullscreen.set(settingsData.isFullScreen);
                 this.masterVolume.set(settingsData.masterVolume);
                 this.musicVolume.set(settingsData.musicVolume);
+                this.sfxVolume.set(settingsData.sfxVolume);
                 this.animationSpeed.set(settingsData.animationSpeed);
                 System.out.println("Settings loaded successfully");
             }
@@ -109,11 +110,13 @@ public class SettingsManager {
     public void saveSettings() {
         SettingsData settingsData = new SettingsData();
 
-        settingsData.playerName = this.playerName.get();
+        settingsData.playerName = normalizePlayerName(this.playerName.get());
+        this.playerName.set(settingsData.playerName);
         settingsData.resolution = this.resolution.get();
         settingsData.isFullScreen = this.isFullscreen.get();
         settingsData.masterVolume = this.masterVolume.get();
         settingsData.musicVolume = this.musicVolume.get();
+        settingsData.sfxVolume = this.sfxVolume.get();
         settingsData.animationSpeed = this.animationSpeed.get();
 
         try (FileWriter settingsWriter = new FileWriter(FILE_PATH))
@@ -138,5 +141,17 @@ public class SettingsManager {
         stage.setHeight(getSavedHeight());
         stage.setFullScreen(isFullscreen.get());
         stage.setFullScreenExitHint("");
+    }
+
+    private String normalizePlayerName(String name) {
+        if (name == null) {
+            return "Player";
+        }
+
+        String normalized = name.replaceAll("[^a-zA-Z0-9]", "");
+        if (normalized.length() > 16) {
+            normalized = normalized.substring(0, 16);
+        }
+        return normalized.isBlank() ? "Player" : normalized;
     }
 }

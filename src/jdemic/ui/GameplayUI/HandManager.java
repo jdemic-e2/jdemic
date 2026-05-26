@@ -4,9 +4,9 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.*;
 import jdemic.GameLogic.Card;
+import jdemic.GameLogic.CardType;
 import jdemic.GameLogic.CityNode;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import jdemic.ui.GlowUtil;
@@ -22,6 +22,11 @@ public class HandManager {
     private DeckManager deckManager;
 
     private HBox handContainer;
+    private java.util.List<Card> lastHand = new ArrayList<>();
+    private final java.util.Map<Integer, javafx.animation.Animation> handGlows = new java.util.HashMap<>();
+    private final java.util.Map<Integer, javafx.event.EventHandler<? super javafx.scene.input.MouseEvent>> previousClickHandlers = new java.util.HashMap<>();
+    private java.util.function.Consumer<Integer> selectionCallback = null;
+    private Runnable selectionCancelCallback = null;
 
     public HandManager(StackPane root, DeckManager deckManager) {
         this.root = root;
@@ -35,80 +40,136 @@ public class HandManager {
         handContainer.setPickOnBounds(false);
         handContainer.spacingProperty().bind(Bindings.createDoubleBinding(() -> {
                     int cardCount = handContainer.getChildren().size();
-                    if (cardCount <= 1) return -20.0;
-                    double cardWidth = Math.max(70, root.getWidth() * 0.06);
-                    return -cardWidth * 0.25;
-                }, root.widthProperty(), Bindings.size(handContainer.getChildren()))
-        );
+                    if (cardCount <= 1) return 0.0;
+                    if (cardCount <= 4) return -12.0;
+                    if (cardCount == 5) return -20.0;
+                    if (cardCount == 6) return -28.0;
+                    if (cardCount == 7) return -34.0;
+                    return -40.0;
+                }, Bindings.size(handContainer.getChildren())));
 
-        handContainer.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.015, root.getWidth() * 0.02, root.getHeight() * 0.015, root.getWidth() * 0.02), root.heightProperty(), root.widthProperty()));
+        handContainer.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(root.getHeight() * 0.015, root.getWidth() * 0.020, root.getHeight() * 0.015, root.getWidth() * 0.020), root.heightProperty(), root.widthProperty()));
 
-        ScrollPane handScroller = new ScrollPane(handContainer);
-        handScroller.setFitToHeight(true);
-        handScroller.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        handScroller.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        handScroller.setPannable(true);
-        handScroller.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        handScroller.prefViewportHeightProperty().bind(Bindings.createDoubleBinding(
-                () -> Math.max(92, root.getHeight() * 0.16),
-                root.heightProperty()
-        ));
-        handScroller.prefViewportWidthProperty().bind(Bindings.createDoubleBinding(
-                () -> Math.max(220, Math.min(root.getWidth() * 0.46, root.getWidth() - 360)),
-                root.widthProperty()
-        ));
-
-        StackPane wrapper = createGlowBox(handScroller, "#00b5d4", 15);
+        StackPane wrapper = createGlowBox(handContainer, "#00b5d4", 15);
 
         wrapper.prefWidthProperty().bind(
                 Bindings.createDoubleBinding(() -> {
+                    double maxWidth = Math.max(180, Math.min(420, root.getWidth() * 0.38));
                     int count = handContainer.getChildren().size();
-                    double maxWidth = Math.max(220, Math.min(root.getWidth() * 0.46, root.getWidth() - 360));
-                    if (count == 0) return Math.min(220.0, maxWidth);
-
-                    double cardWidth = Math.max(70, root.getWidth() * 0.06);
+                    if (count == 0) return 200.0;
+                    double scale = Math.max(0.038, 0.055 - (count  * 0.001));
+                    double cardWidth = Math.max(48, Math.min(82, root.getWidth() * scale));
                     double spacing = handContainer.getSpacing();
-
-                    double contentWidth = cardWidth + (count - 1) * (cardWidth + spacing) + cardWidth * 0.3;
-                    return Math.min(maxWidth, contentWidth);
-
-                }, root.widthProperty(), handContainer.spacingProperty(), Bindings.size(handContainer.getChildren()))
-        );
-
+                    double calculatedWidth = cardWidth + (count - 1) * (cardWidth + spacing);
+                    return Math.min(calculatedWidth + cardWidth * 0.4, maxWidth);
+                }, root.widthProperty(), handContainer.spacingProperty(), Bindings.size(handContainer.getChildren())));
+        wrapper.prefHeightProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(96, Math.min(150, root.getHeight() * 0.19)),
+                root.heightProperty()
+        ));
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        wrapper.translateXProperty().bind(root.widthProperty().multiply(0.018));
-        wrapper.translateYProperty().bind(root.heightProperty().multiply(-0.018));
 
         StackPane.setAlignment(wrapper, Pos.BOTTOM_LEFT);
-
+        StackPane.setMargin(wrapper, Insets.EMPTY);
         root.getChildren().add(wrapper);
     }
 
-    public void updateHand(PlayerState player, boolean discardMode, Consumer<Integer> discardHandler) {
+    public void updateHand(PlayerState player, boolean discardMode, Consumer<Integer> discardHandler, Consumer<Integer> eventcardHandler) {
         handContainer.getChildren().clear();
         if (player == null || player.getHand() == null) {
             return;
         }
 
         List<Card> hand = player.getHand();
+        // store last hand for selection-mode operations
+        lastHand = new ArrayList<>(hand);
+
+        // for debugging - print hand contents to console
+        /*for (Card card : hand) {
+            System.out.println("Player hand contains: " + card.getCardName() + " (" + card.getType() + ")");
+        }*/
+
         for (int i = 0; i < hand.size(); i++) {
             Card card = hand.get(i);
             StackPane cardNode = createCardNode(card);
             int cardIndex = i;
 
-            if (discardMode && discardHandler != null) {
+            if (discardMode && discardHandler != null && card.getType() != CardType.EVENT) {
                 cardNode.setCursor(Cursor.HAND);
                 cardNode.setOnMouseClicked(e -> discardHandler.accept(cardIndex));
+            }
+            else if (card.getType() == CardType.EVENT && eventcardHandler != null) {
+                cardNode.setCursor(Cursor.HAND);
+                cardNode.setOnMouseClicked(e -> eventcardHandler.accept(cardIndex));
             }
 
             handContainer.getChildren().add(cardNode);
         }
     }
 
+    public void enterSelectionMode(java.util.function.Predicate<Card> selectablePredicate, java.util.function.Consumer<Integer> onSelect, Runnable onCancel) {
+        if (lastHand == null || handContainer == null) return;
+        selectionCallback = onSelect;
+        selectionCancelCallback = onCancel;
+        previousClickHandlers.clear();
+        handGlows.clear();
+
+        for (int i = 0; i < handContainer.getChildren().size(); i++) {
+            Node node = handContainer.getChildren().get(i);
+            Card card = i < lastHand.size() ? lastHand.get(i) : null;
+            // save previous click handler
+            previousClickHandlers.put(i, node.getOnMouseClicked());
+
+            if (card != null && selectablePredicate.test(card)) {
+                node.setMouseTransparent(false);
+                node.setCursor(Cursor.HAND);
+                final int idx = i;
+                node.setOnMouseClicked(e -> {
+                    exitSelectionMode();
+                    if (selectionCallback != null) selectionCallback.accept(idx);
+                });
+                javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(javafx.util.Duration.millis(700), node);
+                ft.setFromValue(1.0);
+                ft.setToValue(0.6);
+                ft.setCycleCount(javafx.animation.Animation.INDEFINITE);
+                ft.setAutoReverse(true);
+                ft.play();
+                handGlows.put(i, ft);
+            } else {
+                node.setMouseTransparent(true);
+                node.setOnMouseClicked(null);
+                node.setCursor(Cursor.DEFAULT);
+            }
+        }
+    }
+
+    public void exitSelectionMode() {
+        for (int i = 0; i < handContainer.getChildren().size(); i++) {
+            Node node = handContainer.getChildren().get(i);
+            // stop glow if any
+            javafx.animation.Animation a = handGlows.get(i);
+            if (a != null) try { a.stop(); } catch (Exception ignored) {}
+            node.setMouseTransparent(false);
+            // restore previous click handler
+            javafx.event.EventHandler<? super javafx.scene.input.MouseEvent> prev = previousClickHandlers.get(i);
+            node.setOnMouseClicked(prev);
+            if (prev != null) node.setCursor(Cursor.HAND);
+            else node.setCursor(Cursor.DEFAULT);
+        }
+        handGlows.clear();
+        previousClickHandlers.clear();
+        selectionCallback = null;
+        if (selectionCancelCallback != null) selectionCancelCallback.run();
+        selectionCancelCallback = null;
+    }
+
     private StackPane createCardNode(Card card) {
         CityNode city = card.getTargetCity();
         if (city != null) {
             return deckManager.createCityCard(city);
+        }
+        if (card.getType() == CardType.EVENT) {
+            return deckManager.createEventCard(card);
         }
 
         Label title = TextUtil.createText(card.getCardName(), "hkmodular", 0.010, "#ffffff", root);
@@ -119,7 +180,12 @@ public class HandManager {
         content.setPadding(new Insets(8));
 
         StackPane wrapper = new StackPane(content);
-        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(70, root.getWidth() * 0.06), root.widthProperty()));
+        wrapper.prefWidthProperty().bind(Bindings.createDoubleBinding(() -> {
+                    int cardCount = handContainer.getChildren().size();
+                    double scale = Math.max(0.038, 0.055 - (cardCount * 0.002));
+                    return Math.max(48, Math.min(82, root.getWidth() * scale));
+                }, root.widthProperty(),  Bindings.size(handContainer.getChildren()))
+        );
         wrapper.prefHeightProperty().bind(wrapper.prefWidthProperty().multiply(1.4));
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         wrapper.setStyle("-fx-background-color: black; -fx-border-color: #00b5d4; -fx-border-width: 1; -fx-background-radius: 6; -fx-border-radius: 6;");

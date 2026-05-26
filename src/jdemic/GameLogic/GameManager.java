@@ -1,13 +1,20 @@
 package jdemic.GameLogic;
 import java.util.List;
+import java.util.function.Consumer;
 
+import jdemic.GameLogic.Actions.FirewallAction;
 import jdemic.GameLogic.Actions.GameAction;
+import jdemic.GameLogic.Actions.SatelliteAction;
+import jdemic.GameLogic.Actions.ServerAction;
+import jdemic.GameLogic.Actions.SystemControlAction;
+import jdemic.GameLogic.Actions.ThreatAction;
 import jdemic.GameLogic.ServerRelatedClasses.GameState;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 
 public class GameManager {
     GameState state;
     private final Object stateLock = new Object();
+    public static final int MAX_PLAYERS = 4;
     private static final int ACTIONS_PER_TURN = 4;
     private static final int HAND_LIMIT = 7;
     private static final int[] INFECTION_RATE_TRACK = {2, 2, 2, 3, 3, 4, 4};
@@ -16,13 +23,51 @@ public class GameManager {
     private boolean epidemicsAdded;
     private boolean initialInfectionsDealt;
 
+    // Simple state-change listener hooks for UI to react to model updates
+    private final java.util.List<Runnable> stateChangeListeners = new java.util.ArrayList<>();
+    private final java.util.List<Consumer<CityNode>> outbreakListeners = new java.util.ArrayList<>();
+
+    public void addStateChangeListener(Runnable listener) {
+        if (listener == null) return;
+        stateChangeListeners.add(listener);
+    }
+
+    public void removeStateChangeListener(Runnable listener) {
+        stateChangeListeners.remove(listener);
+    }
+
+    public void notifyStateChange() {
+        for (Runnable r : new java.util.ArrayList<>(stateChangeListeners)) {
+            try { r.run(); } catch (Exception ignored) {}
+        }
+    }
+
+    public void addOutbreakListener(Consumer<CityNode> listener) {
+        if (listener == null) return;
+        outbreakListeners.add(listener);
+    }
+
+    public void removeOutbreakListener(Consumer<CityNode> listener) {
+        outbreakListeners.remove(listener);
+    }
+
+    public void notifyOutbreak(CityNode city) {
+        for (Consumer<CityNode> listener : new java.util.ArrayList<>(outbreakListeners)) {
+            try { listener.accept(city); } catch (Exception ignored) {}
+        }
+    }
+
     public GameManager(List<PlayerState> players) {
         this(players, true);
     }
 
-    public GameManager(List<PlayerState> players, boolean dealInitialHands) {
+    public GameManager(List<PlayerState> players, PandemicMapGraph map) {
+        this(players, map, true);
+    }
+
+    public GameManager(List<PlayerState> players, PandemicMapGraph map, boolean dealInitialHands) {
         this.state = new GameState(); 
-        state.setMap(new PandemicMapGraph());
+        state.setMap(map);
         state.setDiseaseManager(new DiseaseManager(this));
         state.setCardDeck(new Deck(this));
         state.setCurrentPlayerIndex(0);
@@ -38,6 +83,10 @@ public class GameManager {
         if (dealInitialHands) {
             dealInitialHands();
         }
+    }
+
+    public GameManager(List<PlayerState> players, boolean dealInitialHands) {
+        this(players, new PandemicMapGraph(), dealInitialHands);
     }
 
     private void setupGame() {
@@ -129,13 +178,15 @@ public class GameManager {
     {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
-        if(state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
-        
+        // A player who is over the hand limit must discard before any normal action can be taken.
+        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
+
         // Only allow the current player to perform actions
         if(!state.isPlayerTurn(player.getState())) return;
 
         if (action.isValid(state, player.getState())) {
             action.execute(state, player.getState());
+            discardUsedEventCardIfNeeded(player.getState(), action);
             state.setActionsRemaining(state.getActionsRemaining() - 1);
             checkWinCondition();
             if(state.isGameOver()) return;
@@ -144,14 +195,52 @@ public class GameManager {
             if(state.getActionsRemaining() <= 0){
                 nextTurn();
             }
+            checkWinCondition();
+            if(state.isGameOver()) return;
+            
+
         }
+        else {
+            System.out.println("the action is NOT valid.");
+        }
+    }
+
+    private void discardUsedEventCardIfNeeded(PlayerState playerState, GameAction action) {
+        Card cardToDiscard = getEventCardToDiscard(action);
+        if (cardToDiscard == null || playerState == null || state.getCardDeck() == null) {
+            return;
+        }
+
+        if (playerState.getHand().remove(cardToDiscard)) {
+            state.getCardDeck().discard(cardToDiscard);
+        }
+    }
+
+    private Card getEventCardToDiscard(GameAction action) {
+        if (action instanceof FirewallAction firewallAction) {
+            return firewallAction.getCardToDiscard();
+        }
+        if (action instanceof SatelliteAction satelliteAction) {
+            return satelliteAction.getCardToDiscard();
+        }
+        if (action instanceof ServerAction serverAction) {
+            return serverAction.getCardToDiscard();
+        }
+        if (action instanceof SystemControlAction systemControlAction) {
+            return systemControlAction.getCardToDiscard();
+        }
+        if (action instanceof ThreatAction threatAction) {
+            return threatAction.getCardToDiscard();
+        }
+        return null;
     }
 
     public void consumeAction(PlayerState playerState)
     {
         if(state.isGameOver()) return;
         if(state.getActionsRemaining() <= 0) return;
-        if(state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()) return;
+        if (state.getCurrentPlayer() != null && state.getCurrentPlayer().getIsDiscarding()
+                && !state.isPlayerTurn(playerState)) return;
         if(!state.isPlayerTurn(playerState)) return;
 
         state.setActionsRemaining(state.getActionsRemaining() - 1);
@@ -160,6 +249,7 @@ public class GameManager {
             nextTurn();
         }
     }
+
 
     /**
      * Completes the current player's turn in the correct Pandemic sequence:
@@ -174,6 +264,8 @@ public class GameManager {
      */
     public void nextTurn() {
         if (state.isGameOver()) return;
+
+    
 
         PlayerState currentPlayer = state.getCurrentPlayer();
         if(currentPlayer == null) return;
@@ -308,7 +400,8 @@ public class GameManager {
     }
 
     public void checkWinCondition() {
-        if (state.getDiseaseManager().areAllCured()) {
+        if (state.getDiseaseManager().areAllCured()
+                || state.getDiseaseManager().hasClearedAllInfections()) {
             state.setGameOver(true);
             state.setGameWon(true);
         }
@@ -325,7 +418,18 @@ public class GameManager {
             state.setGameWon(false);
         }
 
-        // Player deck loss is handled when a draw is attempted and cannot be completed.
+        setGameWinStateBasedOnColor(DiseaseColor.BLUE);
+        setGameWinStateBasedOnColor(DiseaseColor.RED);
+        setGameWinStateBasedOnColor(DiseaseColor.BLUE);
+        setGameWinStateBasedOnColor(DiseaseColor.YELLOW);
+        setGameWinStateBasedOnColor(DiseaseColor.BLACK);
+    }
+
+    private void setGameWinStateBasedOnColor(DiseaseColor color){
+        if (state.getDiseaseManager().getCubesLeftForColor(color) <= 0) {
+            state.setGameOver(true);
+            state.setGameWon(false);
+        }
     }
 
     public int getInfectionRate() {
@@ -360,7 +464,14 @@ public class GameManager {
 
 
     public void increaseInfectionRate() {
-        state.setInfectionRate(state.getInfectionRate() + 1);
+        // Advance the infection-rate pointer but cap to the last index of the track
+        int currentIndex = state.getInfectionRate();
+        int maxIndex = INFECTION_RATE_TRACK.length - 1;
+        int nextIndex = Math.min(currentIndex + 1, maxIndex);
+        state.setInfectionRate(nextIndex);
+
+        // Notify UI/widgets that infection rate changed
+        notifyStateChange();
     }
 
     public PlayerState getCurrentPlayer() {

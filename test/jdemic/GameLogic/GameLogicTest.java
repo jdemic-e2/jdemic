@@ -552,7 +552,8 @@ public class GameLogicTest {
 
         dm.addInfectionCubes(city, 200);
 
-        assertEquals(0, dm.getInfectionCubesLeft());
+        assertEquals(90, dm.getInfectionCubesLeft());
+        assertEquals(18, dm.getCubesLeftForColor(DiseaseColor.BLUE));
     }
 
     @Test

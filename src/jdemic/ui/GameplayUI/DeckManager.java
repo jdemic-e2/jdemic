@@ -5,8 +5,11 @@ import javafx.geometry.Pos;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import jdemic.ui.CardResourceUtil;
+import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CityNode;
 import jdemic.ui.GlowUtil;
+import jdemic.ui.UIImageUtil;
 
 public class DeckManager {
 
@@ -23,10 +26,8 @@ public class DeckManager {
 
         StackPane wrapper = new StackPane(decks);
         wrapper.setPickOnBounds(false);
+        wrapper.setMouseTransparent(true); // decorative; don't intercept clicks
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        wrapper.translateXProperty().bind(root.widthProperty().multiply(-0.018));
-        wrapper.translateYProperty().bind(root.heightProperty().multiply(-0.018));
-
         root.getChildren().add(wrapper);
 
         StackPane.setAlignment(wrapper, Pos.BOTTOM_RIGHT);
@@ -39,7 +40,10 @@ public class DeckManager {
         for (int i = 0; i < stackSize; i++) {
             ImageView card = new ImageView(topImage);
             card.setPreserveRatio(true);
-            card.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(60, root.getWidth() * 0.06), root.widthProperty()));
+            card.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                    () -> Math.max(48, Math.min(84, root.getWidth() * 0.055)),
+                    root.widthProperty()
+            ));
             card.setTranslateX((double) i);
             card.setTranslateY(-(double) i);
             card.setRotate(((i % 3) - 1) * 0.75);
@@ -49,18 +53,16 @@ public class DeckManager {
     }
 
     public HBox createCityDeck() {
-        java.net.URL cityVersoUrl = getClass().getResource("/cityCards/cityCardsVerso.png");
-        if (cityVersoUrl == null) {
-            System.err.println("[DeckManager] Missing resource: /cityCards/cityCardsVerso.png");
+        Image verso = UIImageUtil.load("/cityCards/cityCardsVerso.png");
+        if (verso == null) {
             return new HBox();
         }
-        Image verso = new Image(cityVersoUrl.toExternalForm());
         StackPane drawPile = createCardStack(verso, 6);
         Image topCard;
         try {
             String path = "/cityCards/BlueAtlanta.png"; //for test
-            var res = getClass().getResource(path);
-            topCard = (res != null) ? new Image(res.toExternalForm()) : verso;
+            topCard = UIImageUtil.load(path);
+            if (topCard == null) topCard = verso;
         } catch (Exception e) { topCard = verso; }
 
         StackPane discardPile = createCardStack(topCard, 4);
@@ -77,30 +79,7 @@ public class DeckManager {
     }
 
     public StackPane createCityCard(CityNode city) {
-        ImageView card;
-        try {
-            String colorPrefix = switch (city.getNativeColor()) {
-                case BLUE -> "Blue";
-                case YELLOW -> "Yellow";
-                case BLACK -> "Green"; // MISMATCHH (Black should be changed Green everywhere to not cause confusion)
-                case RED -> "Red";
-            };
-
-            String cityName = city.getName().replace(" ", "").replace(".", "");
-            String path = "/cityCards/" + colorPrefix + cityName + ".png";
-            var resource = getClass().getResource(path);
-
-            if (resource == null) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
-            card = new ImageView(new Image(resource.toExternalForm()));
-
-        } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName()));}
-
-        card.setPreserveRatio(true);
-        card.fitWidthProperty().bind(Bindings.createDoubleBinding(() -> Math.max(70, root.getWidth() * 0.06),root.widthProperty()));
-
-        StackPane wrapper = new StackPane(card);
-        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        GlowUtil.applyGlow(wrapper, "#00b5d4", 5);
+        StackPane wrapper = createCardWrapper(city, CardResourceUtil.cityCardPath(city), "#00b5d4", 5);
 
         wrapper.setOnMouseEntered(e -> {
             wrapper.setViewOrder(-1);
@@ -119,18 +98,16 @@ public class DeckManager {
     }
 
     public HBox createEpidemicDeck() {
-        java.net.URL epidemicVersoUrl = getClass().getResource("/epidemicCards/epidemicCardsVerso.png");
-        if (epidemicVersoUrl == null) {
-            System.err.println("[DeckManager] Missing resource: /epidemicCards/epidemicCardsVerso.png");
+        Image verso = UIImageUtil.load("/epidemicCards/epidemicCardsVerso.png");
+        if (verso == null) {
             return new HBox();
         }
-        Image verso = new Image(epidemicVersoUrl.toExternalForm());
         StackPane drawPile = createCardStack(verso, 5);
         Image topCard;
         try {
             String path = "/epidemicCards/BlueAtlanta.png"; //for test
-            var res = getClass().getResource(path);
-            topCard = (res != null) ? new Image(res.toExternalForm()) : verso;
+            topCard = UIImageUtil.load(path);
+            if (topCard == null) topCard = verso;
         } catch (Exception e) { topCard = verso; }
 
         StackPane discardPile = createCardStack(topCard, 3);
@@ -143,5 +120,77 @@ public class DeckManager {
                 root.widthProperty()
         ));
         return epidemicDeck;
+    }
+
+    //for shuffling animation, creates a single card back to be animated from the deck to the player's hand
+    public StackPane createBackCard() {
+        ImageView imageView = UIImageUtil.loadResponsive(root, "/cityCards/cityCardsVerso.png", 44, 76, 0.05);
+        if (imageView == null || imageView.getImage() == null) return new StackPane();
+        imageView.setPreserveRatio(true);
+        StackPane wrapper = new StackPane(imageView);
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        GlowUtil.applyGlow(wrapper, "#00b5d4", 8);
+        return wrapper;
+    }
+
+    public StackPane createEpidemicCard(CityNode city) {
+        return createCardWrapper(city, CardResourceUtil.epidemicCardPath(city), "#ff2d2d", 10);
+    }
+
+    public StackPane createEventCard(Card card) {
+        String path = CardResourceUtil.eventCardPath(card);
+        if (path == null) {
+            return fallbackCard(card == null ? "EVENT" : card.getCardName());
+        }
+
+        ImageView imageView = UIImageUtil.loadResponsive(root, path, 48, 84, 0.055);
+        if (imageView == null || imageView.getImage() == null) {
+            return fallbackCard(card.getCardName());
+        }
+
+        imageView.setPreserveRatio(true);
+        StackPane wrapper = new StackPane(imageView);
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        GlowUtil.applyGlow(wrapper, "#cfc900", 8);
+        // hover behavior: match city cards (enlarge and lift on hover)
+        wrapper.setOnMouseEntered(e -> {
+            wrapper.setViewOrder(-1);
+            wrapper.setTranslateY(-50);
+            wrapper.setScaleX(1.5);
+            wrapper.setScaleY(1.5);
+        });
+
+        wrapper.setOnMouseExited(e -> {
+            wrapper.setViewOrder(0);
+            wrapper.setTranslateY(0);
+            wrapper.setScaleX(1);
+            wrapper.setScaleY(1);
+        });
+
+        return wrapper;
+    }
+
+    private StackPane createCardWrapper(CityNode city, String path, String glowColor, double glowRadius) {
+        ImageView card;
+        try {
+            ImageView iv = UIImageUtil.loadResponsive(root, path, 48, 84, 0.055);
+            if (iv == null || iv.getImage() == null) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
+            card = iv;
+
+        } catch (Exception e) { return new StackPane(new javafx.scene.control.Label(city.getName())); }
+
+        card.setPreserveRatio(true);
+        card.fitWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(48, Math.min(84, root.getWidth() * 0.055)),
+                root.widthProperty()
+        ));
+        StackPane wrapper = new StackPane(card);
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        GlowUtil.applyGlow(wrapper, glowColor, glowRadius);
+        return wrapper;
+    }
+
+    private StackPane fallbackCard(String label) {
+        return new StackPane(new javafx.scene.control.Label(label == null ? "CARD" : label));
     }
 }

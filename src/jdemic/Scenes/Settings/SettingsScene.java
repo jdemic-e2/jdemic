@@ -4,16 +4,14 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.PanelUtil;
+import jdemic.ui.PlayerNameUtil;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TextUtil;
-
-import java.util.function.UnaryOperator;
 
 public class SettingsScene {
     private static final String FONT_HKMODULAR = "hkmodular";
@@ -49,7 +47,7 @@ public class SettingsScene {
 
     // UI Control References (for saving/loading data)
     private TextField nameField;
-    private Slider masterVol, musicVol;
+    private Slider masterVol, musicVol, sfxVol;
     private ComboBox<String> resCombo;
     private ToggleButton fsToggle;
     private ComboBox<String> speedCombo;
@@ -57,9 +55,19 @@ public class SettingsScene {
     public SettingsScene(Stage stage) {
         this.stage = stage;
         this.root = new StackPane();
+        setupStylesheet();
         setupBackground();
         setupConfirmationOverlay();
         setupUI();
+    }
+
+    private void setupStylesheet() {
+        java.net.URL stylesheet = getClass().getResource("/styles/settings.css");
+        if (stylesheet != null) {
+            root.getStylesheets().add(stylesheet.toExternalForm());
+        } else {
+            System.err.println("[SettingsScene] Missing resource: /styles/settings.css");
+        }
     }
 
     private void setupUI() {
@@ -133,9 +141,9 @@ public class SettingsScene {
 
         resetBtn.setOnMouseClicked(e -> {
             if (hasUnsavedChanges) {
-                showOverlay(DISCARD_CHANGES_MESSAGE, () -> {
-                    resetUIToManager(); // Pulls original data back into UI
-                });
+                showOverlay(DISCARD_CHANGES_MESSAGE, this::resetUIToManager);
+            } else {
+                showOverlay("RESET TO DEFAULTS?", this::resetToDefaults);
             }
         });
 
@@ -173,6 +181,7 @@ public class SettingsScene {
         // AUDIO
         sm.masterVolumeProperty().set(masterVol.getValue() / 100.0);
         sm.musicVolumeProperty().set(musicVol.getValue() / 100.0);
+        sm.sfxVolumeProperty().set(sfxVol.getValue() / 100.0);
         // Update volume
         AudioManager.getInstance().updateVolume();
 
@@ -194,16 +203,14 @@ public class SettingsScene {
 
         boolean wantFullScreen = fsToggle.isSelected();
 
-        // Check resolution (has to be same or lower than the monitor's normal resolution)
-        if (chosenWidth <= screenWidth && chosenHeight <= screenHeight) {
-            sm.resolutionProperty().set(selectedRes);
+        sm.resolutionProperty().set(selectedRes);
 
-            if (!wantFullScreen) {
-                stage.setFullScreen(false);
-                stage.setWidth(chosenWidth);
-                stage.setHeight(chosenHeight);
-                stage.centerOnScreen();
-            }
+        // Only the immediate window resize is limited by the current monitor bounds.
+        if (!wantFullScreen && chosenWidth <= screenWidth && chosenHeight <= screenHeight) {
+            stage.setFullScreen(false);
+            stage.setWidth(chosenWidth);
+            stage.setHeight(chosenHeight);
+            stage.centerOnScreen();
         }
 
         // Fullscreen setting apply
@@ -229,9 +236,24 @@ public class SettingsScene {
         updateFsToggleStyle(); // Refresh the visual color of the button
         masterVol.setValue(sm.masterVolumeProperty().get() * 100);
         musicVol.setValue(sm.musicVolumeProperty().get() * 100);
+        sfxVol.setValue(sm.sfxVolumeProperty().get() * 100);
         speedCombo.setValue(sm.animationSpeedProperty().get());
 
         hasUnsavedChanges = false;
+    }
+
+    private void resetToDefaults() {
+        SettingsData defaults = new SettingsData();
+        nameField.setText(defaults.playerName);
+        resCombo.setValue(defaults.resolution);
+        fsToggle.setSelected(defaults.isFullScreen);
+        updateFsToggleStyle();
+        masterVol.setValue(defaults.masterVolume * 100);
+        musicVol.setValue(defaults.musicVolume * 100);
+        sfxVol.setValue(defaults.sfxVolume * 100);
+        speedCombo.setValue(defaults.animationSpeed);
+
+        saveToManager();
     }
 
     private void returnToMainMenu() {
@@ -268,6 +290,7 @@ public class SettingsScene {
         fsToggle = new ToggleButton();
         fsToggle.setSelected(sm.isFullscreenProperty().get()); // Load from manager
         updateFsToggleStyle();
+        fsToggle.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_CLICKED, e -> AudioManager.getInstance().playButtonSFX());
         fsToggle.setOnAction(e -> {
             updateFsToggleStyle();
             markDirty();
@@ -280,9 +303,8 @@ public class SettingsScene {
     private void updateFsToggleStyle() {
         boolean isOn = fsToggle.isSelected();
         fsToggle.setText(isOn ? "ON" : "OFF");
-        String bgColor = isOn ? BLACK : CYAN;
-        String textColor = isOn ? CYAN : BLACK;
-        fsToggle.setStyle("-fx-background-color: " + bgColor + "; -fx-text-fill: " + textColor + "; -fx-border-color: " + CYAN + "; -fx-border-width: 2; -fx-font-family: '" + FONT_HKMODULAR + "'; -fx-padding: 5 15 5 15;");
+        fsToggle.getStyleClass().removeAll("cyber-toggle", "cyber-toggle-on", "cyber-toggle-off");
+        fsToggle.getStyleClass().addAll("cyber-toggle", isOn ? "cyber-toggle-on" : "cyber-toggle-off");
     }
 
     private VBox createAudioContent() {
@@ -293,13 +315,31 @@ public class SettingsScene {
         Label header = TextUtil.createText("AUDIO SETTINGS", FONT_HKMODULAR, 0.03, WHITE, root);
 
         masterVol = new Slider(0, 100, sm.masterVolumeProperty().get() * 100);
+        styleSlider(masterVol);
         masterVol.valueProperty().addListener((obs, oldVal, newVal) -> markDirty());
 
         musicVol = new Slider(0, 100, sm.musicVolumeProperty().get() * 100);
+        styleSlider(musicVol);
         musicVol.valueProperty().addListener((obs, oldVal, newVal) -> markDirty());
 
-        box.getChildren().addAll(header, createSettingRow("MASTER VOLUME", masterVol), createSettingRow("MUSIC VOLUME", musicVol));
+        sfxVol = new Slider(0, 100, sm.sfxVolumeProperty().get() * 100);
+        styleSlider(sfxVol);
+        sfxVol.valueProperty().addListener((obs, oldVal, newVal) -> markDirty());
+
+        box.getChildren().addAll(
+                header,
+                createSettingRow("MASTER VOLUME", masterVol),
+                createSettingRow("MUSIC VOLUME", musicVol),
+                createSettingRow("SFX VOLUME", sfxVol)
+        );
         return box;
+    }
+
+    private void styleSlider(Slider slider) {
+        slider.getStyleClass().add("cyber-slider");
+        slider.setShowTickMarks(false);
+        slider.setShowTickLabels(false);
+        slider.setBlockIncrement(5);
     }
 
     private VBox createGeneralContent() {
@@ -310,13 +350,7 @@ public class SettingsScene {
         Label header = TextUtil.createText("GENERAL SETTINGS", FONT_HKMODULAR, 0.03, WHITE, root);
         nameField = new TextField();
 
-        UnaryOperator<TextFormatter.Change> filter = change -> {
-            String text = change.getControlNewText();
-            if (text.matches("[a-zA-Z0-9]*") && text.length() <= 16) return change;
-            return null;
-        };
-
-        nameField.setTextFormatter(new TextFormatter<>(filter));
+        nameField.setTextFormatter(new TextFormatter<>(PlayerNameUtil.nicknameFilter()));
         nameField.setPromptText("Enter Username");
         nameField.setText(sm.playerNameProperty().get()); // Load from manager
         nameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: " + CYAN + "; -fx-border-color: " + CYAN + "; -fx-border-width: 1; -fx-font-family: '" + FONT_HKMODULAR + "'; -fx-font-size: 12px;");
@@ -406,16 +440,7 @@ public class SettingsScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource(BACKGROUND_RESOURCE);
-        if (bgUrl == null) {
-            System.err.println("[SettingsScene] Missing resource: " + BACKGROUND_RESOURCE);
-            return;
-        }
-        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        SceneBackgroundUtil.addCoverBackground(root, BACKGROUND_RESOURCE);
     }
 
     public StackPane getRoot() {return root;}

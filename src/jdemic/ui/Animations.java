@@ -76,7 +76,7 @@ public class Animations {
         pulse.setToY(scale);
         pulse.setAutoReverse(true);
         pulse.setCycleCount(Animation.INDEFINITE);
-        pulse.play();
+        AnimationSpeedUtil.play(pulse);
         return pulse;
     }
 }

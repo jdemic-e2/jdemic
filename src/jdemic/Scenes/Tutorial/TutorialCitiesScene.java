@@ -4,7 +4,6 @@ import javafx.animation.FadeTransition;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
@@ -28,15 +27,7 @@ public class TutorialCitiesScene {
     }
 
     private void openCityCard(CityNode city) {
-        String colorPrefix = switch (city.getNativeColor()) {
-            case BLUE -> "Blue";
-            case YELLOW -> "Yellow";
-            case BLACK -> "Black";
-            case RED -> "Red";
-        };
-
-        String cityName = city.getName().replace(" ", "").replace(".", "");
-        TutorialUtil.openCardOverlay(root, "/cards/" + colorPrefix + cityName + ".png", city.getName(), "TutorialCitiesScene");
+        TutorialUtil.openCardOverlay(root, CardResourceUtil.cityCardPath(city), city.getName(), "TutorialCitiesScene");
     }
 
     private void setupUI() {
@@ -49,7 +40,7 @@ public class TutorialCitiesScene {
             System.err.println("[TutorialCitiesScene] Missing resource: /backgroundMap.png");
             return;
         }
-        ImageView map = new ImageView(new Image(mapUrl.toExternalForm()));
+        ImageView map = new ImageView(SafeResourceLoader.loadImage(mapUrl));
         map.setPreserveRatio(true);
         map.fitWidthProperty().bind(root.widthProperty().multiply(0.75));
         StackPane.setAlignment(map, Pos.CENTER);

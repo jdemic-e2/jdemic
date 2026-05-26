@@ -6,16 +6,18 @@ import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import jdemic.Scenes.SceneManager.SceneManager;
+import jdemic.Scenes.Settings.SettingsManager;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.GlowUtil;
+import jdemic.ui.PlayerNameUtil;
+import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TextUtil;
 
 public class JoinCodeScene {
@@ -38,16 +40,9 @@ public class JoinCodeScene {
     }
 
     private void setupBackground() {
-        java.net.URL bgUrl = getClass().getResource("/background.png");
-        if (bgUrl == null) {
-            System.err.println("[JoinCodeScene] Missing resource: /background.png");
-            return;
-        }
-        ImageView background = new ImageView(new Image(bgUrl.toExternalForm()));
-        background.fitWidthProperty().bind(root.widthProperty());
-        background.fitHeightProperty().bind(root.heightProperty());
-        background.setPreserveRatio(false);
-        root.getChildren().add(background);
+        javafx.scene.image.ImageView background = SceneBackgroundUtil.addCoverBackground(root, SceneBackgroundUtil.MENU_BACKGROUND);
+        if (background == null) return;
+        background.setMouseTransparent(true); // allow clicks to pass through decorative background
     }
 
     private void setupUI() {
@@ -60,7 +55,8 @@ public class JoinCodeScene {
         Label accessLabel = TextUtil.createText("ENTER IP ADDRESS", "hkmodular", 0.03, "#ff0000", root);
         accessLabel.setTextAlignment(TextAlignment.CENTER);
 
-        TextField nicknameField = new TextField(presetNickname == null ? "Newbie" : presetNickname);
+        TextField nicknameField = new TextField(presetNickname == null ? savedPlayerName() : PlayerNameUtil.normalizeNickname(presetNickname));
+        nicknameField.setTextFormatter(new TextFormatter<>(PlayerNameUtil.nicknameFilter()));
         nicknameField.setMaxWidth(300);
         nicknameField.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: #cfc900; -fx-border-color: #00b5d4; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-font-family: 'hkmodular'; -fx-font-size: 18;");
         nicknameField.setVisible(presetNickname == null);
@@ -97,6 +93,7 @@ public class JoinCodeScene {
             }
             joinBtn.setDisable(true);
             errorLabel.setVisible(false);
+            savePlayerName(nickname);
             connectToLobby(code, nickname, joinBtn);
         });
 
@@ -122,6 +119,17 @@ public class JoinCodeScene {
         return root;
     }
 
+    private void savePlayerName(String nickname) {
+        SettingsManager settingsManager = SettingsManager.getInstance();
+        settingsManager.playerNameProperty().set(nickname);
+        settingsManager.saveSettings();
+    }
+
+    private String savedPlayerName() {
+        String savedName = SettingsManager.getInstance().playerNameProperty().get();
+        return PlayerNameUtil.normalizeNickname(savedName);
+    }
+
     private void connectToLobby(String code, String nickname, ButtonsUtil joinBtn) {
         new Thread(() -> {
             try {
@@ -145,7 +153,7 @@ public class JoinCodeScene {
 
                 String roomCode = targetIp + ":" + targetPort;
                 Platform.runLater(() ->
-                        stage.getScene().setRoot(new WaitingRoomScene(stage, nickname, roomCode, gameClient).getRoot())
+                        SceneManager.setRoot(new WaitingRoomScene(stage, nickname, roomCode, gameClient).getRoot())
                 );
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();

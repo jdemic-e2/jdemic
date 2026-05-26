@@ -36,7 +36,7 @@ public class TutorialWinLoseScene {
         winPanel.prefHeightProperty().bind(root.heightProperty().multiply(0.45));
 
         Label winTitle = TextUtil.createText("WIN","neotechprobold",0.03,"#00b5d4",root);
-        Label winText = TextUtil.createText("All 4 cures are discovered:\n\n" +"Malware has been stopped from spreading\n" +"and now the systems are cleared.", "neotechprobold", 0.016,"#ffffff",root);
+        Label winText = TextUtil.createText("All 4 cures are discovered\nor no infected cities remain:\n\n" +"Malware has been stopped from spreading\n" +"and now the systems are cleared.", "neotechprobold", 0.016,"#ffffff",root);
         winText.setWrapText(true);
         winText.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
         winText.maxWidthProperty().bind(winPanel.widthProperty().multiply(0.75));

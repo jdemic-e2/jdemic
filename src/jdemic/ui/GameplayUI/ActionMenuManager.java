@@ -30,6 +30,7 @@ public class ActionMenuManager {
     private final Consumer<String> validNodesHighlighter;
     private MenuMode menuMode = MenuMode.MAIN;
     private String selectedMovementAction = null;
+    private boolean locked = false;
 
     private enum MenuMode {
         MAIN,
@@ -88,10 +89,11 @@ public class ActionMenuManager {
 
         actionSubMenu.paddingProperty().bind(createObjectBinding(() -> {
             double bottomOffset = root.getHeight() * 0.23;
-            return new Insets(0, 0, bottomOffset, root.getWidth() * 0.02);
+            return new Insets(0, 0, bottomOffset, 10);
         }, root.widthProperty(), root.heightProperty()));
 
         root.getChildren().add(actionSubMenu);
+        actionSubMenu.toFront(); // ensure action menu is clickable above decorative elements
     }
 
     private ButtonsUtil getButtonsUtil(MenuAction action) {
@@ -169,9 +171,12 @@ public class ActionMenuManager {
             if (left > 0) {
                 if (actionSender != null) {
                     actionSender.accept(action.packetAction());
-                    notificationManager.showNotification("Action " + action.label() + " sent to server");
                 } else {
                     gameManager.getState().setActionsRemaining(left - 1);
+                    //animation
+                    if (onTurnChangeCallback != null) {
+                        onTurnChangeCallback.run();
+                    }
                     int actionsAfter = gameManager.getState().getActionsRemaining();
                     notificationManager.showNotification("Action " + action.label() + " executed. Moves left: " + actionsAfter);
                     
@@ -189,6 +194,11 @@ public class ActionMenuManager {
     }
 
     public void updateMenuState() {
+        if (locked) {
+            // when locked, force menu to MAIN and prevent interactions
+            menuMode = MenuMode.MAIN;
+            selectedMovementAction = null;
+        }
         if (!isCurrentPlayerTurn()) {
             menuMode = MenuMode.MAIN;
             selectedMovementAction = null;
@@ -197,6 +207,12 @@ public class ActionMenuManager {
             }
         }
         actionSubMenu.getChildren().setAll(createButtonsForCurrentMode());
+        actionSubMenu.toFront(); // make sure buttons remain on top so they can be clicked
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+        updateMenuState();
     }
 
     public void clearSelectedMovementAction() {
@@ -247,6 +263,7 @@ public class ActionMenuManager {
     }
 
     private boolean shouldDisable(MenuAction action) {
+        if (locked) return true;
         // Check if it's not the current player's turn
         if (playerName != null && !isCurrentPlayerTurn()) {
             return true; // Disable all buttons for non-current players

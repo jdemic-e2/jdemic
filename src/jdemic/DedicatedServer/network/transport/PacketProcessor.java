@@ -443,6 +443,8 @@ public class PacketProcessor {
         LOGGER.severe("[PacketProcessor] Received ERROR packet: " + packet);
     }
 
+    
+
     private void handleDiscardCard(JsonNode payload, PlayerState playerState) {
         if (!payload.has(CARD_INDEX_STRING) || !payload.get(CARD_INDEX_STRING).isInt()) {
             LOGGER.severe("[PacketProcessor] DISCARD_CARD missing cardIndex.");
