@@ -43,7 +43,7 @@ public class MasterOrchestrator {
         try (ServerSocket serverSocket = new ServerSocket(masterPort)) {
             System.out.println("[MASTER] Orchestrator listening on port " + masterPort);
             System.out.println("[MASTER] Game server port range: " + basePort + "-" + maxPort);
-            while (true) {
+            while (!serverSocket.isClosed()) {
                 Socket clientSocket = serverSocket.accept();
                 Thread clientThread = new Thread(() -> handleClient(clientSocket), "jdemic-master-client");
                 clientThread.setDaemon(true);
