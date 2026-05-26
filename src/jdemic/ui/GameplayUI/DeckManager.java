@@ -152,6 +152,21 @@ public class DeckManager {
         StackPane wrapper = new StackPane(imageView);
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         GlowUtil.applyGlow(wrapper, "#cfc900", 8);
+        // hover behavior: match city cards (enlarge and lift on hover)
+        wrapper.setOnMouseEntered(e -> {
+            wrapper.setViewOrder(-1);
+            wrapper.setTranslateY(-50);
+            wrapper.setScaleX(1.5);
+            wrapper.setScaleY(1.5);
+        });
+
+        wrapper.setOnMouseExited(e -> {
+            wrapper.setViewOrder(0);
+            wrapper.setTranslateY(0);
+            wrapper.setScaleX(1);
+            wrapper.setScaleY(1);
+        });
+
         return wrapper;
     }
 

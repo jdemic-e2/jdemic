@@ -1,7 +1,6 @@
 package jdemic.ui;
 
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.scene.input.MouseButton;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import jdemic.GameLogic.Card;

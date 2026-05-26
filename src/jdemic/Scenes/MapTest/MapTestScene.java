@@ -21,6 +21,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -32,6 +33,7 @@ import jdemic.DedicatedServer.network.transport.PacketType;
 import jdemic.Scenes.SceneManager.SceneManager;
 import jdemic.Scenes.Settings.AudioManager;
 import jdemic.GameLogic.Actions.GameAction;
+import jdemic.GameLogic.Actions.FirewallAction;
 import jdemic.GameLogic.Actions.Other.BuildResearchStation;
 import jdemic.ui.ButtonsUtil;
 import jdemic.ui.DeckAnimationManager;
@@ -39,6 +41,7 @@ import jdemic.ui.PauseMenuOverlay;
 import jdemic.ui.SafeResourceLoader;
 import jdemic.ui.SceneBackgroundUtil;
 import jdemic.ui.TurnAnimationManager;
+import jdemic.ui.CardResourceUtil;
 import jdemic.GameLogic.*;
 import jdemic.GameLogic.RoleManager;
 import jdemic.GameLogic.PlayerRoles;
@@ -839,7 +842,7 @@ public class MapTestScene {
                 && gameManager.getState().isPlayerTurn(displayedPlayer)
                 && displayedPlayer.getIsDiscarding();
 
-        handManager.updateHand(displayedPlayer, discardMode, this::handleDiscardCardRequest);
+        handManager.updateHand(displayedPlayer, discardMode, this::handleDiscardCardRequest, this::handlePlayEventCard);
     }
 
     private void refreshTurnUI() {
@@ -1143,6 +1146,469 @@ public class MapTestScene {
             updateHandUI();
         }
     }
+
+    private void handlePlayEventCard(int cardIndex) {
+        PlayerState displayedPlayer = getDisplayedHandPlayer();
+        if (displayedPlayer == null) return;
+
+        // If connected to a server, send a GAME_DATA packet to request the action
+        if (gameClient != null) {
+            List<Card> hand = displayedPlayer.getHand();
+            if (hand == null || cardIndex < 0 || cardIndex >= hand.size()) return;
+            Card card = hand.get(cardIndex);
+            if (card == null || card.getType() != CardType.EVENT) return;
+
+            String actionName;
+            switch (card.getEventType()) {
+                case FIREWALL: actionName = "FIREWALL"; break;
+                case SATELLITE: actionName = "SATELLITE"; break;
+                case SERVER: actionName = "SERVER"; break;
+                case CONTROL: actionName = "CONTROL"; break;
+                case THREAT: actionName = "THREAT"; break;
+                default: actionName = null;
+            }
+
+            if (actionName == null) {
+                notificationManager.showNotification("Unknown event type");
+                return;
+            }
+
+            // If the event requires additional input, start an interactive selection flow
+            if (!"FIREWALL".equals(actionName)) {
+                startPendingEvent(actionName, cardIndex);
+                return;
+            }
+
+            ObjectNode payload = createBaseGameActionPayload();
+            payload.put("GameAction", actionName);
+            payload.put("cardIndex", cardIndex);
+            gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+            notificationManager.showNotification("Event action request sent");
+            return;
+        }
+
+        // Local game mode: try to perform simple events directly (others require extra input)
+        PlayerState current = gameManager.getState().getCurrentPlayer();
+        if (current == null || !current.getPlayerName().equals(displayedPlayer.getPlayerName())) {
+            notificationManager.showNotification("Not your turn");
+            return;
+        }
+
+        List<Card> hand = displayedPlayer.getHand();
+        if (hand == null || cardIndex < 0 || cardIndex >= hand.size()) return;
+        Card card = hand.get(cardIndex);
+        if (card == null || card.getType() != CardType.EVENT) {
+            notificationManager.showNotification("Not an event card");
+            return;
+        }
+
+        switch (card.getEventType()) {
+            case FIREWALL: {
+                FirewallAction action = new FirewallAction(card);
+                int actionsBefore = gameManager.getState().getActionsRemaining();
+                gameManager.performAction(displayedPlayer.getPlayer(), action);
+                if (gameManager.getState().getActionsRemaining() == actionsBefore) {
+                    notificationManager.showNotification("Cannot play this event right now");
+                } else {
+                    notificationManager.showNotification("Firewall event executed");
+                    if (actionMenuManager != null) actionMenuManager.updateMenuState();
+                    updateHandUI();
+                }
+                break;
+            }
+            default:
+                startPendingEvent(card.getEventType().name(), cardIndex);
+                break;
+        }
+    }
+
+    // --- Pending event selection state and helpers ---
+    private String pendingEventAction = null;
+    private int pendingEventCardIndex = -1;
+    private String pendingSatelliteTarget = null;
+    private java.util.List<Integer> pendingThreatSelectedIndices = new java.util.ArrayList<>();
+    private javafx.scene.layout.StackPane pendingSelectionOverlay = null;
+    private final java.util.Map<javafx.scene.Node, javafx.animation.Animation> activeGlows = new java.util.HashMap<>();
+
+    private void startPendingEvent(String actionName, int cardIndex) {
+        // clear any previous pending state/overlay before starting a new one
+        clearPendingEvent();
+
+        pendingEventAction = actionName;
+        pendingEventCardIndex = cardIndex;
+        pendingThreatSelectedIndices.clear();
+
+        if (actionMenuManager != null) actionMenuManager.setLocked(true);
+
+        switch (actionName) {
+            case "SERVER":
+                notificationManager.showNotification("Select a city to place the research station.");
+                highlightPendingEventCitiesForServer();
+                break;
+            case "SATELLITE":
+                notificationManager.showNotification("Select a player to move.");
+                highlightPlayersForSatellite();
+                break;
+            case "CONTROL":
+                notificationManager.showNotification("Select an infection discard card to remove.");
+                showInfectionDiscardOverlay();
+                break;
+            case "THREAT":
+                notificationManager.showNotification("Reorder the top infection cards by clicking them in desired order.");
+                showTopInfectionReorderOverlay();
+                break;
+            default:
+                notificationManager.showNotification("This event requires additional input.");
+                clearPendingEvent();
+                break;
+        }
+    }
+
+    private void clearPendingEvent() {
+        pendingEventAction = null;
+        pendingEventCardIndex = -1;
+        pendingSatelliteTarget = null;
+        pendingThreatSelectedIndices.clear();
+
+        if (pendingSelectionOverlay != null) {
+            root.getChildren().remove(pendingSelectionOverlay);
+            pendingSelectionOverlay = null;
+        }
+
+        for (javafx.animation.Animation a : new java.util.ArrayList<>(activeGlows.values())) {
+            try { a.stop(); } catch (Exception ignored) {}
+        }
+        activeGlows.clear();
+
+        for (java.util.Map.Entry<String, jdemic.ui.GameplayUI.PawnUI> e : playerPawns.entrySet()) {
+            e.getValue().getNode().setMouseTransparent(true);
+            e.getValue().getNode().setOnMouseClicked(null);
+        }
+
+        if (actionMenuManager != null) actionMenuManager.setLocked(false);
+
+        highlightValidNodes("");
+    }
+
+    private void highlightPendingEventCitiesForServer() {
+        for (CityNode city : mapGraph.getCityList()) {
+            Circle nodeCircle = nodeVisuals.get(city);
+            if (nodeCircle == null) continue;
+
+            if (!city.hasResearchStation()) {
+                highlightedValidNodes.add(city);
+                nodeCircle.setFill(Color.web("#00ff00"));
+                javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
+                glow.setColor(Color.web("#00ff00"));
+                glow.setRadius(20);
+                glow.setSpread(0.6);
+                nodeCircle.setEffect(glow);
+                nodeCircle.setOnMouseClicked(ev -> handlePendingEventCitySelected(city));
+            } else {
+                nodeCircle.setOnMouseClicked(ev -> city.clickEvent());
+            }
+        }
+    }
+
+    private void handlePendingEventCitySelected(CityNode destination) {
+        if (pendingEventAction == null) return;
+
+        if ("SERVER".equals(pendingEventAction)) {
+            if (gameClient == null) {
+                PlayerState displayedPlayer = getDisplayedHandPlayer();
+                if (displayedPlayer != null) {
+                    Card card = displayedPlayer.getHand().get(pendingEventCardIndex);
+                    jdemic.GameLogic.Actions.ServerAction action = new jdemic.GameLogic.Actions.ServerAction(destination, card);
+                    int actionsBefore = gameManager.getState().getActionsRemaining();
+                    gameManager.performAction(displayedPlayer.getPlayer(), action);
+                    if (gameManager.getState().getActionsRemaining() == actionsBefore) {
+                        notificationManager.showNotification("Cannot play Server here");
+                    } else {
+                        notificationManager.showNotification("Server deployed at " + destination.getName());
+                        updateHandUI();
+                        if (actionMenuManager != null) actionMenuManager.updateMenuState();
+                    }
+                }
+            } else {
+                ObjectNode payload = createBaseGameActionPayload();
+                payload.put("GameAction", "SERVER");
+                payload.put("cardIndex", pendingEventCardIndex);
+                payload.put("destination", destination.getName());
+                gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+                notificationManager.showNotification("Server action sent");
+            }
+        } else if ("SATELLITE".equals(pendingEventAction) && pendingSatelliteTarget != null) {
+            if (gameClient == null) {
+                PlayerState displayedPlayer = getDisplayedHandPlayer();
+                if (displayedPlayer != null) {
+                    Card card = displayedPlayer.getHand().get(pendingEventCardIndex);
+                    jdemic.GameLogic.Actions.SatelliteAction action = new jdemic.GameLogic.Actions.SatelliteAction(pendingSatelliteTarget, destination, card);
+                    int actionsBefore = gameManager.getState().getActionsRemaining();
+                    gameManager.performAction(displayedPlayer.getPlayer(), action);
+                    if (gameManager.getState().getActionsRemaining() == actionsBefore) {
+                        notificationManager.showNotification("Cannot perform Satellite now");
+                    } else {
+                        notificationManager.showNotification("Satellite used");
+                        updateHandUI();
+                        if (actionMenuManager != null) actionMenuManager.updateMenuState();
+                    }
+                }
+            } else {
+                ObjectNode payload = createBaseGameActionPayload();
+                payload.put("GameAction", "SATELLITE");
+                payload.put("cardIndex", pendingEventCardIndex);
+                payload.put("targetPlayer", pendingSatelliteTarget);
+                payload.put("destination", destination.getName());
+                gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+                notificationManager.showNotification("Satellite action sent");
+            }
+        }
+
+        clearPendingEvent();
+    }
+
+    private void highlightPlayersForSatellite() {
+        for (var entry : playerPawns.entrySet()) {
+            String playerName = entry.getKey();
+            jdemic.ui.GameplayUI.PawnUI pawn = entry.getValue();
+            javafx.scene.Node node = pawn.getNode();
+            node.setMouseTransparent(false);
+            javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(javafx.util.Duration.millis(700), node);
+            ft.setFromValue(1.0);
+            ft.setToValue(0.6);
+            ft.setCycleCount(javafx.animation.Animation.INDEFINITE);
+            ft.setAutoReverse(true);
+            ft.play();
+            activeGlows.put(node, ft);
+            node.setOnMouseClicked(ev -> handleSatellitePlayerClicked(playerName));
+        }
+    }
+
+    private void handleSatellitePlayerClicked(String playerName) {
+        pendingSatelliteTarget = playerName;
+        notificationManager.showNotification("Now select destination city for satellite.");
+        for (CityNode city : mapGraph.getCityList()) {
+            Circle nodeCircle = nodeVisuals.get(city);
+            if (nodeCircle == null) continue;
+            highlightedValidNodes.add(city);
+            nodeCircle.setFill(Color.web("#00ff00"));
+            javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
+            glow.setColor(Color.web("#00ff00"));
+            glow.setRadius(20);
+            glow.setSpread(0.6);
+            nodeCircle.setEffect(glow);
+            nodeCircle.setOnMouseClicked(ev -> handlePendingEventCitySelected(city));
+        }
+    }
+
+    private void showInfectionDiscardOverlay() {
+        var deck = gameManager.getState().getCardDeck();
+        java.util.List<Card> discard = deck.getInfectionDiscardPile();
+        if (discard == null || discard.isEmpty()) {
+            notificationManager.showNotification("No cards in infection discard pile.");
+            clearPendingEvent();
+            return;
+        }
+        // build a fullscreen dark overlay with the discard cards centered near the hand
+        Rectangle bg = new Rectangle();
+        bg.widthProperty().bind(root.widthProperty());
+        bg.heightProperty().bind(root.heightProperty());
+        bg.setFill(Color.color(0, 0, 0, 0.6));
+        bg.setOnMouseClicked(e -> clearPendingEvent());
+
+        HBox content = new HBox(8);
+        content.setAlignment(Pos.BOTTOM_CENTER);
+        content.setPickOnBounds(false);
+        content.translateYProperty().bind(root.heightProperty().multiply(-0.18));
+
+        int idx = 0;
+        for (Card c : discard) {
+            CityNode target = c.getTargetCity();
+            String path = CardResourceUtil.epidemicCardPath(target);
+            javafx.scene.image.ImageView iv = jdemic.ui.UIImageUtil.loadResponsive(root, path, 56, 96, 0.05);
+            if (iv == null || iv.getImage() == null) continue;
+            iv.setPreserveRatio(true);
+            StackPane wrapper = new StackPane(iv);
+            wrapper.getStyleClass().add("threat-card-wrapper");
+            wrapper.setOnMouseClicked(e -> handleControlInfectionSelected(c));
+
+            // pulsing to indicate selectable
+            javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(javafx.util.Duration.millis(800), iv);
+            ft.setFromValue(1.0);
+            ft.setToValue(0.6);
+            ft.setCycleCount(javafx.animation.Animation.INDEFINITE);
+            ft.setAutoReverse(true);
+            ft.play();
+            activeGlows.put(wrapper, ft);
+
+            // hover highlight
+            wrapper.setOnMouseEntered(ev -> {
+                javafx.scene.effect.DropShadow ds = new javafx.scene.effect.DropShadow();
+                ds.setColor(Color.web("#00ff00"));
+                ds.setRadius(18);
+                wrapper.setEffect(ds);
+                wrapper.setScaleX(1.08);
+                wrapper.setScaleY(1.08);
+            });
+            wrapper.setOnMouseExited(ev -> {
+                wrapper.setEffect(null);
+                wrapper.setScaleX(1.0);
+                wrapper.setScaleY(1.0);
+            });
+
+            content.getChildren().add(wrapper);
+            idx++;
+            if (idx > 20) break;
+        }
+
+        StackPane overlay = new StackPane(bg, content);
+        StackPane.setAlignment(content, Pos.BOTTOM_CENTER);
+        pendingSelectionOverlay = overlay;
+        root.getChildren().add(pendingSelectionOverlay);
+    }
+
+    private void handleControlInfectionSelected(Card infectionCard) {
+        if (infectionCard == null) return;
+        if (gameClient == null) {
+            PlayerState displayedPlayer = getDisplayedHandPlayer();
+            if (displayedPlayer != null) {
+                Card card = displayedPlayer.getHand().get(pendingEventCardIndex);
+                jdemic.GameLogic.Actions.SystemControlAction action = new jdemic.GameLogic.Actions.SystemControlAction(card, infectionCard);
+                int actionsBefore = gameManager.getState().getActionsRemaining();
+                gameManager.performAction(displayedPlayer.getPlayer(), action);
+                if (gameManager.getState().getActionsRemaining() == actionsBefore) {
+                    notificationManager.showNotification("Cannot play Control now");
+                } else {
+                    // Ensure event card is discarded (fallback in case action did not remove it)
+                    if (displayedPlayer.getHand().contains(card)) {
+                        displayedPlayer.getHand().remove(card);
+                        gameManager.getState().getCardDeck().discard(card);
+                    }
+                    notificationManager.showNotification("Control executed: infection card removed");
+                    updateHandUI();
+                    if (actionMenuManager != null) actionMenuManager.updateMenuState();
+                }
+            }
+        } else {
+            ObjectNode payload = createBaseGameActionPayload();
+            payload.put("GameAction", "CONTROL");
+            payload.put("cardIndex", pendingEventCardIndex);
+            payload.put("infectionCardName", infectionCard.getCardName());
+            gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+            notificationManager.showNotification("Control action sent");
+        }
+
+        clearPendingEvent();
+    }
+
+    private void showTopInfectionReorderOverlay() {
+        var deck = gameManager.getState().getCardDeck();
+        java.util.List<Card> top = deck.getTopInfectionCards(6);
+        if (top == null || top.isEmpty()) {
+            notificationManager.showNotification("Not enough cards in infection deck.");
+            clearPendingEvent();
+            return;
+        }
+
+        Rectangle bg = new Rectangle();
+        bg.widthProperty().bind(root.widthProperty());
+        bg.heightProperty().bind(root.heightProperty());
+        bg.setFill(Color.color(0, 0, 0, 0.6));
+        bg.setOnMouseClicked(e -> clearPendingEvent());
+
+        HBox content = new HBox(8);
+        content.setAlignment(Pos.BOTTOM_CENTER);
+        content.setPickOnBounds(false);
+        content.translateYProperty().bind(root.heightProperty().multiply(-0.18));
+
+        for (int i = 0; i < top.size(); i++) {
+            Card c = top.get(i);
+            CityNode target = c.getTargetCity();
+            String path = CardResourceUtil.epidemicCardPath(target);
+            javafx.scene.image.ImageView iv = jdemic.ui.UIImageUtil.loadResponsive(root, path, 56, 96, 0.05);
+            if (iv == null || iv.getImage() == null) continue;
+            iv.setPreserveRatio(true);
+            int topIndex = i;
+            StackPane wrapper = new StackPane(iv);
+            wrapper.getStyleClass().add("threat-card-wrapper");
+            wrapper.setOnMouseClicked(e -> handleThreatTopCardClicked(topIndex, wrapper));
+
+            javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(javafx.util.Duration.millis(700), iv);
+            ft.setFromValue(1.0);
+            ft.setToValue(0.6);
+            ft.setCycleCount(javafx.animation.Animation.INDEFINITE);
+            ft.setAutoReverse(true);
+            ft.play();
+            activeGlows.put(wrapper, ft);
+
+            wrapper.setOnMouseEntered(ev -> {
+                javafx.scene.effect.DropShadow ds = new javafx.scene.effect.DropShadow();
+                ds.setColor(Color.web("#00ff00"));
+                ds.setRadius(18);
+                wrapper.setEffect(ds);
+                wrapper.setScaleX(1.08);
+                wrapper.setScaleY(1.08);
+            });
+            wrapper.setOnMouseExited(ev -> {
+                wrapper.setEffect(null);
+                wrapper.setScaleX(1.0);
+                wrapper.setScaleY(1.0);
+            });
+
+            content.getChildren().add(wrapper);
+        }
+
+        StackPane overlay = new StackPane(bg, content);
+        StackPane.setAlignment(content, Pos.BOTTOM_CENTER);
+        pendingSelectionOverlay = overlay;
+        root.getChildren().add(pendingSelectionOverlay);
+    }
+
+    private void handleThreatTopCardClicked(int topIndex, StackPane wrapper) {
+        if (pendingThreatSelectedIndices.contains(topIndex)) return;
+        pendingThreatSelectedIndices.add(topIndex);
+
+        Label badge = new Label(String.valueOf(pendingThreatSelectedIndices.size()));
+        badge.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: white; -fx-padding: 4; -fx-background-radius: 8;");
+        StackPane.setAlignment(badge, Pos.TOP_RIGHT);
+        wrapper.getChildren().add(badge);
+
+        var deck = gameManager.getState().getCardDeck();
+        int total = deck.getTopInfectionCards(6).size();
+        if (pendingThreatSelectedIndices.size() >= total) {
+            if (gameClient == null) {
+                PlayerState displayedPlayer = getDisplayedHandPlayer();
+                if (displayedPlayer != null) {
+                    Card card = displayedPlayer.getHand().get(pendingEventCardIndex);
+                    java.util.List<Card> top = deck.getTopInfectionCards(total);
+                    java.util.List<Card> reordered = new java.util.ArrayList<>();
+                    for (int idx : pendingThreatSelectedIndices) reordered.add(top.get(idx));
+                    jdemic.GameLogic.Actions.ThreatAction action = new jdemic.GameLogic.Actions.ThreatAction(card, reordered);
+                    int actionsBefore = gameManager.getState().getActionsRemaining();
+                    gameManager.performAction(displayedPlayer.getPlayer(), action);
+                    if (gameManager.getState().getActionsRemaining() == actionsBefore) {
+                        notificationManager.showNotification("Cannot play Threat now");
+                    } else {
+                        notificationManager.showNotification("Threat executed");
+                        updateHandUI();
+                        if (actionMenuManager != null) actionMenuManager.updateMenuState();
+                    }
+                }
+            } else {
+                ObjectNode payload = createBaseGameActionPayload();
+                payload.put("GameAction", "THREAT");
+                payload.put("cardIndex", pendingEventCardIndex);
+                ArrayNode arr = payload.putArray("infectionCardIndices");
+                for (int idx : pendingThreatSelectedIndices) arr.add(idx);
+                gameClient.sendPacket(new Packet(PacketType.GAME_DATA, payload));
+                notificationManager.showNotification("Threat action sent");
+            }
+
+            clearPendingEvent();
+        }
+    }
+
+    // --- End pending event helpers ---
 
     private void sendMenuActionPacket(String action) {
         if (gameClient == null) {

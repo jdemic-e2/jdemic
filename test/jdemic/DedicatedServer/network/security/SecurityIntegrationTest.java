@@ -10,8 +10,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.net.SocketException;
-import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -58,7 +56,6 @@ class SecurityIntegrationTest {
             assertNotNull(secureSocket, "Secure handshake failed!");
 
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             // Send a valid PING packet
             Packet ping = new Packet(PacketType.PING);

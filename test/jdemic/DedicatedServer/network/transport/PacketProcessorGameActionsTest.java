@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jdemic.GameLogic.Card;
 import jdemic.GameLogic.CardType;
 import jdemic.GameLogic.CityNode;
-import jdemic.GameLogic.DiseaseColor;
 import jdemic.GameLogic.GameManager;
 import jdemic.GameLogic.ServerRelatedClasses.PlayerState;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +17,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
