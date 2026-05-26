@@ -24,6 +24,8 @@ public class DiseaseManager {
     private boolean isBlackEradicated;
     private boolean isRedEradicated;
 
+    private boolean hasHadInfectedCities;
+
     private GameManager gameManager;
 
     // Start with CUBES_PER_COLOR per disease and all cures set to false.
@@ -46,6 +48,7 @@ public class DiseaseManager {
         this.isYellowEradicated = false;
         this.isBlackEradicated = false;
         this.isRedEradicated = false;
+        this.hasHadInfectedCities = false;
     }
 
     public int getOutbreakScore() {
@@ -126,6 +129,7 @@ public class DiseaseManager {
                 if (place > 0) {
                     city.addDiseaseCube(color, place);
                     cubesRemaining.put(color, 0);
+                    hasHadInfectedCities = true;
                     // Notify UI
                     if (gameManager != null) {
                         try { gameManager.notifyStateChange(); } catch (Exception ignored) {}
@@ -138,6 +142,9 @@ public class DiseaseManager {
 
             boolean added = city.addDiseaseCube(color, cubesToAdd);
             cubesRemaining.put(color, available - cubesToAdd);
+            if (added) {
+                hasHadInfectedCities = true;
+            }
 
             // Notify UI of cube addition so visuals update
             if (gameManager != null) {
@@ -242,6 +249,25 @@ public class DiseaseManager {
         return isBlueCured && isYellowCured && isBlackCured && isRedCured;
     }
 
+    public boolean hasInfectedCities() {
+        if (gameManager == null || gameManager.getState() == null || gameManager.getState().getMap() == null) {
+            return false;
+        }
+
+        for (CityNode city : gameManager.getState().getMap().getCityList()) {
+            for (DiseaseColor color : DiseaseColor.values()) {
+                if (city.getCubeCount(color) > 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean hasClearedAllInfections() {
+        return hasHadInfectedCities && !hasInfectedCities();
+    }
+
     public Map<DiseaseColor, Boolean> getCuredDiseases() {
         Map<DiseaseColor, Boolean> curedDiseases = new EnumMap<>(DiseaseColor.class);
         for (DiseaseColor color : DiseaseColor.values()) {
@@ -259,6 +285,9 @@ public class DiseaseManager {
             int totalCubesOnBoard = 0;
             for (CityNode city : gameManager.getState().getMap().getCityList()) {
                 totalCubesOnBoard += city.getCubeCount(color);
+            }
+            if (totalCubesOnBoard > 0) {
+                hasHadInfectedCities = true;
             }
             int supply = CUBES_PER_COLOR - totalCubesOnBoard;
             cubesRemaining.put(color, Math.max(0, Math.min(CUBES_PER_COLOR, supply)));

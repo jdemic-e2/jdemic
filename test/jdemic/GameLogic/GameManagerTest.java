@@ -126,6 +126,33 @@ class GameManagerTest {
     }
 
     @Test
+    void clearingAllInfectedCitiesShouldWin() {
+        GameManager manager = new GameManager(List.of(new PlayerState("Ruben")), false);
+        GameState state = manager.getState();
+        DiseaseManager diseaseManager = state.getDiseaseManager();
+        CityNode atlanta = state.getMap().getCity("Atlanta");
+
+        diseaseManager.addInfectionCubes(atlanta, 1);
+        diseaseManager.removeInfectionCubes(atlanta, 1);
+
+        manager.checkWinCondition();
+
+        assertTrue(state.isGameOver());
+        assertTrue(state.isGameWon());
+    }
+
+    @Test
+    void neverInfectedEmptyMapShouldNotWin() {
+        GameManager manager = new GameManager(List.of(new PlayerState("Ruben")), false);
+        GameState state = manager.getState();
+
+        manager.checkWinCondition();
+
+        assertFalse(state.isGameOver());
+        assertFalse(state.isGameWon());
+    }
+
+    @Test
     void startGameShouldDealInitialInfectionsBeforeEpidemicsForServerGames() {
         PlayerState first = new PlayerState("Ruben");
         PlayerState second = new PlayerState("Alvaro");

@@ -365,7 +365,8 @@ public class GameManager {
     }
 
     public void checkWinCondition() {
-        if (state.getDiseaseManager().areAllCured()) {
+        if (state.getDiseaseManager().areAllCured()
+                || state.getDiseaseManager().hasClearedAllInfections()) {
             state.setGameOver(true);
             state.setGameWon(true);
         }

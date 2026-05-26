@@ -65,7 +65,7 @@ public class TutorialRulesScene {
         content.getChildren().add(TutorialUtil.createRow(root, "Game Phases:","Actions: Move, Treat, Share, Build, Discover.\nDraw Cards: Take 2 city cards, risk drawing a System Breach card.\nInfect Cities: Draw infection cards. Viruses are added to the city.", LEFT, RIGHT, SIZE));
         content.getChildren().add(TutorialUtil.createLine(tutorialPanel, "#000000", 6));
 
-        content.getChildren().add(TutorialUtil.createRow(root, "When do you win?","All 4 cures are discovered.",LEFT, RIGHT, SIZE));
+        content.getChildren().add(TutorialUtil.createRow(root, "When do you win?","All 4 cures are discovered, or no infected cities remain on the map.",LEFT, RIGHT, SIZE));
         content.getChildren().add(TutorialUtil.createLine(tutorialPanel, "#000000", 6));
 
         content.getChildren().add( TutorialUtil.createRow(root, "When do you lose?","Too many outbreaks occur, you run out of malware cubes, or the player deck runs out.", LEFT, RIGHT, SIZE));
