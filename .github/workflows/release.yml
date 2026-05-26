@@ -7,7 +7,7 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     # Grant the bot permission to write/create a public Release
     permissions:
       contents: write
