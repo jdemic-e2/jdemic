@@ -8,7 +8,7 @@ The Docker image runs the master orchestrator. The orchestrator listens for `HOS
 | --- | --- | --- | --- |
 | `JDEMIC_ORCHESTRATOR_PORT` | `8080` | `8080` | TCP control port for `HOST` requests and HTTP `/health`. |
 | `JDEMIC_SERVER_PORT_MIN` | `9001` | `9001` | First TCP port the orchestrator can assign to a game server. |
-| `JDEMIC_SERVER_PORT_MAX` | `9999` | Match the exposed range | Last TCP port the orchestrator can assign to a game server. |
+| `JDEMIC_SERVER_PORT_MAX` | `9010` | Match the exposed range | Last TCP port the orchestrator can assign to a game server. |
 
 ## Build
 
